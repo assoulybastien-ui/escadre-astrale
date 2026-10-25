@@ -439,19 +439,21 @@ var R3 = window.THREE ? (() => {
 
   // ---------- arènes par boss ----------
   // default : plateforme du Noyau (Nyxar, et les boss qui n'ont pas encore la leur) ; forge : Vorr
-  const ARENA_OF = { vorr: 'forge' };
+  const ARENA_OF = { vorr: 'forge', twins: 'observatory' };
   const THEMES = {
     default: { fog: 0x0a0b16, fogD: 0.0032, hemiS: 0x5a6aa8, hemiG: 0x0a0a12, hemiI: 0.35, key: 0xffd9b4, keyI: 2.6, rim: 0x6fa8ff, rimI: 1.6, fill: 0xa47bff, fillI: 0.6, fillPos: [-60, 10, -40], dust: '#b9c8ff' },
     forge: { fog: 0x1a0905, fogD: 0.0042, hemiS: 0x6a5048, hemiG: 0xff4a10, hemiI: 0.55, key: 0xffc896, keyI: 2.3, rim: 0xff7a3a, rimI: 1.4, fill: 0xff5a1a, fillI: 1.2, fillPos: [10, -40, 20], dust: '#ff8a3a' },
+    observatory: { fog: 0x0c0a1c, fogD: 0.0035, hemiS: 0x8a80d8, hemiG: 0x2a2030, hemiI: 0.5, key: 0xffe2b0, keyI: 2.4, rim: 0x9fc8ff, rimI: 1.9, fill: 0xffb860, fillI: 0.8, fillPos: [-60, 10, 0], dust: '#ffe8b0' },
   };
+  const ARENA_BUILD = { forge: () => buildForge(), observatory: () => buildObservatory() };
+  const arenaGroup = n => n === 'default' ? L.arenaDefault : n === 'forge' ? L.arenaForge : n === 'observatory' ? L.arenaObs : null;
   let arenaName = null;
   function setArena(model) {
     const name = ARENA_OF[model] || 'default';
     if (!ready || name === arenaName) return;
     arenaName = name;
-    if (name === 'forge' && !L.arenaForge) buildForge();
-    L.arenaDefault.visible = name === 'default';
-    if (L.arenaForge) L.arenaForge.visible = name === 'forge';
+    if (!arenaGroup(name) && ARENA_BUILD[name]) ARENA_BUILD[name]();
+    for (const n of ['default', 'forge', 'observatory']) { const g = arenaGroup(n); if (g) g.visible = n === name; }
     const th = THEMES[name];
     scene.fog.color.setHex(th.fog); scene.fog.density = th.fogD;
     L.hemi.color.setHex(th.hemiS); L.hemi.groundColor.setHex(th.hemiG); L.hemi.intensity = th.hemiI;
@@ -565,6 +567,98 @@ var R3 = window.THREE ? (() => {
       g.add(m); L.forgeRocks.push(m);
     }
     g.visible = false;
+  }
+  // ---------- l'Observatoire céleste (Jumelles) ----------
+  // mosaïque : moitié soleil (Séla, x < 0), moitié lune (Néria, x > 0), zodiaque ; uHalf* : moitié en alerte (Équinoxe)
+  function mosaicMat() {
+    return SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: { uTime: U.time, uPhase: U.phase, uHalfSide: { value: 0 }, uHalfK: { value: 0 }, uHalfArmed: { value: 0 } },
+      vertexShader: `varying vec2 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `uniform float uTime; uniform vec3 uPhase; uniform float uHalfSide; uniform float uHalfK; uniform float uHalfArmed; varying vec2 vP;
+        void main(){ vec2 p = vP; float d = length(p); float a = atan(p.y, p.x);
+          float sun = step(p.x, 0.0);
+          vec3 gold = vec3(1.0,0.70,0.28), silver = vec3(0.55,0.78,1.0);
+          vec3 tint = mix(silver, gold, sun);
+          vec3 c = vec3(1.0,0.92,0.8) * (1.0 - smoothstep(0.0, 0.09, abs(p.x))) * 0.9;
+          c += tint * (1.0 - smoothstep(0.0, 0.05, abs(d - 6.4))) * 0.6;
+          c += uPhase * (1.0 - smoothstep(0.0, 0.07, abs(d - 6.0))) * 0.9;
+          c += tint * (1.0 - smoothstep(0.0, 0.05, abs(d - 12.0))) * 0.35;
+          c += tint * ((1.0 - smoothstep(0.0, 0.06, abs(d - 18.0))) + (1.0 - smoothstep(0.0, 0.06, abs(d - 20.6)))) * 0.6;
+          float tick = step(0.9, fract(a / 6.2831853 * 72.0)) * step(18.2, d) * step(d, 19.0);
+          float big = step(0.95, fract(a / 6.2831853 * 12.0)) * step(18.0, d) * step(d, 20.6);
+          c += tint * (tick * 0.45 + big * 0.8);
+          vec2 s = p - vec2(-11.5, -2.0); float ds = length(s); float as = atan(s.y, s.x);
+          float rays = smoothstep(0.55, 1.0, sin(as * 16.0)) * smoothstep(9.0, 3.6, ds) * step(3.6, ds);
+          c += gold * (rays * 0.28 + (1.0 - smoothstep(0.0, 0.08, abs(ds - 3.4))) * 0.7) * sun;
+          vec2 m = p - vec2(11.5, -2.0); float dm = length(m), dm2 = length(m - vec2(1.5, 0.7));
+          c += silver * (step(dm, 3.4) * step(3.0, dm2) * 0.3 + (1.0 - smoothstep(0.0, 0.08, abs(dm - 3.4))) * 0.45) * (1.0 - sun);
+          vec2 cell = floor(p * 0.8); float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+          c += silver * step(0.93, h) * (1.0 - smoothstep(0.0, 0.12, length(fract(p * 0.8) - 0.5))) * (1.0 - sun) * step(d, 17.5) * (0.6 + 0.4 * sin(uTime * 3.0 + h * 20.0));
+          float inHalf = step(0.0, p.x * uHalfSide) * step(0.5, abs(uHalfSide));
+          vec3 hc = uHalfSide < 0.0 ? vec3(1.0,0.45,0.1) : vec3(0.4,0.72,1.0);
+          float sweep = 1.0 - smoothstep(0.0, 1.2, abs(abs(p.x) - fract(uTime * 0.7) * 21.0));
+          float w = ((0.32 + uHalfK * 0.55) * (0.65 + 0.35 * sin(uTime * (6.0 + uHalfK * 10.0))) + sweep * 0.35) * (1.0 - uHalfArmed) + uHalfArmed * (0.9 + 0.3 * sin(uTime * 18.0 + d));
+          c += hc * inHalf * w;
+          c *= step(d, 21.7);
+          gl_FragColor = vec4(c, 1.0); }`,
+    });
+  }
+  function buildObservatory() {
+    const g = new T.Group(); scene.add(g); L.arenaObs = g;
+    const R = 22;
+    const marble = triMat({ set: 'hull', world: true, scale: 0.08, color: '#5e5c70', metal: 0.2, rough: 0.32, bump: 0.008, albedoMix: 0.2, env: 0.7 });
+    const disc = new T.Mesh(new T.CylinderGeometry(R, R - 0.6, 1.6, 96), marble); disc.position.y = -0.8; disc.receiveShadow = true; g.add(disc);
+    const mos = new T.Mesh(new T.CircleGeometry(R - 0.3, 96), mosaicMat()); mos.rotation.x = -PI / 2; mos.position.y = 0.012; g.add(mos); L.obsMosaic = mos.material.uniforms;
+    const gold = triMat({ set: 'hull', world: false, scale: 2, color: '#d9a94a', metal: 1, rough: 0.22, bump: 0.01, albedoMix: 0.2, env: 1.4 });
+    const ring = new T.Mesh(new T.TorusGeometry(R + 0.1, 0.28, 10, 160), gold); ring.rotation.x = PI / 2; ring.position.y = 0.05; g.add(ring);
+    // colonnade et lanternes (dorées côté Séla, argentées côté Néria)
+    const colGeo = new T.CylinderGeometry(0.42, 0.5, 9, 16), capGeo = new T.CylinderGeometry(0.8, 0.45, 0.6, 16), baseGeo = new T.CylinderGeometry(0.7, 0.8, 0.5, 16);
+    const colMat = triMat({ set: 'hull', world: true, scale: 0.3, color: '#a8a4b8', metal: 0.1, rough: 0.35, bump: 0.01, albedoMix: 0.2, env: 0.8 });
+    L.obsLamps = [];
+    for (let k = 0; k < 12; k++) {
+      const a = k / 12 * PI * 2 + PI / 12, x = Math.cos(a) * (R + 1.4), z = Math.sin(a) * (R + 1.4), sun = x < 0;
+      const c = new T.Mesh(colGeo, colMat); c.position.set(x, 4.5, z); c.castShadow = true; g.add(c);
+      const b = new T.Mesh(baseGeo, gold); b.position.set(x, 0.25, z); g.add(b);
+      const cap = new T.Mesh(capGeo, gold); cap.position.set(x, 9.2, z); g.add(cap);
+      const orb = new T.Mesh(new T.SphereGeometry(0.3, 16, 12), glowMat(sun ? '#ffd27a' : '#bfe6ff', 5)); orb.position.set(x, 10.3, z); g.add(orb);
+      const lamp = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr(sun ? '#ffc860' : '#9fd0ff', 2.2), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); lamp.scale.set(3, 3, 1); orb.add(lamp);
+      L.obsLamps.push({ orb, y: 10.3, ph: k });
+    }
+    // dessous : coupe inversée cerclée d'or
+    const under = new T.Mesh(new T.CylinderGeometry(R - 0.6, 3, 12, 64, 1, true), marble); under.position.y = -7.6; g.add(under);
+    for (const [y, rr] of [[-3, 17.6], [-6.5, 12.3]]) { const bd = new T.Mesh(new T.TorusGeometry(rr, 0.2, 8, 96), gold); bd.rotation.x = PI / 2; bd.position.y = y; g.add(bd); }
+    // planétaire géant au-dessus de l'arène
+    const orr = new T.Group(); orr.position.y = 54; g.add(orr); L.orrery = [];
+    orr.add(new T.Mesh(new T.SphereGeometry(1.6, 32, 16), glowMat('#fff0c8', 2)));
+    const og = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#ffe0a0', 1), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); og.scale.set(10, 10, 1); orr.add(og);
+    [[11, 0.28, '#ffcf6a', 0.16], [16, -0.2, '#bfe0ff', -0.1], [21, 0.3, '#e8b8ff', 0.06]].forEach(([r, tilt, col, w], k) => {
+      const piv = new T.Group(); piv.rotation.set(tilt, 0, tilt * 0.6); orr.add(piv);
+      const rg = new T.Mesh(new T.TorusGeometry(r, 0.13, 6, 180), gold); rg.rotation.x = PI / 2; piv.add(rg);
+      const arm = new T.Group(); piv.add(arm);
+      const pl = new T.Mesh(new T.SphereGeometry(1.2 - k * 0.15, 24, 16), new T.MeshStandardMaterial({ color: new T.Color(col).convertSRGBToLinear(), roughness: 0.4, metalness: 0.2, emissive: hdr(col, 0.5) })); pl.position.x = r; arm.add(pl);
+      const spoke = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, r, 6), gold); spoke.rotation.z = PI / 2; spoke.position.x = r / 2; arm.add(spoke);
+      L.orrery.push({ arm, w });
+    });
+    // un soleil d'or à l'ouest (côté Séla), une lune pâle à l'est (côté Néria)
+    const sd = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#ffc35a', 1.6), blending: T.AdditiveBlending, depthWrite: false, transparent: true, fog: false })); sd.scale.set(130, 130, 1); sd.position.set(-520, 110, -120); g.add(sd);
+    const sd2 = new T.Mesh(new T.SphereGeometry(24, 32, 16), glowMat('#ffe0a0', 1.4, { fog: false })); sd2.position.copy(sd.position); g.add(sd2);
+    const moon = new T.Mesh(new T.SphereGeometry(40, 48, 32), new T.MeshStandardMaterial({ color: 0xbcc8e0, roughness: 0.9, metalness: 0, emissive: hdr('#3a4a70', 0.25), fog: false })); moon.position.set(520, 140, -160); g.add(moon);
+    g.visible = false;
+  }
+  function updateObservatory(dt) {
+    if (L.orrery) L.orrery.forEach(o => { o.arm.rotation.y += o.w * dt; });
+    if (L.obsLamps) L.obsLamps.forEach(l => { l.orb.position.y = l.y + Math.sin(time * 1.3 + l.ph) * 0.25; });
+    if (Math.random() < 0.5) { const a = Math.random() * PI * 2, r = Math.random() * 20; emit(Math.cos(a) * r, 0.4 + Math.random() * 4, Math.sin(a) * r, 1, Math.cos(a) < 0 ? '#ffe0a0' : '#cfe6ff', { speed: 0.15, life: 2.5, size: 0.14, vy: 0.4, grav: 0 }); }
+    // Équinoxe : la moitié visée s'embrase ou gèle
+    const u = L.obsMosaic; if (!u) return;
+    const z = S && S.zones.find(q => q.type === 'half');
+    if (!z) { u.uHalfSide.value = 0; u.uHalfK.value = 0; u.uHalfArmed.value = 0; return; }
+    const armed = S.t >= z.armAt;
+    u.uHalfSide.value = z.side; u.uHalfK.value = armed ? 0 : Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born)); u.uHalfArmed.value = armed ? 1 : 0;
+    if (armed) {
+      if (!z.fxDone) { z.fxDone = true; const rg = rigs[z.side < 0 ? 0 : 1]; if (rg) bossPlay(rg, 'bRelease'); cam.shake = Math.max(cam.shake, 0.5); flashLvl = Math.max(flashLvl, 0.2); }
+      for (let k = 0; k < 4; k++) { const x = z.side * (0.6 + Math.random() * 19), zz = (Math.random() - 0.5) * 2 * Math.sqrt(Math.max(0, 400 - x * x)); if (z.side < 0) emit(x, 0.2, zz, 1, Math.random() < 0.5 ? '#ff8a3a' : '#ffd27a', { speed: 0.6, life: 0.9, size: 0.55, vy: 5, grav: 0 }); else emit(x, 2.5 + Math.random() * 3, zz, 1, '#d8f0ff', { speed: 0.4, life: 1.2, size: 0.3, vy: -1.5, grav: -1 }); }
+    }
   }
   // remet la Forge intacte (nouveau combat, aperçu du hub)
   function resetForge() {
@@ -1050,6 +1144,8 @@ var R3 = window.THREE ? (() => {
       sun ? { set: 'hull', color: '#3a2a10', metal: 0.9, rough: 0.3, scale: 2.4, bump: 0.01, line: '#ffcf5a', lineI: 4, rim: '#ffb84a', rimI: 1.2 }
         : { set: 'hull', color: '#1a2436', metal: 0.9, rough: 0.3, scale: 2.4, bump: 0.01, line: '#9fd0ff', lineI: 4, rim: '#8fc8ff', rimI: 1.2 });
     const sk = rig.skel; if (!sk) return rig;
+    // silhouette élancée (avant les parures) : cou allongé, tête et bras affinés
+    for (const [n, k] of Object.entries({ Neck: 1.18, Head: 0.92, LeftArm: 0.94, RightArm: 0.94 })) { const bn = bone(sk, n); if (bn) bn.scale.multiplyScalar(k); }
     const halo = haloRing(rig.col, 0.22, sun ? 16 : 6, !sun); halo.position.set(0, 0.1, -0.12); attach(sk, 'Head', halo); rig.halo = halo;
     const robe = new T.Mesh(new T.ConeGeometry(1.5, 4.8, 40, 1, true), robeMat(rig.col)); robe.position.y = 2.0; rig.body.add(robe);
     const trim = glowMat(sun ? '#ffcf5a' : '#9fd0ff', 5);
@@ -1063,6 +1159,23 @@ var R3 = window.THREE ? (() => {
       const tr = new T.Mesh(new T.BoxGeometry(0.076, 0.012, 0.014), trim); tr.position.set(Math.sin(a) * 0.205, -0.4, Math.cos(a) * 0.18); tr.rotation.y = a; skirt.add(tr); }
     attach(sk, 'Hips', skirt);
     const crown = new T.Group(); for (let k = 0; k < 5; k++) { const c = new T.Mesh(new T.ConeGeometry(0.012, 0.09 + (k === 2 ? 0.05 : 0), 4), trim); c.position.set((k - 2) * 0.035, 0.2, 0.03); crown.add(c); } attach(sk, 'Head', crown);
+    // grand disque derrière la tête : soleil à rayons (Séla) ou croissant (Néria)
+    const disc = new T.Group(); disc.position.set(0, 0.12, -0.16);
+    const dm = new T.MeshBasicMaterial({ color: hdr(sun ? '#ffcf5a' : '#cfe6ff', sun ? 3 : 2.4), transparent: true, opacity: 0.85, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
+    if (sun) { disc.add(new T.Mesh(new T.RingGeometry(0.2, 0.235, 64), dm)); for (let k = 0; k < 24; k++) { const an = k / 24 * PI * 2, l = k % 2 ? 0.12 : 0.2; const ray = new T.Mesh(new T.PlaneGeometry(0.012, l), dm); ray.position.set(Math.cos(an) * (0.25 + l / 2), Math.sin(an) * (0.25 + l / 2), 0); ray.rotation.z = an - PI / 2; disc.add(ray); } }
+    else { const cr = new T.Mesh(new T.RingGeometry(0.2, 0.3, 64, 1, PI * 0.15, PI * 1.25), dm); cr.rotation.z = PI * 0.2; disc.add(cr); for (let k = 0; k < 5; k++) { const st = new T.Mesh(new T.CircleGeometry(0.012, 6), dm); const an = PI * 1.55 + k * 0.22; st.position.set(Math.cos(an) * 0.36, Math.sin(an) * 0.36, 0); disc.add(st); } }
+    attach(sk, 'Head', disc); rig.disc = disc;
+    // sceptre : disque solaire (Séla) ou glaive en croissant (Néria)
+    const staff = new T.Group();
+    const pole = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.9, 8), armor); pole.position.y = 0.2; staff.add(pole);
+    if (sun) { const sd = new T.Mesh(new T.CircleGeometry(0.07, 32), glowMat('#ffd27a', 6, { side: T.DoubleSide })); sd.position.y = 0.68; staff.add(sd); const sr = new T.Mesh(new T.TorusGeometry(0.085, 0.008, 6, 32), armor); sr.position.y = 0.68; staff.add(sr); }
+    else { const bl = new T.Mesh(new T.TorusGeometry(0.09, 0.012, 6, 32, PI * 1.2), glowMat('#cfe6ff', 5)); bl.position.y = 0.68; bl.rotation.z = -PI * 0.1; staff.add(bl); }
+    attach(sk, 'LeftHand', handDown(staff, false));
+    // astres en orbite autour d'elle
+    const orbit = new T.Group(); orbit.position.y = 4.2; rig.body.add(orbit); rig.shards = orbit;
+    for (let k = 0; k < 6; k++) { const an = k / 6 * PI * 2, rr = 2.6 + (k % 2) * 0.4; const o2 = new T.Mesh(sun ? new T.IcosahedronGeometry(0.16, 1) : new T.OctahedronGeometry(0.16, 0), glowMat(sun ? '#ffd27a' : '#cfe6ff', 4)); o2.position.set(Math.cos(an) * rr, Math.sin(k * 1.9) * 0.5, Math.sin(an) * rr); orbit.add(o2); }
+    // traîne d'énergie plus longue
+    const train = new T.Mesh(new T.ConeGeometry(2.0, 6.4, 40, 1, true), robeMat(rig.col)); train.position.y = 1.6; train.rotation.y = 0.7; rig.body.add(train);
     rig.floatAmp = 0.25; rig.baseY = 0.6; rig.glowS.position.set(0, 4.6, 0.5); rig.glowS.scale.set(3.5, 3.5, 1); rig.orbY = 9; rig.levit = true;
     return rig;
   }
@@ -1277,6 +1390,7 @@ var R3 = window.THREE ? (() => {
           flash(b.pos.x, 1.5, b.pos.z, '#ff7a2a', 10, 0.5); cam.shake = Math.max(cam.shake, 0.55);
           break;
         }
+        case 'half': { const rg = rigs[e.body]; if (rg) bossPlay(rg, 'bCharge', { dur: e.warn }); break; }
         case 'collapse': if (arenaName === 'forge') { L.collapse = { t: 0, delay: e.delay || 4 }; cam.shake = Math.max(cam.shake, 0.9); flashLvl = Math.max(flashLvl, 0.3); } break;
         case 'phase': {
           for (const rg of rigs) { rg.rise = 1; bossPlay(rg, 'bRoar'); }
@@ -1348,6 +1462,7 @@ var R3 = window.THREE ? (() => {
     rg.body.rotation.x = deadK * (rg.azhal ? 0.2 : 0.55);
     if (deadK > 0 && Math.random() < 0.5) { const p = rg.root.position; emit(p.x + (Math.random() - 0.5) * 4, 1 + Math.random() * 6, p.z + (Math.random() - 0.5) * 4, 2, rg.colors[0], { speed: 1, life: 1.5, size: 0.5, vy: 2, grav: 0 }); }
     if (rg.halo) rg.halo.rotation.z += dt * 0.3;
+    if (rg.disc) rg.disc.rotation.z += dt * 0.12;
     if (rg.shards) rg.shards.rotation.y += dt * (S && S.phase === S.B.phases.length - 1 ? 0.9 : 0.35);
     if (rg.disk) rg.disk.rotation.z += dt * 0.15;
     if (rg.tentacles) rg.tentacles.forEach(t => { t.m.rotation.y = Math.sin(time * 0.7 + t.ph) * 0.12; t.m.rotation.z = Math.sin(time * 0.9 + t.ph * 1.3) * 0.05; });
@@ -1372,6 +1487,7 @@ var R3 = window.THREE ? (() => {
     U.eclipse.value += (eclipseLvl - U.eclipse.value) * Math.min(1, dt * 3);
     L.key.intensity = (L.keyBase || 2.6) * (1 - U.eclipse.value * 0.75);
     if (arenaName === 'forge') updateForge(dt);
+    if (arenaName === 'observatory') updateObservatory(dt);
     if (L.planet) L.planet.rotation.y += dt * 0.004;
     if (L.ast) { const m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), s3 = new T.Vector3(); L.ast.forEach(a => { a.a += a.w * dt; a.rx += dt * 0.15; a.ry += dt * 0.1; e3.set(a.rx, a.ry, 0); q4.setFromEuler(e3); s3.setScalar(a.s); m4.compose(tmpV.set(Math.cos(a.a) * a.r, a.y, Math.sin(a.a) * a.r), q4, s3); a.m.setMatrixAt(a.i, m4); }); L.astMesh.forEach(m => { m.instanceMatrix.needsUpdate = true; }); }
     if (L.crystals) L.crystals.forEach((c, k) => { c.position.y = 11 + Math.sin(time * 1.2 + k) * 0.35; c.rotation.y += dt * 0.8; });

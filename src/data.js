@@ -116,8 +116,8 @@ const DATA = (() => {
     },
     {
       id: 'jumelles', name: 'Séla et Néria', title: 'les Jumelles astrales', model: 'twins', hp: 2.3e6, enrage: 330, color: '#ffd76a', twins: true, rad: 2.6,
-      lore: 'Le soleil et la lune de Vael-Kor, liées par un serment que même la mort n’a pas rompu. Leur vie est commune.',
-      focus: 'Un tank par jumelle, loin l’une de l’autre ; interrompre Séla ; ne jamais rester entre elles.',
+      lore: 'Le soleil et la lune de Vael-Kor veillent sur l’Observatoire céleste, liées par un serment que même la mort n’a pas rompu. Leur vie est commune, et leur colère embrase ou gèle tour à tour la moitié du monde.',
+      focus: 'Un tank par jumelle, loin l’une de l’autre ; interrompre Séla ; ne jamais rester entre elles ; changer de côté à chaque Équinoxe.',
       link: { dist: 14, h: { dist: 16 }, m: { dist: 18 } },
       phases: [
         { to: 0.4, name: 'Dualité', abilities: {
@@ -125,16 +125,18 @@ const DATA = (() => {
             desc: 'Chaque jumelle marque son tank (+12 % de dégâts subis par cumul). Vers 5 cumuls, échange avec deux Provocations.' },
           eruption: { kind: 'raidcast', name: 'Éruption solaire', body: 0, first: 16, every: 26, cast: 3, dmg: 11000, interruptible: true, call: 'kick',
             desc: 'Séla incante une explosion sur tout le raid. Interruption.' },
-          pluie: { kind: 'zones', name: 'Pluie d’étoiles', first: 10, every: 22, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
+          pluie: { kind: 'zones', name: 'Pluie d’étoiles', first: 10, every: 22, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 4, arm: 2 },
             desc: 'Des impacts s’arment sous plusieurs persos : sors-les des cercles.' },
           rayon: { kind: 'beam', name: 'Rayon jumeau', first: 24, every: 30, warn: 2.5, dur: 6, dps: 9000, width: 1.4, call: 'pos', h: { dps: 12000 },
             desc: 'Un rayon relie les deux jumelles. Personne entre elles.' },
           maree: { kind: 'raidcast', name: 'Marée lunaire', body: 1, first: 12, every: 22, cast: 2, dmg: 9000, call: 'heal', h: { dmg: 10000 },
             desc: 'Néria inonde le raid de lumière froide. Dégâts de groupe à soigner.' },
+          equinoxe: { kind: 'half', name: 'Équinoxe', first: 30, every: 30, warn: 4.5, dur: 4, dps: 9000, call: 'move', h: { warn: 4, dps: 10000 }, m: { warn: 3, dps: 11000 },
+            desc: 'La moitié de l’Observatoire du côté de Séla s’embrase, ou celle de Néria gèle (les côtés alternent). Fais traverser la ligne du milieu à tout le raid avant la fin du compte à rebours ; les tanks ne craignent rien.' },
         } },
         { to: 0, name: 'Fusion', dmgMult: 1.15, abilities: {
           brulure: { inherit: true }, pluie: { inherit: true },
-          eruption: { inherit: true, every: 20 }, rayon: { inherit: true, every: 24 }, maree: { inherit: true, every: 18 },
+          eruption: { inherit: true, every: 20 }, rayon: { inherit: true, every: 24 }, maree: { inherit: true, every: 18 }, equinoxe: { inherit: true, first: 14, every: 22 },
         } },
       ],
     },

@@ -18,7 +18,7 @@ function bot(S, level) {
   const mv = (idx, x, z, pack) => G.order(S, { type: 'move', idx: Array.isArray(idx) ? idx : [idx], x, z, pack });
   // point sûr le plus proche : hors des zones, du rayon, du cœur
   function safe(from, avoid = []) {
-    const bad = p => Math.hypot(p.x, p.z) > Math.min(18.5, S.arenaR - 1) || S.zones.some(z => ((z.type === 'puits' || z.type === 'core' || z.type === 'pool') && dist(p, z) < z.r + 1) || (z.type === 'fissure' && G.segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 1)) || (S.B.twins && G.segDist(p, B[0].pos, B[1].pos) < 2.5) || avoid.some(a => dist(p, a.p) < a.r);
+    const bad = p => Math.hypot(p.x, p.z) > Math.min(18.5, S.arenaR - 1) || S.zones.some(z => ((z.type === 'puits' || z.type === 'core' || z.type === 'pool') && dist(p, z) < z.r + 1) || (z.type === 'fissure' && G.segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 1) || (z.type === 'half' && p.x * z.side > -1.5)) || (S.B.twins && G.segDist(p, B[0].pos, B[1].pos) < 2.5) || avoid.some(a => dist(p, a.p) < a.r);
     if (!bad(from)) return from;
     for (let rad = 2; rad <= 12; rad += 1.5) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; const p = { x: from.x + Math.cos(a) * rad, z: from.z + Math.sin(a) * rad }; if (!bad(p)) return p; }
     return from;
@@ -38,6 +38,15 @@ function bot(S, level) {
         R.forEach((r, i) => { const d = Math.hypot(home[i].x, home[i].z); if (d > lim) home[i] = { x: home[i].x * lim / d, z: home[i].z * lim / d }; });
         at(P.react, () => act(() => alive().filter(r => Math.hypot(r.pos.x, r.pos.z) > lim).forEach(r => mv(r.i, home[r.i].x, home[r.i].z)), P.apm * 2));
       }
+    }
+    // Équinoxe : tout le monde (hors tanks) passe de l'autre côté de la ligne du milieu, en un geste, puis revient
+    for (const z of S.zones) if (z.type === 'half' && !seen.has(z.id)) {
+      seen.add(z.id);
+      at(P.react, () => act(() => {
+        const on = alive().filter(r => r.role !== 'tank' && r.pos.x * z.side > -1.5);
+        for (const r of on) { const p = safe({ x: -z.side * Math.max(2.5, Math.abs(r.pos.x)), z: r.pos.z }); mv(r.i, p.x, p.z); }
+        at(z.endAt - S.t + 0.3, () => act(() => on.forEach(r => { if (r.alive) { const q = safe(home[r.i]); mv(r.i, q.x, q.z); } }), P.apm * 2));
+      }, P.apm * 2));
     }
     // fissures : décaler sur le côté ceux qui sont sur une ligne, puis les remettre en place
     for (const z of S.zones) if (z.type === 'fissure' && !seen.has(z.id)) {

@@ -15,7 +15,7 @@ const GAME = (() => {
   const inArena = (p, R = ARENA) => { const d = Math.hypot(p.x, p.z); if (d > R) { p.x *= R / d; p.z *= R / d; } return p; };
   const LAVA_DPS = 14000;   // hors de l'arène effondrée
   const HEAL_RANGE = 16, RANGED_RANGE = 36, SPEED = 6.5, LEASH = 10;
-  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move' };
+  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move', half: 'move' };
 
   // ---------- résolution d'un boss pour une difficulté ----------
   function resolveBoss(B, dk) {
@@ -314,6 +314,14 @@ const GAME = (() => {
         }
         S.events.push({ type: 'fissures', body: 0, arm: a.arm });
         alert(S, a.name.toUpperCase() + ' — sors des lignes', 'warn', 'move');
+        break;
+      }
+      case 'half': {
+        // une moitié de l'arène s'embrase (Séla, x < 0) ou gèle (Néria, x > 0) ; les côtés alternent
+        const side = S.halfNext || (S.rng() < 0.5 ? -1 : 1); S.halfNext = -side;
+        S.zones.push({ type: 'half', id: 'h' + Math.floor(S.t * 100), side, x: 0, z: 0, r: 0, born: S.t, armAt: S.t + a.warn, endAt: S.t + a.warn + a.dur, dps: a.dps, abId: id });
+        S.events.push({ type: 'half', side, warn: a.warn, dur: a.dur, body: side < 0 ? 0 : 1 });
+        alert(S, a.name.toUpperCase() + ' — ' + (side < 0 ? 'le côté de Séla s’embrase' : 'le côté de Néria gèle') + ' : change de côté', 'warn', 'move');
         break;
       }
       case 'eclipse': {
@@ -639,6 +647,7 @@ const GAME = (() => {
       if (z.type === 'pool' && r.role !== 'tank' && dist(p, z) < z.r + 0.6) return true;
       if (z.type === 'beam' && r.role !== 'tank' && S.bodies.length > 1 && segDist(p, S.bodies[0].pos, S.bodies[1].pos) < z.width + 0.8) return true;
       if (z.type === 'fissure' && r.role !== 'tank' && segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 0.6) return true;
+      if (z.type === 'half' && r.role !== 'tank' && p.x * z.side > -0.8) return true;
     }
     return S.lavaAt > 0 && Math.hypot(p.x, p.z) > S.arenaR;
   }
@@ -706,7 +715,7 @@ const GAME = (() => {
     }
     // expirations
     for (const r of S.raiders) { for (const k in r.stacks) if (t > r.stacks[k].exp) delete r.stacks[k]; if (r.mit.length) r.mit = r.mit.filter(m => t < m.until); }
-    S.zones = S.zones.filter(z => !((z.type === 'puits' || z.type === 'pool' || z.type === 'beam' || z.type === 'fissure') && t >= z.endAt));
+    S.zones = S.zones.filter(z => !((z.type === 'puits' || z.type === 'pool' || z.type === 'beam' || z.type === 'fissure' || z.type === 'half') && t >= z.endAt));
     if (!S.B.phases[S.phase].abilities.singularite) S.zones = S.zones.filter(z => z.type !== 'core');
     S.domes = S.domes.filter(d => t < d.until);
     for (const tu of S.turrets) if (t >= tu.until && !tu.gone) { tu.gone = true; S.events.push({ type: 'turretEnd', id: tu.id }); }
@@ -846,6 +855,7 @@ const GAME = (() => {
         }
         if (z.type === 'pool' && r.role !== 'tank' && dist(r.pos, z) < z.r) dmg(S, r, 3000 * dt, 'Flaque de scories', { avoidable: true, mech: true });
         if (z.type === 'beam' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, S.bodies[0].pos, S.bodies[1].pos) < z.width) { const a = dmg(S, r, z.dps * dt, 'Rayon jumeau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'half' && t >= z.armAt && r.role !== 'tank' && r.pos.x * z.side > -0.3) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Équinoxe', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'fissure' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, z, { x: z.x2, z: z.z2 }) < z.w / 2) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Fissure de magma', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
       }
       if (S.lavaAt && t >= S.lavaAt && Math.hypot(r.pos.x, r.pos.z) > S.arenaR + 0.3) { const a = dmg(S, r, LAVA_DPS * dt, 'Lave', { avoidable: true, mech: true }); M(S, 'lave').dmg += a; M(S, 'lave').hits += dt; }
@@ -962,6 +972,7 @@ const GAME = (() => {
         case 'pool': if ((m.hits || 0) >= 4) push(3, 'Boss laissé dans la Flaque', 'Vorr a pris ' + m.hits + ' cumuls de puissance. Déplace son tank à 8-10 m dès qu’elle apparaît.'); break;
         case 'zones': if (m.dmg > 60000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 150000)), 'Trop de temps dans ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Les persos ne bougent pas seuls : sélectionne-les et sors-les du cercle avant qu’il s’arme.'); break;
         case 'beam': if ((m.hits || 0) > 2) push(3, 'Persos pris dans le Rayon', 'Le rayon a frappé pendant ' + Math.round(m.hits) + ' s cumulées. Personne entre les Jumelles.'); break;
+        case 'half': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos du mauvais côté', Math.round(m.dmg / 1000) + 'k de dégâts subis pendant l’' + a.name + '. Dès l’alerte, sélectionne tout le monde et fais traverser la ligne du milieu.'); break;
         case 'fissures': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos dans les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les lignes apparaissent, sélectionne les persos dessus et décale-les sur le côté.'); break;
         case 'marks': if (m.hits >= 2) push(3 + Math.min(3, Math.floor(m.hits / 3)), a.name + ' mal gérées', m.hits + ' alliés touchés par une explosion. Sors chaque marqué à plus de 6,5 m des autres.'); break;
         case 'soak': if (m.fails) push(3 + m.fails, a.name + ' mal partagée', 'Persos dans le cercle : ' + m.extra.join(', ') + '. Il en faut au moins ' + (a.need || 4) + ', hors tanks.'); break;
