@@ -142,8 +142,8 @@ const DATA = (() => {
     },
     {
       id: 'nyxar', name: 'Archonte Nyxar', title: 'Gardien du Noyau', model: 'nyxar', hp: 2.2e6, enrage: 360, color: '#c46bff', rad: 3.4,
-      lore: 'Forgé pour garder le cœur stellaire de la Citadelle, l’Archonte obéit désormais au Néant qui ronge son Noyau.',
-      focus: 'Changements de tank, interruptions, écartement des marqués, adds à tuer, soak final.',
+      lore: 'Forgé pour garder le cœur stellaire de la Citadelle, l’Archonte trône dans la Salle du Noyau. Il obéit désormais au Néant qui ronge son cœur, et les machines de la salle tournent leurs rayons contre ceux qui y entrent.',
+      focus: 'Changements de tank, interruptions, écartement des marqués, esquive des Rayons, adds à tuer, soak final.',
       phases: [
         { to: 0.6, name: 'Noyau', abilities: {
           fendoir: { kind: 'buster', name: 'Fendoir gravitique', first: 6, every: 11, cast: 1.5, dmg: 14000, stack: 'Fracture', mult: 1.5, stackDur: 25, call: 'taunt',
@@ -152,15 +152,18 @@ const DATA = (() => {
             desc: 'Incantation interruptible. Sinon : dégâts lourds sur le raid puis un écho qui brûle 6 s.' },
           marques: { kind: 'marks', name: 'Marques néantes', first: 30, every: 38, count: 2, r: 6.5, time: 6, dmg: 17000, call: 'spread', h: { count: 3, every: 34 }, m: { count: 4, every: 32, time: 5 },
             desc: 'Des persos marqués explosent après 6 s et touchent tous les alliés à moins de 6,5 m. Écarte les marqués.' },
+          rayons: { kind: 'sweep', name: 'Rayons du Noyau', first: 22, every: 32, warn: 4, dur: 5, span: 2.1, eye: 3, width: 2.4, dps: 16000, call: 'move', h: { warn: 3.5 }, m: { warn: 3, dur: 4.5, every: 34 },
+            desc: 'Deux secteurs opposés s’allument au sol, puis deux rayons partis du Noyau les balaient. Regroupe le raid dans un des angles restés éteints, ou tout près du centre ; les tanks ne craignent rien.' },
         } },
         { to: 0.3, name: 'Échos', invuln: 5, abilities: {
           echos: { kind: 'adds', type: 'echo', name: 'Échos du Vide', first: 0, every: 55, count: 3, hp: 60000, call: 'focus', h: { count: 4, every: 60 }, m: { count: 4, every: 55 },
             desc: 'Des Échos protègent Nyxar (−50 % de dégâts) et lancent des Éclats. Ordre d’attaque sur eux ; ceux qui survivent explosent en phase 3.' },
           fendoir: { inherit: true, first: 8 },
-          puits: { kind: 'zones', name: 'Puits gravitique', first: 14, every: 30, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
+          puits: { kind: 'zones', name: 'Puits gravitique', first: 14, every: 30, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 4, arm: 2 },
             desc: 'Des puits s’ouvrent sous plusieurs persos et s’arment vite. Sors-les.' },
           chant: { inherit: true, first: 20 },
           marques: { inherit: true, first: 26, every: 30 },
+          rayons: { inherit: true, first: 34, every: 36 },
         } },
         { to: 0, name: 'Effondrement', invuln: 4, aura: 160, ramp: 9, abilities: {
           fendoir: { inherit: true, first: 6 },

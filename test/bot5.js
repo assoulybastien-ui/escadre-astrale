@@ -18,7 +18,7 @@ function bot(S, level) {
   const mv = (idx, x, z, pack) => G.order(S, { type: 'move', idx: Array.isArray(idx) ? idx : [idx], x, z, pack });
   // point sûr le plus proche : hors des zones, du rayon, du cœur
   function safe(from, avoid = []) {
-    const bad = p => Math.hypot(p.x, p.z) > Math.min(18.5, S.arenaR - 1) || S.zones.some(z => ((z.type === 'puits' || z.type === 'core' || z.type === 'pool') && dist(p, z) < z.r + 1) || (z.type === 'fissure' && G.segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 1) || (z.type === 'half' && p.x * z.side > -1.5)) || (S.B.twins && G.segDist(p, B[0].pos, B[1].pos) < 2.5) || avoid.some(a => dist(p, a.p) < a.r);
+    const bad = p => Math.hypot(p.x, p.z) > Math.min(18.5, S.arenaR - 1) || S.zones.some(z => ((z.type === 'puits' || z.type === 'core' || z.type === 'pool') && dist(p, z) < z.r + 1) || (z.type === 'fissure' && G.segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 1) || (z.type === 'half' && p.x * z.side > -1.5) || (z.type === 'sweep' && G.inSweepSector(z, p, 1.2))) || (S.B.twins && G.segDist(p, B[0].pos, B[1].pos) < 2.5) || avoid.some(a => dist(p, a.p) < a.r);
     if (!bad(from)) return from;
     for (let rad = 2; rad <= 12; rad += 1.5) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; const p = { x: from.x + Math.cos(a) * rad, z: from.z + Math.sin(a) * rad }; if (!bad(p)) return p; }
     return from;
@@ -38,6 +38,20 @@ function bot(S, level) {
         R.forEach((r, i) => { const d = Math.hypot(home[i].x, home[i].z); if (d > lim) home[i] = { x: home[i].x * lim / d, z: home[i].z * lim / d }; });
         at(P.react, () => act(() => alive().filter(r => Math.hypot(r.pos.x, r.pos.z) > lim).forEach(r => mv(r.i, home[r.i].x, home[r.i].z)), P.apm * 2));
       }
+    }
+    // Rayons du Noyau : ceux qui sont dans un secteur allumé rejoignent l'angle éteint le plus proche, puis reviennent
+    for (const z of S.zones) if (z.type === 'sweep' && !seen.has(z.id)) {
+      seen.add(z.id);
+      at(P.react, () => act(() => {
+        const gap = Math.PI - z.span, mids = [z.a0 + z.dir * (z.span + gap / 2), z.a0 + z.dir * (z.span + gap / 2) + Math.PI];
+        const on = alive().filter(r => r.role !== 'tank' && G.inSweepSector(z, r.pos, 0.6));
+        for (const r of on) {
+          const th = Math.atan2(r.pos.z, r.pos.x), d = Math.max(4.5, Math.min(14, Math.hypot(r.pos.x, r.pos.z)));
+          const m = mids.reduce((a, b) => Math.abs(Math.atan2(Math.sin(th - a), Math.cos(th - a))) <= Math.abs(Math.atan2(Math.sin(th - b), Math.cos(th - b))) ? a : b);
+          const p = safe({ x: Math.cos(m) * d, z: Math.sin(m) * d }); mv(r.i, p.x, p.z);
+        }
+        at(z.endAt - S.t + 0.3, () => act(() => on.forEach(r => { if (r.alive) { const q = safe(home[r.i]); mv(r.i, q.x, q.z); } }), P.apm * 2));
+      }, P.apm * 2));
     }
     // Équinoxe : tout le monde (hors tanks) passe de l'autre côté de la ligne du milieu, en un geste, puis revient
     for (const z of S.zones) if (z.type === 'half' && !seen.has(z.id)) {

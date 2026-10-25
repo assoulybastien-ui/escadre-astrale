@@ -378,6 +378,11 @@ var R3 = window.THREE ? (() => {
           float runes = step(0.5, fract(ang*12.0/6.2832 + 0.25)) * (1.0 - smoothstep(0.0, 0.18, abs(d-6.4)));
           c += uPhase * runes * 0.25 * (0.6+0.4*sin(uTime*2.0 + ang*6.0));
           c += vec3(0.4,0.75,1.0)*(1.0 - smoothstep(0.0, 0.04, abs(d-12.0)))*0.35;
+          // conduits vers les six pylônes, parcourus d'impulsions ; œil du Noyau au centre
+          float sp = abs(mod(ang + 0.5235988, 1.0471976) - 0.5235988) * d;
+          float duct = (1.0 - smoothstep(0.08, 0.22, sp)) * step(3.2, d) * step(d, 19.5);
+          c += vec3(0.62,0.4,1.0) * duct * (0.25 + 0.75 * pow(0.5 + 0.5 * sin(d * 0.9 - uTime * 4.0), 6.0)) * 0.9;
+          c += vec3(0.7,0.45,1.0) * (1.0 - smoothstep(0.0, 0.06, abs(d - 3.0))) * (0.8 + 0.2 * sin(uTime * 3.0));
           c += vec3(0.45,0.8,1.0)*smoothstep(0.96, 0.995, edgeT)*1.2;
           float s = fract(uTime*0.06); c += vec3(0.3,0.6,1.0)*(1.0 - smoothstep(0.0, 0.6, abs(d - s*24.0)))*0.25*(1.0-s);
           c *= 1.0 - uEclipse*0.5;
@@ -408,6 +413,15 @@ var R3 = window.THREE ? (() => {
       vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
       fragmentShader: NOISE + `uniform float uTime; varying vec2 vUv; void main(){ float n = fbm(vec3(vUv.x*8.0, vUv.y*6.0 + uTime*0.6, 0.0)); float a = smoothstep(0.0,0.9,vUv.y)*(0.25+0.75*n)*0.6; gl_FragColor = vec4(vec3(0.35,0.75,1.0)*a*2.0, a); }` }));
     shaft.position.y = -16; g.add(shaft);
+    // anneaux gyroscopiques de la Salle du Noyau
+    const gyroMat = triMat({ set: 'hull', world: false, scale: 0.4, color: '#5a5f70', metal: 0.95, rough: 0.35, bump: 0.02, line: '#b07cff', lineI: 4, env: 0.9 });
+    L.gyros = [];
+    [[30, 0.18, 0.06], [34, -0.12, -0.045]].forEach(([r, w0, w], k) => {
+      const piv = new T.Group(); piv.position.y = 2; piv.rotation.z = k ? 1.1 : 0.35; g.add(piv);
+      const ring = new T.Mesh(new T.TorusGeometry(r, 0.55, 10, 160), gyroMat); piv.add(ring);
+      for (let j = 0; j < 8; j++) { const a = j / 8 * PI * 2; const n = new T.Mesh(new T.BoxGeometry(1.4, 1.4, 2.2), gyroMat); n.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); n.rotation.z = a; ring.add(n); const lt = new T.Mesh(new T.SphereGeometry(0.35, 12, 8), glowMat('#c08bff', 5)); lt.position.set(Math.cos(a) * (r - 0.9), Math.sin(a) * (r - 0.9), 0); ring.add(lt); }
+      L.gyros.push({ ring, w });
+    });
     // pylônes
     const pyMat = triMat({ set: 'hull', world: true, scale: 0.3, color: '#8a92a4', metal: 0.92, rough: 0.4, bump: 0.035, line: '#7fd4ff', lineI: 5 });
     const prof = [[0.01, 0], [1.3, 0], [1.3, 0.6], [0.9, 0.9], [0.75, 4], [0.95, 4.3], [0.95, 4.8], [0.55, 5.2], [0.45, 8.6], [0.75, 8.9], [0.3, 9.6], [0.01, 9.7]].map(([x, y]) => new T.Vector2(x, y));
@@ -1052,6 +1066,8 @@ var R3 = window.THREE ? (() => {
       { set: 'hull', color: '#1b1824', metal: 1, rough: 0.28, scale: 2.4, bump: 0.035, line: '#9d6bff', lineI: 1.5, albedoMix: 0.6, env: 1.3 },
       { set: 'hull', color: '#2a2235', metal: 0.9, rough: 0.25, scale: 2.4, bump: 0.02, line: '#b07cff', lineI: 6, rim: '#9d6bff', rimI: 3 });
     const sk = rig.skel; if (!sk) return rig;
+    // silhouette d'Archonte (avant l'armure) : buste haut et large, bras longs, tête fine
+    for (const [n, k] of Object.entries({ Spine2: 1.12, LeftArm: 1.1, RightArm: 1.1, Neck: 1.1, Head: 0.88 })) { const bn = bone(sk, n); if (bn) bn.scale.multiplyScalar(k); }
     const armor = triMat({ set: 'hull', world: false, scale: 4, color: '#24202e', metal: 1, rough: 0.25, bump: 0.04, line: '#a77bff', lineI: 3, env: 1.3 });
     const trim = glowMat('#b07cff', 5); rig.trims = [trim];
     for (const sd of [1, -1]) { const p = pauldron(armor, trim, 0.13); p.position.set(0.17 * sd, 0.15, -0.01); p.rotation.z = -0.55 * sd; attach(sk, 'Spine2', p); }
@@ -1069,6 +1085,15 @@ var R3 = window.THREE ? (() => {
     const robe2 = new T.Mesh(new T.ConeGeometry(1.5, 4.6, 32, 1, true), robeMat(rig.col)); robe2.position.y = 3.2; robe2.rotation.y = 1; rig.body.add(robe2);
     const shards = new T.Group(); shards.position.y = 6.2; rig.body.add(shards); rig.shards = shards;
     for (let k = 0; k < 8; k++) { const a = k / 8 * PI * 2; const s = new T.Mesh(new T.OctahedronGeometry(0.5, 0), armor); s.scale.set(0.35, 1.2, 0.22); s.position.set(Math.cos(a) * 4.2, Math.sin(k * 1.7) * 0.6, Math.sin(a) * 4.2); s.castShadow = true; shards.add(s); }
+    // aile de lames flottantes dans le dos, en éventail
+    const wing = new T.Group(); wing.position.set(0, 0.12, -0.16);
+    for (let k = 0; k < 9; k++) { const an = (k - 4) * 0.3; const bl = new T.Group(); bl.rotation.z = an; const len = 0.34 - Math.abs(k - 4) * 0.035;
+      const m2 = new T.Mesh(new T.OctahedronGeometry(1, 0), armor); m2.scale.set(0.03, len, 0.01); m2.position.y = 0.14 + len; bl.add(m2);
+      const e2 = new T.Mesh(new T.BoxGeometry(0.006, len * 1.9, 0.004), trim); e2.position.y = 0.14 + len; bl.add(e2); wing.add(bl); }
+    attach(sk, 'Spine2', wing); rig.wing = wing;
+    // couronne de pointes au-dessus de la tête et anneau gyroscopique à la taille
+    const crown = new T.Group(); for (let k = 0; k < 7; k++) { const c = new T.Mesh(new T.ConeGeometry(0.012, 0.12 + (k === 3 ? 0.06 : 0), 4), trim); c.position.set((k - 3) * 0.03, 0.22, 0.02); c.rotation.z = (k - 3) * -0.12; crown.add(c); } attach(sk, 'Head', crown);
+    const gyro = new T.Mesh(new T.TorusGeometry(2.6, 0.06, 8, 96), trim); gyro.position.y = 4.1; gyro.rotation.x = PI / 2 - 0.25; rig.body.add(gyro); rig.gyro = gyro;
     rig.floatAmp = 0.3; rig.baseY = 1.0; rig.glowS.position.set(0, 6.6, 0.6); rig.glowS.scale.set(5, 5, 1); rig.orbY = 11.5; rig.levit = true;
     return rig;
   }
@@ -1463,6 +1488,8 @@ var R3 = window.THREE ? (() => {
     if (deadK > 0 && Math.random() < 0.5) { const p = rg.root.position; emit(p.x + (Math.random() - 0.5) * 4, 1 + Math.random() * 6, p.z + (Math.random() - 0.5) * 4, 2, rg.colors[0], { speed: 1, life: 1.5, size: 0.5, vy: 2, grav: 0 }); }
     if (rg.halo) rg.halo.rotation.z += dt * 0.3;
     if (rg.disc) rg.disc.rotation.z += dt * 0.12;
+    if (rg.gyro) rg.gyro.rotation.z += dt * 0.8;
+    if (rg.wing) rg.wing.rotation.z = Math.sin(time * 0.8) * 0.05;
     if (rg.shards) rg.shards.rotation.y += dt * (S && S.phase === S.B.phases.length - 1 ? 0.9 : 0.35);
     if (rg.disk) rg.disk.rotation.z += dt * 0.15;
     if (rg.tentacles) rg.tentacles.forEach(t => { t.m.rotation.y = Math.sin(time * 0.7 + t.ph) * 0.12; t.m.rotation.z = Math.sin(time * 0.9 + t.ph * 1.3) * 0.05; });
@@ -1491,6 +1518,7 @@ var R3 = window.THREE ? (() => {
     if (L.planet) L.planet.rotation.y += dt * 0.004;
     if (L.ast) { const m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), s3 = new T.Vector3(); L.ast.forEach(a => { a.a += a.w * dt; a.rx += dt * 0.15; a.ry += dt * 0.1; e3.set(a.rx, a.ry, 0); q4.setFromEuler(e3); s3.setScalar(a.s); m4.compose(tmpV.set(Math.cos(a.a) * a.r, a.y, Math.sin(a.a) * a.r), q4, s3); a.m.setMatrixAt(a.i, m4); }); L.astMesh.forEach(m => { m.instanceMatrix.needsUpdate = true; }); }
     if (L.crystals) L.crystals.forEach((c, k) => { c.position.y = 11 + Math.sin(time * 1.2 + k) * 0.35; c.rotation.y += dt * 0.8; });
+    if (L.gyros && L.arenaDefault.visible) L.gyros.forEach(o => { o.ring.rotation.y += o.w * dt; });
     if (L.towers) L.towers.forEach(o => { if (o.isSprite) o.material.opacity = 0.4 + 0.6 * (Math.sin(time * 2 + o.userData.ph) > 0.6 ? 1 : 0.2); });
     if (L.ships) L.ships.forEach(s => { s.userData.a += s.userData.w * dt; const a = s.userData.a; s.position.set(Math.cos(a) * s.userData.r, s.userData.y, Math.sin(a) * s.userData.r); s.rotation.y = -a + (s.userData.w > 0 ? 0 : PI); });
     if (L.core) L.core.rotation.y += dt * 0.6;
@@ -1559,6 +1587,38 @@ var R3 = window.THREE ? (() => {
     if (armed && Math.random() < 0.8) { const f = Math.random(); emit(z.x + dx * f, 0.2, z.z + dz * f, 1, Math.random() < 0.5 ? '#ff8a3a' : '#ffd080', { speed: 1, life: 0.6, size: 0.45, vy: 6, grav: -8 }); }
   }
 
+  // ---------- Rayons du Noyau ----------
+  // deux secteurs au sol pendant l'alerte, puis deux murs de lumière qui tournent depuis l'œil central
+  function sweepFx(z, m) {
+    if (!m) {
+      m = new T.Group(); m.renderOrder = 3;
+      const secMat = SM({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time, uProg: { value: 0 }, uAlpha: { value: 1 }, uColor: { value: hdr('#c46bff', 1) } },
+        vertexShader: `varying vec2 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+        fragmentShader: `uniform float uTime; uniform float uProg; uniform float uAlpha; uniform vec3 uColor; varying vec2 vP;
+          void main(){ float d = length(vP); float hatch = step(0.5, fract(d * 0.35 - uTime * 1.2));
+            float a = (0.22 + 0.35 * uProg + hatch * 0.12) * uAlpha;
+            gl_FragColor = vec4(uColor * a * 1.6, a); }` });
+      for (const off of [0, PI]) {
+        const a0 = z.dir > 0 ? z.a0 + off : z.a0 + off - z.span;
+        const sec = new T.Mesh(new T.RingGeometry(z.eye, 21, 48, 1, -a0 - z.span, z.span), secMat); sec.rotation.x = -PI / 2; sec.position.y = 0.06; m.add(sec);
+      }
+      m.userData.secMat = secMat;
+      const wallMat = beamMat('#d79bff', 4); m.userData.walls = [];
+      for (const off of [0, PI]) { const wl = new T.Mesh(new T.PlaneGeometry(21 - z.eye, 3.2), wallMat); wl.visible = false; m.add(wl); m.userData.walls.push({ wl, off }); }
+      const band = new T.Mesh(new T.PlaneGeometry(2 * 21, z.w), beamMat('#c46bff', 2.5)); band.rotation.x = -PI / 2; band.position.y = 0.08; band.visible = false; m.add(band); m.userData.band = band;
+      scene.add(m); zoneM.set(z.id, m);
+    }
+    const armed = S.t >= z.armAt, u = m.userData;
+    u.secMat.uniforms.uProg.value = armed ? 1 : Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born));
+    u.secMat.uniforms.uAlpha.value = armed ? 0.35 : 0.75 + 0.25 * Math.sin(time * 10);
+    const b = G_sweepAngle(z);
+    for (const w of u.walls) { w.wl.visible = armed; const a = b + w.off, rm = (z.eye + 21) / 2; w.wl.position.set(Math.cos(a) * rm, 1.6, Math.sin(a) * rm); w.wl.rotation.y = -a; }
+    u.band.visible = armed; u.band.rotation.z = -b; 
+    if (armed && Math.random() < 0.9) for (const off of [0, PI]) { const a = b + off, d = z.eye + Math.random() * (21 - z.eye); emit(Math.cos(a) * d, 0.3, Math.sin(a) * d, 1, Math.random() < 0.5 ? '#d79bff' : '#ffffff', { speed: 1.2, life: 0.5, size: 0.35, vy: 3, grav: 0 }); }
+    if (armed && !u.flashed) { u.flashed = true; flash(0, 2, 0, '#c46bff', 10, 0.6); cam.shake = Math.max(cam.shake, 0.4); }
+  }
+  function G_sweepAngle(z) { const k = Math.max(0, Math.min(1, (S.t - z.armAt) / (z.endAt - z.armAt))); return z.a0 + z.dir * z.span * k; }
+
   function updateFight(dt) {
     S.bodies.forEach((b, k) => {
       const tb = L.tankBeams[k], tg = raidM[b.target], rg = rigs[k];
@@ -1625,6 +1685,7 @@ var R3 = window.THREE ? (() => {
       live.add(z.id);
       let m = zoneM.get(z.id);
       if (z.type === 'fissure') { updateFissure(z, m); continue; }
+      if (z.type === 'sweep') { sweepFx(z, m); continue; }
       if (!m) {
         if (z.type === 'puits') m = decal('#ff5a2e', 1, z.r, null, 2.6);
         else if (z.type === 'pool') m = decal('#ff8a2a', 1, z.r, null, 2.2);
@@ -1640,7 +1701,7 @@ var R3 = window.THREE ? (() => {
       else if (z.type === 'core') { m.position.set(z.x, 0.07, z.z); m.material.uniforms.uAlpha.value = 1; if (Math.random() < 0.6) { const a = Math.random() * PI * 2; emit(z.x + Math.cos(a) * 14, 0.5, z.z + Math.sin(a) * 14, 1, '#b18cff', { speed: 0.1, life: 1.5, size: 0.3, grav: 0, drag: 1 }); } }
       else { m.material.uniforms.uProg.value = Math.min(1, (S.t - z.born) / (z.at - z.born)); m.material.uniforms.uAlpha.value = 1.1; }
     }
-    for (const [id, m] of zoneM) if (!live.has(id)) { scene.remove(m); m.geometry.dispose(); zoneM.delete(id); }
+    for (const [id, m] of zoneM) if (!live.has(id)) { scene.remove(m); if (m.geometry) m.geometry.dispose(); zoneM.delete(id); }
     if (beamZ && rigs.length === 2) {
       const a = rigs[0].root.position, b = rigs[1].root.position;
       const armed = S.t >= beamZ.armAt;
