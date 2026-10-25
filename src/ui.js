@@ -329,6 +329,9 @@
       case 'beam': x = k(a.dps * m) + '/s dans le rayon'; break;
       case 'pulse': x = 'Aspiration de ' + a.pull + ' m · cœur : ' + k(a.dps * m) + '/s'; break;
       case 'fissures': x = a.count + ' lignes · éruption après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dedans'; break;
+      case 'half': x = 'Alerte de ' + String(a.warn).replace('.', ',') + ' s · ' + a.dur + ' s de feu ou de gel · ' + k(a.dps * m) + '/s du mauvais côté'; break;
+      case 'sweep': x = 'Alerte de ' + String(a.warn).replace('.', ',') + ' s · balayage de ' + String(a.dur).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dans un rayon'; break;
+      case 'holes': x = a.count + ' dalles · chute après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dans un trou'; break;
     }
     return t + (x ? ' · ' + x : '');
   }
@@ -336,7 +339,7 @@
     $('#jBoss').innerHTML = G.BOSSES.map(b => `<button data-b="${b.id}" aria-selected="${b.id === jBoss}">${esc(b.name)}</button>`).join('') + `<button data-b="classes" aria-selected="${jBoss === 'classes'}">Classes et sorts</button>`;
     let h = '';
     if (jBoss === 'classes') {
-      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
+      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p><b>Talents</b> : chaque victoire rapproche du palier suivant (1, 4 et 8 victoires). Choisis-les dans l’écran Talents, classe par classe ; ils valent pour tous les persos de la classe. Le Mythique s’ouvre quand les 4 boss sont vaincus en Héroïque.</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
       for (const id of G.CLASS_ORDER) {
         const cl = C[id];
         h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}<br><i>${esc(SP[s].how)}</i></span></div>`).join('')}</div></article>`;

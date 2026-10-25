@@ -131,6 +131,7 @@ button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2
 .hub-actions .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .hub-actions .row .btn { padding: 10px 6px; font-size: 12px; letter-spacing: 0.04em; }
 .hub-foot { display: flex; justify-content: space-between; align-items: center; color: var(--ink-3); font-size: 12px; margin-top: -4px; }
+.hub-foot .ver { font-family: var(--f-num); font-size: 11px; color: var(--ink-3); }
 .hub-foot button { background: none; border: 0; color: var(--ink-3); padding: 10px 0; min-height: 44px; font-size: 12px; letter-spacing: 0.04em; }
 .hub-foot { gap: 10px; flex-wrap: wrap; }
 @media (orientation: landscape) and (max-height: 560px) {
@@ -445,7 +446,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 
         <button class="btn" id="btnJournal">Journal</button>
       </div>
     </div>
-    <div class="hub-foot"><button id="btnSound" type="button">Son : activé</button><button id="btnGfx" type="button">Graphismes : Auto</button><button id="btnReset" type="button">Réinitialiser</button></div>
+    <div class="hub-foot"><button id="btnSound" type="button">Son : activé</button><button id="btnGfx" type="button">Graphismes : Auto</button><button id="btnReset" type="button">Réinitialiser</button><span class="ver">v1.0</span></div>
   </div>
 </section>
 
@@ -2622,7 +2623,7 @@ var R3 = window.THREE ? (() => {
   function updateObservatory(dt) {
     if (L.orrery) L.orrery.forEach(o => { o.arm.rotation.y += o.w * dt; });
     if (L.obsLamps) L.obsLamps.forEach(l => { l.orb.position.y = l.y + Math.sin(time * 1.3 + l.ph) * 0.25; });
-    if (Math.random() < 0.5) { const a = Math.random() * PI * 2, r = Math.random() * 20; emit(Math.cos(a) * r, 0.4 + Math.random() * 4, Math.sin(a) * r, 1, Math.cos(a) < 0 ? '#ffe0a0' : '#cfe6ff', { speed: 0.15, life: 2.5, size: 0.14, vy: 0.4, grav: 0 }); }
+    if (Q.bloom && Math.random() < 0.5) { const a = Math.random() * PI * 2, r = Math.random() * 20; emit(Math.cos(a) * r, 0.4 + Math.random() * 4, Math.sin(a) * r, 1, Math.cos(a) < 0 ? '#ffe0a0' : '#cfe6ff', { speed: 0.15, life: 2.5, size: 0.14, vy: 0.4, grav: 0 }); }
     // Équinoxe : la moitié visée s'embrase ou gèle
     const u = L.obsMosaic; if (!u) return;
     const z = S && S.zones.find(q => q.type === 'half');
@@ -2687,7 +2688,7 @@ var R3 = window.THREE ? (() => {
     if (L.horRocks) L.horRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.5 + u.ph) * 0.6, Math.sin(u.a) * u.r); m.rotation.x += dt * 0.2; m.rotation.y += dt * 0.15; });
     if (L.horDisk) L.horDisk.rotation.z += dt * 0.01;
     // poussière aspirée vers le centre, en spirale
-    if (Math.random() < 0.7) { const a = Math.random() * PI * 2, r = 24 + Math.random() * 10; emit(Math.cos(a) * r, -1 + Math.random() * 6, Math.sin(a) * r, 1, Math.random() < 0.5 ? '#b18cff' : '#ff8ad8', { speed: 0.2, life: 2.2, size: 0.18, vy: -0.5, grav: 0 }); }
+    if (Q.bloom && Math.random() < 0.7) { const a = Math.random() * PI * 2, r = 24 + Math.random() * 10; emit(Math.cos(a) * r, -1 + Math.random() * 6, Math.sin(a) * r, 1, Math.random() < 0.5 ? '#b18cff' : '#ff8ad8', { speed: 0.2, life: 2.2, size: 0.18, vy: -0.5, grav: 0 }); }
     let moved = false;
     for (const t of L.horTiles) if (t.fall >= 0 && t.fall < 3) { t.fall += dt; moved = true; }
     if (moved) setHorTiles();
@@ -2717,7 +2718,7 @@ var R3 = window.THREE ? (() => {
   function updateForge(dt) {
     if (L.forgeRocks) L.forgeRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.4 + u.ph) * 0.8, Math.sin(u.a) * u.r); m.rotation.y += dt * 0.05; m.rotation.x += dt * 0.03; });
     // braises qui montent de la lave et des fissures
-    if (Math.random() < 0.9) { const a = Math.random() * PI * 2, r = Math.random() < 0.6 ? 14 + Math.random() * 12 : Math.random() * 13; emit(Math.cos(a) * r, Math.random() < 0.5 ? 0.2 : -6, Math.sin(a) * r, 1, '#ff8a3a', { speed: 0.3, life: 2.4, size: 0.16, vy: 1.6, grav: 0 }); }
+    if (Q.bloom && Math.random() < 0.9) { const a = Math.random() * PI * 2, r = Math.random() < 0.6 ? 14 + Math.random() * 12 : Math.random() * 13; emit(Math.cos(a) * r, Math.random() < 0.5 ? 0.2 : -6, Math.sin(a) * r, 1, '#ff8a3a', { speed: 0.3, life: 2.4, size: 0.16, vy: 1.6, grav: 0 }); }
     const C = L.collapse; if (!C) return;
     C.t += dt;
     for (const p of L.forgePieces) {
@@ -6198,6 +6199,9 @@ var R3 = window.THREE ? (() => {
       case 'beam': x = k(a.dps * m) + '/s dans le rayon'; break;
       case 'pulse': x = 'Aspiration de ' + a.pull + ' m · cœur : ' + k(a.dps * m) + '/s'; break;
       case 'fissures': x = a.count + ' lignes · éruption après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dedans'; break;
+      case 'half': x = 'Alerte de ' + String(a.warn).replace('.', ',') + ' s · ' + a.dur + ' s de feu ou de gel · ' + k(a.dps * m) + '/s du mauvais côté'; break;
+      case 'sweep': x = 'Alerte de ' + String(a.warn).replace('.', ',') + ' s · balayage de ' + String(a.dur).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dans un rayon'; break;
+      case 'holes': x = a.count + ' dalles · chute après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dans un trou'; break;
     }
     return t + (x ? ' · ' + x : '');
   }
@@ -6205,7 +6209,7 @@ var R3 = window.THREE ? (() => {
     $('#jBoss').innerHTML = G.BOSSES.map(b => `<button data-b="${b.id}" aria-selected="${b.id === jBoss}">${esc(b.name)}</button>`).join('') + `<button data-b="classes" aria-selected="${jBoss === 'classes'}">Classes et sorts</button>`;
     let h = '';
     if (jBoss === 'classes') {
-      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
+      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p><b>Talents</b> : chaque victoire rapproche du palier suivant (1, 4 et 8 victoires). Choisis-les dans l’écran Talents, classe par classe ; ils valent pour tous les persos de la classe. Le Mythique s’ouvre quand les 4 boss sont vaincus en Héroïque.</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
       for (const id of G.CLASS_ORDER) {
         const cl = C[id];
         h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}<br><i>${esc(SP[s].how)}</i></span></div>`).join('')}</div></article>`;

@@ -663,7 +663,7 @@ var R3 = window.THREE ? (() => {
   function updateObservatory(dt) {
     if (L.orrery) L.orrery.forEach(o => { o.arm.rotation.y += o.w * dt; });
     if (L.obsLamps) L.obsLamps.forEach(l => { l.orb.position.y = l.y + Math.sin(time * 1.3 + l.ph) * 0.25; });
-    if (Math.random() < 0.5) { const a = Math.random() * PI * 2, r = Math.random() * 20; emit(Math.cos(a) * r, 0.4 + Math.random() * 4, Math.sin(a) * r, 1, Math.cos(a) < 0 ? '#ffe0a0' : '#cfe6ff', { speed: 0.15, life: 2.5, size: 0.14, vy: 0.4, grav: 0 }); }
+    if (Q.bloom && Math.random() < 0.5) { const a = Math.random() * PI * 2, r = Math.random() * 20; emit(Math.cos(a) * r, 0.4 + Math.random() * 4, Math.sin(a) * r, 1, Math.cos(a) < 0 ? '#ffe0a0' : '#cfe6ff', { speed: 0.15, life: 2.5, size: 0.14, vy: 0.4, grav: 0 }); }
     // Équinoxe : la moitié visée s'embrase ou gèle
     const u = L.obsMosaic; if (!u) return;
     const z = S && S.zones.find(q => q.type === 'half');
@@ -728,7 +728,7 @@ var R3 = window.THREE ? (() => {
     if (L.horRocks) L.horRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.5 + u.ph) * 0.6, Math.sin(u.a) * u.r); m.rotation.x += dt * 0.2; m.rotation.y += dt * 0.15; });
     if (L.horDisk) L.horDisk.rotation.z += dt * 0.01;
     // poussière aspirée vers le centre, en spirale
-    if (Math.random() < 0.7) { const a = Math.random() * PI * 2, r = 24 + Math.random() * 10; emit(Math.cos(a) * r, -1 + Math.random() * 6, Math.sin(a) * r, 1, Math.random() < 0.5 ? '#b18cff' : '#ff8ad8', { speed: 0.2, life: 2.2, size: 0.18, vy: -0.5, grav: 0 }); }
+    if (Q.bloom && Math.random() < 0.7) { const a = Math.random() * PI * 2, r = 24 + Math.random() * 10; emit(Math.cos(a) * r, -1 + Math.random() * 6, Math.sin(a) * r, 1, Math.random() < 0.5 ? '#b18cff' : '#ff8ad8', { speed: 0.2, life: 2.2, size: 0.18, vy: -0.5, grav: 0 }); }
     let moved = false;
     for (const t of L.horTiles) if (t.fall >= 0 && t.fall < 3) { t.fall += dt; moved = true; }
     if (moved) setHorTiles();
@@ -758,7 +758,7 @@ var R3 = window.THREE ? (() => {
   function updateForge(dt) {
     if (L.forgeRocks) L.forgeRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.4 + u.ph) * 0.8, Math.sin(u.a) * u.r); m.rotation.y += dt * 0.05; m.rotation.x += dt * 0.03; });
     // braises qui montent de la lave et des fissures
-    if (Math.random() < 0.9) { const a = Math.random() * PI * 2, r = Math.random() < 0.6 ? 14 + Math.random() * 12 : Math.random() * 13; emit(Math.cos(a) * r, Math.random() < 0.5 ? 0.2 : -6, Math.sin(a) * r, 1, '#ff8a3a', { speed: 0.3, life: 2.4, size: 0.16, vy: 1.6, grav: 0 }); }
+    if (Q.bloom && Math.random() < 0.9) { const a = Math.random() * PI * 2, r = Math.random() < 0.6 ? 14 + Math.random() * 12 : Math.random() * 13; emit(Math.cos(a) * r, Math.random() < 0.5 ? 0.2 : -6, Math.sin(a) * r, 1, '#ff8a3a', { speed: 0.3, life: 2.4, size: 0.16, vy: 1.6, grav: 0 }); }
     const C = L.collapse; if (!C) return;
     C.t += dt;
     for (const p of L.forgePieces) {

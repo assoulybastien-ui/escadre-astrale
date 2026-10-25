@@ -123,6 +123,7 @@ button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2
 .hub-actions .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .hub-actions .row .btn { padding: 10px 6px; font-size: 12px; letter-spacing: 0.04em; }
 .hub-foot { display: flex; justify-content: space-between; align-items: center; color: var(--ink-3); font-size: 12px; margin-top: -4px; }
+.hub-foot .ver { font-family: var(--f-num); font-size: 11px; color: var(--ink-3); }
 .hub-foot button { background: none; border: 0; color: var(--ink-3); padding: 10px 0; min-height: 44px; font-size: 12px; letter-spacing: 0.04em; }
 .hub-foot { gap: 10px; flex-wrap: wrap; }
 @media (orientation: landscape) and (max-height: 560px) {

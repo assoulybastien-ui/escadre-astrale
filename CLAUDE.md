@@ -17,11 +17,11 @@ Projet perso de Bastien. Tout se fait **en français** (code commenté en franç
 - Hook de test exposé par `ui.js` : `window.__escadre` (`manual(true)`, `advance(dt,n)`, `state()`, `cast`, `pull`, `ff`). Il est retiré de la PWA.
 
 ## Architecture (`src/`, pas de bundler)
-- `data.js` — `DATA` : 9 classes, sorts de la barre, vivier de 18 raideurs, 4 boss, difficultés, butin, `VSPECS` (specs visuelles pour le banc d'essai).
+- `data.js` — `DATA` : 9 classes, sorts de la barre, talents, vivier de 18 raideurs, 4 boss, difficultés, butin, `VSPECS` (specs visuelles pour le banc d'essai).
 - `engine.js` — `GAME` : simulation déterministe (`createFight`, `pull`, `step`, `order`, `cast`, `spellBar`, `analyze`…). Communique avec le rendu par `S.events`.
 - `render.js` — `R3` : three.js r128, composer HDR + UnrealBloom + passe ACES, arène, boss, effets. Insère `chars.js` à la place de `/*@@CHARS@@*/`.
 - `chars.js` — personnages : `STYLE` (couleurs, taille, os mis à l'échelle), `RACE` (tête + équipement par classe), armes `W_*`, `SPEC` (arme, posture, attaques), postures `ST`, actions `A2` (images clés), effets `onEvent`, gestes de sort `SPELL_ACT`.
-- `ui.js` — écrans (hub, roster, journal, combat, rapport, butin), HUD MMO, sélection au doigt, ordres en file, groupes. Sauvegarde : `localStorage['escadre-astrale-v5']`.
+- `ui.js` — écrans (hub, roster, talents, journal, combat, rapport, butin), HUD MMO, sélection au doigt, ordres en file, groupes. Sauvegarde : `localStorage['escadre-astrale-v5']`.
 - `body.html`, `style.css` — écrans et HUD.
 - `assets/` — modèle de base `trooper.json` (glTF Mixamo, quantifié KHR), boss `colossus.json`, textures.
 - `vendor/` — three.js r128 (+ exemples) et polices, utilisés par la PWA et les tests.
@@ -51,18 +51,17 @@ Projet perso de Bastien. Tout se fait **en français** (code commenté en franç
 ## Feuille de route
 1. Moteur et contrôles — **fait, validé**.
 2. Les 9 classes — **faites, validées**.
-3. Étape en cours, une sous-étape validée en images à la fois :
-   1. Explications des sorts — bulle (`spellTip` dans `ui.js`, champ `how` des sorts dans `data.js`) : toucher dans l'équipe et au placement, appui long en combat (le combat continue, le sort n'est pas lancé). Test : `node test/tips.js`.
-   2. Réglage Mythique — **cible : ~3/6 victoires au bot `good`** pour chaque boss. Fait (en attente de validation) : surcharges `m` dans `data.js` (Vorr : Onde 15 000 ; Jumelles : Éruption à 3 s ; Nyxar : Chant à 2,2 s ; Azhal : Singularité 12 s, 4 météores, Convergence 100 000, montée de la Faim 3/s). Les phases acceptent aussi des surcharges `h` / `m` (`resolveBoss`). Le bot `good` joue maintenant le Séisme du Titan sur les Gardiens du Vide et les emmène loin du centre.
-   3. **Une arène par boss** et 4. **Boss réécrits = modèles 3D, animations et mécaniques**, beaucoup plus poussés et visuels — faits ensemble, un boss à la fois (demande de Bastien).
-      - Vorr — fait (en attente de validation) : arène « Forge effondrée » (`buildForge`), modèle de golem (`buildVorr`), Fissures de magma (`kind: 'fissures'`), phase 2 Effondrement (`collapse: 13.5` : le bord tombe, la lave brûle au-delà de `S.arenaR`). Captures : `node test/vorr.js`.
-      - Arènes : `ARENA_OF` / `THEMES` / `setArena` dans `render.js` ; l'arène par défaut (plateforme du Noyau) sert à Nyxar et aux boss pas encore faits.
-      - Idées retenues pour la suite : Jumelles « Observatoire céleste » (sol soleil/lune, planétaire), Nyxar « Salle du Noyau » (machines, rayons tournants), Azhal « L'Horizon » (plateforme brisée au bord du trou noir, s'effrite en phase 3).
-   5. Talents (rien n'existe encore) : proposer le système sur papier avant de coder.
-4. Finitions + PWA (`build_pwa.py`) et mise en ligne (dépôt privé : pas de GitHub Pages gratuit, à décider).
+3. Boss, arènes, talents, Mythique — **fait** (version 1.0, réalisée d'un seul tenant à la demande de Bastien, sans validation intermédiaire : à faire valider sur iPhone).
+   - Explications des sorts : bulle (`spellTip` dans `ui.js`, champ `how` des sorts) ; toucher dans l'équipe et au placement, appui long en combat.
+   - Arènes : `ARENA_OF` / `THEMES` / `setArena` dans `render.js`. Vorr « Forge effondrée » (`buildForge`), Jumelles « Observatoire céleste » (`buildObservatory`), Nyxar « Salle du Noyau » (arène par défaut), Azhal « L'Horizon » (`buildHorizon`).
+   - Mécaniques ajoutées (`fire` dans `engine.js`) : `fissures` (Vorr), phase `collapse` (Vorr, arène qui rétrécit, lave au-delà de `S.arenaR`), `half` (Jumelles, Équinoxe), `sweep` (Nyxar, Rayons du Noyau), `holes` (Azhal, Effritement : dalles de `HEX_TILES` qui tombent).
+   - Talents : `TALENTS`, `TALENT_TIERS` (1, 4, 8 victoires), `talentFx` dans `data.js` ; écran Talents dans `ui.js` ; effets lus par `spv` / `spcd` dans `engine.js`.
+   - Le Mythique s'ouvre après les 4 boss en Héroïque (les 3 paliers de talents sont alors ouverts).
+4. Finitions + PWA — **fait** (`python3 build_pwa.py` → `docs/`). Reste à décider la mise en ligne : le dépôt est privé, donc pas de GitHub Pages gratuit.
 
-Équilibrage mesuré au bot `good` (60 essais, `node test/bot5.js <diff> 60 good`) : Normal 100 % partout (~2:40–3:10) ; Héroïque 100 % partout (~4:00–4:50) ; Mythique : Vorr 29/60, Jumelles 29/60, Nyxar 31/60, Azhal 31/60 (~3/6). Bot `ok` en Mythique : 0 à 5 %. Raid lead passif = défaite partout (voulu).
-Attention : Vorr Mythique est un seuil de soins très net (Onde à 14 750 → 87 % de victoires, à 15 000 → 48 %, à 15 500 → 23 %). À revoir avec la réécriture des boss.
+Équilibrage mesuré au bot `good` (`node test/bot5.js <diff> 60 good`) : Normal 100 % partout (~2:40–3:10) ; Héroïque 100 % partout (~4:15–4:55). Mythique réglé **avec talents** (3 paliers) : ~3/6 en moyenne selon les choix (de ~1/6 à ~5/6 selon les talents pris) ; sans talents, presque impossible (voulu). Raid lead passif = défaite partout.
+Mythique global : `hpMult 1.3`, `dmgMult 1.3` ; surcharges `m` par boss dans `data.js`. Les phases acceptent aussi `h` / `m` (`resolveBoss`).
+Le bot `good` sait : Séisme du Titan sur les Gardiens du Vide, esquive des fissures, repli à l'Effondrement, changement de côté à l'Équinoxe, refuge hors des secteurs des Rayons, sortie des dalles fissurées.
 
 ## Pièges techniques connus
 - Accessoires « skinnés » sur le squelette (`skinAccessories`) : en mode attaché, three recalcule `bindMatrixInverse` à chaque image ; la matrice de cuisson est `M = B⁻¹ · Bi⁻¹ · Bw⁻¹ · Ow`. (Bug v4 corrigé : équipements invisibles.)
@@ -81,3 +80,7 @@ Attention : Vorr Mythique est un seuil de soins très net (Onde à 14 750 → 87
 - `test/recall.js outDir fps [segments]` — vidéo vitrine des 9 classes en combat (images → `ffmpeg -framerate 15 -i %04d.jpg -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p out.mp4`).
 - `tools/sheet.py out.jpg "TITRE" "sous-titre" img:légende …` — planche légendée (demande Pillow et des polices DejaVu : absent sur le Mac de Bastien).
 - `test/tips.js [outDir]` — bulles d'explication des sorts (équipe, placement, appui long en combat), avec vérifications.
+- `test/arene.js boss [zone] [pvPhase] [outDir] [diff] [avant]` — un boss dans son arène : hub, gros plans, mécanique en alerte puis active, phase suivante. Le bot de test joue le raid lead dans la page. Le rendu sans écran est lent : prévoir des attentes de 1,5 à 2 s avant chaque capture.
+- `test/vorr.js` — captures de Vorr (fissures, Effondrement).
+- `test/talents.js` — écran des talents et effets en combat, avec vérifications.
+- `test/parcours.js` — parcours d'un nouveau joueur (Vorr Normal → rapport → butin → palier de talents), avec vérifications.

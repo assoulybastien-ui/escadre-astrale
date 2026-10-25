@@ -5,9 +5,10 @@
   "scripts": {
     "build": "python3 build.py",
     "pwa": "python3 build_pwa.py",
-    "test": "node test/v5.js"
+    "test": "node test/parcours.js && node test/tips.js && node test/talents.js && node test/v5.js"
   },
   "devDependencies": {
     "playwright": "1.56.0"
-  }
+  },
+  "version": "1.0.0"
 }

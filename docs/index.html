@@ -151,6 +151,7 @@ button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2
 .hub-actions .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .hub-actions .row .btn { padding: 10px 6px; font-size: 12px; letter-spacing: 0.04em; }
 .hub-foot { display: flex; justify-content: space-between; align-items: center; color: var(--ink-3); font-size: 12px; margin-top: -4px; }
+.hub-foot .ver { font-family: var(--f-num); font-size: 11px; color: var(--ink-3); }
 .hub-foot button { background: none; border: 0; color: var(--ink-3); padding: 10px 0; min-height: 44px; font-size: 12px; letter-spacing: 0.04em; }
 .hub-foot { gap: 10px; flex-wrap: wrap; }
 @media (orientation: landscape) and (max-height: 560px) {
@@ -171,6 +172,11 @@ button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2
 .tal[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--amber); background: rgba(255,191,90,0.1); }
 .tal[aria-pressed="true"] b { color: var(--amber); }
 .tal[disabled] { opacity: 0.4; }
+.tier-row.two { grid-template-columns: repeat(2, 1fr); }
+.tier-row.two .tal { min-height: 64px; }
+.tier.jsec { margin-bottom: 14px; }
+.btn.notify { box-shadow: inset 0 0 0 1px var(--amber), 0 0 12px rgba(255,191,90,0.35); color: var(--amber); }
+.new-tier { color: var(--amber); font-weight: 600; margin-top: 6px; }
 .spell-list { display: grid; gap: 6px; }
 .spell-list div { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 13px; color: var(--ink-2); }
 .spell-list svg { width: 22px; height: 22px; color: var(--amber); }
@@ -258,6 +264,19 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 
 .alert small { display: block; font-family: var(--f-ui); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); margin-top: 3px; }
 .toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--sb) + 58px); max-width: 46vw; text-align: center; font-size: 12px; font-weight: 600; color: var(--ink); opacity: 0; transition: opacity 0.2s; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
 .toast.show { opacity: 1; } .toast.bad { color: #ff8a98; } .toast.ok { color: var(--gold-hi); }
+/* bulle d'explication d'un sort (équipe, placement, appui long en combat) */
+.spelltip { position: fixed; z-index: 20; width: min(300px, calc(100vw - 16px)); padding: 9px 11px 10px; font-size: 12px; line-height: 1.35; color: var(--ink-2); background: linear-gradient(180deg, rgba(30,34,48,0.97), rgba(12,14,20,0.97)); box-shadow: inset 0 0 0 1px #000, inset 0 0 0 2px var(--gold-lo), 0 6px 20px rgba(0,0,0,0.7); }
+.spelltip.pass { pointer-events: none; }
+.spelltip p { margin: 5px 0 0; }
+.st-h { display: flex; align-items: center; gap: 6px; }
+.st-h svg { width: 18px; height: 18px; color: var(--gold-hi); flex: none; }
+.st-h b { flex: 1; color: var(--gold-hi); font-family: var(--f-display); font-weight: 400; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.st-h span { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.st-who { font-size: 11px; } .st-who i { font-style: normal; font-weight: 600; }
+.st-how b { color: var(--ink); font-weight: 600; }
+.st-tal { color: var(--gold-hi); font-size: 11px; } .st-tal b { font-weight: 600; }
+.sp { -webkit-touch-callout: none; }
+.kit-spells span[data-sp] { cursor: pointer; }
 /* cadres de raid : colonne gauche */
 .raidpanel { position: absolute; left: var(--sl); top: calc(var(--st) + 4px); width: 128px; display: grid; gap: 2px; padding: 4px; background: rgba(6,8,13,0.62); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.9), inset 0 0 0 2px rgba(201,162,74,0.35); }
 .uf { position: relative; border: 0; padding: 0; height: 21px; background: #07080c; box-shadow: inset 0 0 0 1px #000; text-align: left; min-width: 0; overflow: hidden; display: block; }
@@ -451,10 +470,11 @@ body { -webkit-touch-callout: none; touch-action: manipulation; }
       <button class="btn primary" id="btnPull">Lancer le combat</button>
       <div class="row">
         <button class="btn" id="btnRoster">Composer</button>
+        <button class="btn" id="btnTalents">Talents</button>
         <button class="btn" id="btnJournal">Journal</button>
       </div>
     </div>
-    <div class="hub-foot"><button id="btnSound" type="button">Son : activé</button><button id="btnGfx" type="button">Graphismes : Auto</button><button id="btnReset" type="button">Réinitialiser</button></div>
+    <div class="hub-foot"><button id="btnSound" type="button">Son : activé</button><button id="btnGfx" type="button">Graphismes : Auto</button><button id="btnReset" type="button">Réinitialiser</button><span class="ver">v1.0</span></div>
   </div>
 </section>
 
@@ -464,6 +484,13 @@ body { -webkit-touch-callout: none; touch-action: manipulation; }
   <div class="comp" id="compSummary"></div>
   <div class="page-scroll"><div class="roster-list" id="rosterList"></div></div>
   <footer class="page-foot"><button class="btn" id="rosterAuto">Compo conseillée</button><button class="btn primary" id="rosterOk">Valider</button></footer>
+</section>
+
+<!-- ================= TALENTS ================= -->
+<section id="talents" class="screen page" hidden>
+  <header class="page-head"><button class="back" data-go="hub">‹ Retour</button><h2>Talents</h2><span class="num" id="talPts"></span></header>
+  <nav class="tabs" id="talTabs"></nav>
+  <div class="page-scroll"><div class="wrap" id="talBody"></div></div>
 </section>
 
 <!-- ================= JOURNAL ================= -->
@@ -497,6 +524,7 @@ body { -webkit-touch-callout: none; touch-action: manipulation; }
     <button class="btn" id="prepReset">Conseillé</button><button class="btn primary" id="prepPull">Pull !</button>
   </div>
 </section>
+<div class="spelltip" id="spellTip" role="tooltip" hidden></div>
 <div class="rotate" id="rotate" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 14a9 9 0 0 0 7 7M21 10a9 9 0 0 0-7-7"/></svg><p>Tourne ton téléphone à l’horizontale pour diriger le raid.</p></div>
 
 <!-- ================= RAPPORT ================= -->
@@ -565,40 +593,121 @@ const DATA = (() => {
   // ---------- sorts de la barre ----------
   // classes : qui le porte. Chaque porteur vivant = une charge, avec sa propre recharge.
   // target : enemy | ally | dead | self | ground | none
+  // desc : ce que fait le sort ; how : comment le lancer (bulle d'explication, voir ui.js)
   const SPELLS = {
     provoc:     { name: 'Provocation', icon: 'taunt', classes: ['gardien', 'titan'], target: 'enemy', cd: 8,
-                  desc: 'Un tank prend l’ennemi ciblé (boss ou add). C’est comme ça qu’on change de tank.' },
+                  desc: 'Un tank prend l’ennemi ciblé (boss ou add). C’est comme ça qu’on change de tank.',
+                  how: 'Touche l’ennemi à prendre, puis le sort : le tank libre le plus proche le provoque. Sans cible, il reprend le boss au tank qui a le plus de cumuls. Seuls les boss et les Gardiens du Vide se provoquent.' },
     kick:       { name: 'Interruption', icon: 'kick', classes: ['gardien', 'lameombre', 'spectre'], target: 'enemy', cd: 12, range: { gardien: 9, lameombre: 9, spectre: 40 },
-                  desc: 'Coupe une incantation. Gardien et Lame-ombre doivent être au contact ; le Spectre interrompt de loin.' },
+                  desc: 'Coupe une incantation. Gardien et Lame-ombre doivent être au contact ; le Spectre interrompt de loin.',
+                  how: 'Touche le sort quand une barre d’incantation interruptible apparaît sous le boss. Il coupe l’ennemi ciblé, sinon l’incantation qui finit le plus tôt.' },
     egide:      { name: 'Égide', icon: 'shield', classes: ['gardien'], target: 'self', cd: 40, dur: 8, dr: 0.6,
-                  desc: 'Le Gardien subit 60 % de dégâts en moins pendant 8 s. À lancer avant un gros coup.' },
+                  desc: 'Le Gardien subit 60 % de dégâts en moins pendant 8 s. À lancer avant un gros coup.',
+                  how: 'Touche le sort : le Gardien sélectionné le lance, sinon celui qui tanke.' },
     carapace:   { name: 'Carapace', icon: 'wall', classes: ['titan'], target: 'self', cd: 45, dur: 10, dr: 0.45,
-                  desc: 'Le Titan subit 45 % de dégâts en moins pendant 10 s.' },
+                  desc: 'Le Titan subit 45 % de dégâts en moins pendant 10 s. À lancer avant un gros coup.',
+                  how: 'Touche le sort : le Titan sélectionné le lance, sinon celui qui tanke.' },
     seisme:     { name: 'Séisme', icon: 'quake', classes: ['titan'], target: 'self', cd: 25, r: 9, stun: 3, dmg: 15000,
-                  desc: 'Le Titan frappe le sol : les adds à 9 m sont étourdis 3 s, interrompus et viennent sur lui.' },
+                  desc: 'Le Titan frappe le sol : les adds à 9 m sont étourdis 3 s, interrompus et viennent sur lui.',
+                  how: 'Amène d’abord le Titan au milieu des adds, puis touche le sort. Il faut au moins un add à 9 m de lui.' },
     nuee:       { name: 'Nuée', icon: 'swarm', classes: ['medic'], target: 'none', cd: 90, pct: 0.045, dur: 6,
-                  desc: 'Tout le raid récupère 4,5 % de ses PV par seconde pendant 6 s.' },
+                  desc: 'Tout le raid récupère 4,5 % de ses PV par seconde pendant 6 s.',
+                  how: 'Touche le sort, sans cible : tout le raid est soigné, où qu’il soit. À garder pour un gros dégât de raid.' },
     purge:      { name: 'Purge', icon: 'purge', classes: ['medic', 'maree'], target: 'ally', cd: 8,
-                  desc: 'Retire un effet néfaste. Vise la sélection, sinon le plus ancien effet du raid.' },
+                  desc: 'Retire un effet néfaste. Vise la sélection, sinon le plus ancien effet du raid.',
+                  how: 'Sélectionne l’allié touché (pastille sur son cadre), puis le sort. Sans sélection, il retire l’effet le plus ancien du raid.' },
     prisme:     { name: 'Prisme', icon: 'prism', classes: ['seraphe'], target: 'ally', cd: 12, absorb: 0.35, dur: 10,
-                  desc: 'Bouclier de 35 % des PV max pendant 10 s. Vise la sélection, sinon le tank actif.' },
+                  desc: 'Bouclier de 35 % des PV max pendant 10 s. Vise la sélection, sinon le tank actif.',
+                  how: 'Sélectionne l’allié à protéger, puis le sort. Sans sélection, il va sur le tank qui a le boss.' },
     rez:        { name: 'Relève', icon: 'rez', classes: ['seraphe', 'maree'], target: 'dead', cd: 150, hp: 0.4,
-                  desc: 'Relève un mort à 40 % de PV, sur place. Vise le mort sélectionné, sinon tank puis soigneur.' },
+                  desc: 'Relève un mort à 40 % de PV, sur place. Vise le mort sélectionné, sinon tank puis soigneur.',
+                  how: 'Touche le cadre du mort, puis le sort. Sans sélection : un tank d’abord, puis un soigneur, puis un DPS.' },
     vague:      { name: 'Marée haute', icon: 'wave', classes: ['maree'], target: 'ground', cd: 20, r: 7, pct: 0.22, hot: 0.03, dur: 5,
-                  desc: 'Touche le sol : soigne de 22 % les alliés à 7 m, puis 3 %/s pendant 5 s.' },
+                  desc: 'Soigne de 22 % les alliés à 7 m du point choisi, puis 3 %/s pendant 5 s.',
+                  how: 'Touche le sort, puis le sol au milieu du groupe à soigner.' },
     pas:        { name: 'Pas de l’ombre', icon: 'dash', classes: ['lameombre'], target: 'enemy', cd: 20, dmg: 40000,
-                  desc: 'La Lame-ombre bondit sur l’ennemi ciblé et frappe fort. Idéal pour un add.' },
+                  desc: 'La Lame-ombre bondit sur l’ennemi ciblé et frappe fort. Idéal pour un add.',
+                  how: 'Touche l’ennemi visé, puis le sort. Sans cible, elle bondit sur le boss. Elle reste là où elle a atterri.' },
     tourbillon: { name: 'Tourbillon', icon: 'whirl', classes: ['fracasseur'], target: 'self', cd: 25, dur: 4, r: 7, dps: 7000,
-                  desc: 'Le Fracasseur tournoie 4 s et frappe tous les ennemis à 7 m.' },
+                  desc: 'Le Fracasseur tournoie 4 s et frappe tous les ennemis à 7 m.',
+                  how: 'Amène le Fracasseur au milieu des adds, puis touche le sort. C’est le Fracasseur sélectionné qui tournoie, sinon le plus proche de l’ennemi ciblé.' },
     cri:        { name: 'Cri de guerre', icon: 'shout', classes: ['fracasseur'], target: 'none', cd: 120, dur: 12, mult: 1.25,
-                  desc: '+25 % de dégâts pour tout le raid pendant 12 s. Garde-le pour une phase de course.' },
+                  desc: '+25 % de dégâts pour tout le raid pendant 12 s. Garde-le pour une phase de course.',
+                  how: 'Touche le sort, sans cible : tout le raid en profite.' },
     tir:        { name: 'Tir de précision', icon: 'snipe', classes: ['spectre'], target: 'enemy', cd: 25, dmg: 55000,
-                  desc: 'Gros tir sur l’ennemi ciblé, de n’importe où.' },
+                  desc: 'Gros tir sur l’ennemi ciblé, de n’importe où.',
+                  how: 'Touche l’ennemi visé (un orbe, un add…), puis le sort. Sans cible, il tire sur le boss.' },
     tourelle:   { name: 'Tourelle', icon: 'turret', classes: ['bricoleur'], target: 'ground', cd: 40, dur: 15, dps: 2400, range: 22,
-                  desc: 'Touche le sol : pose une tourelle 15 s qui tire sur les adds en priorité, sinon le boss.' },
+                  desc: 'Pose une tourelle 15 s qui tire sur les adds en priorité, sinon le boss.',
+                  how: 'Touche le sort, puis le sol à l’endroit voulu. Elle tire à 22 m.' },
     dome:       { name: 'Dôme', icon: 'dome', classes: ['bricoleur'], target: 'ground', cd: 90, dur: 8, r: 6.5, dr: 0.35,
-                  desc: 'Touche le sol : un dôme de 6,5 m réduit de 35 % les dégâts subis dedans pendant 8 s.' },
+                  desc: 'Un dôme de 6,5 m réduit de 35 % les dégâts subis dedans pendant 8 s.',
+                  how: 'Touche le sort, puis le sol au milieu du groupe à protéger. Il faut que les persos soient dedans.' },
   };
+
+  // ---------- talents : 3 paliers par classe, 2 choix par palier ----------
+  // fx : hp / dps / hps = multiplicateurs ; cd = { sort: secondes en plus ou en moins } ; sp = { sort: { champ: valeur ajoutée } }
+  const TALENT_TIERS = [1, 4, 8];   // victoires nécessaires pour chaque palier
+  const t = (name, desc, fx) => ({ name, desc, fx });
+  const TALENTS = {
+    gardien: [
+      [t('Bouclier de lumière', 'Égide dure 12 s au lieu de 8.', { sp: { egide: { dur: 4 } } }), t('Vigilance', 'Interruption : recharge réduite de 4 s.', { cd: { kick: -4 } })],
+      [t('Rempart', '+10 % de PV.', { hp: 1.1 }), t('Riposte', '+12 % de dégâts.', { dps: 1.12 })],
+      [t('Inébranlable', 'Égide réduit les dégâts de 75 % au lieu de 60 %.', { sp: { egide: { dr: 0.15 } } }), t('Défi', 'Provocation : recharge réduite de 3 s.', { cd: { provoc: -3 } })],
+    ],
+    titan: [
+      [t('Carapace épaisse', 'Carapace réduit les dégâts de 60 % au lieu de 45 %.', { sp: { carapace: { dr: 0.15 } } }), t('Long souffle', 'Carapace dure 14 s au lieu de 10.', { sp: { carapace: { dur: 4 } } })],
+      [t('Masse', '+10 % de PV.', { hp: 1.1 }), t('Onde de choc', 'Séisme touche les adds à 12 m au lieu de 9.', { sp: { seisme: { r: 3 } } })],
+      [t('Secousse', 'Séisme étourdit 5 s au lieu de 3.', { sp: { seisme: { stun: 2 } } }), t('Martèlement', 'Séisme : recharge réduite de 8 s.', { cd: { seisme: -8 } })],
+    ],
+    medic: [
+      [t('Nanites denses', 'Nuée rend 6 % des PV par seconde au lieu de 4,5 %.', { sp: { nuee: { pct: 0.015 } } }), t('Essaim long', 'Nuée dure 9 s au lieu de 6.', { sp: { nuee: { dur: 3 } } })],
+      [t('Surcadençage', '+8 % de soins.', { hps: 1.08 }), t('Blindage', '+10 % de PV.', { hp: 1.1 })],
+      [t('Protocole rapide', 'Purge : recharge réduite de 4 s.', { cd: { purge: -4 } }), t('Réplication', 'Nuée : recharge réduite de 30 s.', { cd: { nuee: -30 } })],
+    ],
+    seraphe: [
+      [t('Prisme ardent', 'Prisme absorbe 50 % des PV max au lieu de 35 %.', { sp: { prisme: { absorb: 0.15 } } }), t('Lumière vive', 'Prisme : recharge réduite de 4 s.', { cd: { prisme: -4 } })],
+      [t('Grâce', '+8 % de soins.', { hps: 1.08 }), t('Ailes de verre', '+10 % de PV.', { hp: 1.1 })],
+      [t('Seconde aube', 'Relève ramène à 80 % des PV au lieu de 40 %.', { sp: { rez: { hp: 0.4 } } }), t('Retour rapide', 'Relève : recharge réduite de 60 s.', { cd: { rez: -60 } })],
+    ],
+    maree: [
+      [t('Grande marée', 'Marée haute soigne à 9 m au lieu de 7.', { sp: { vague: { r: 2 } } }), t('Ressac', 'Marée haute soigne 32 % au lieu de 22 %.', { sp: { vague: { pct: 0.1 } } })],
+      [t('Courant', '+8 % de soins.', { hps: 1.08 }), t('Écailles', '+10 % de PV.', { hp: 1.1 })],
+      [t('Flux', 'Marée haute : recharge réduite de 6 s.', { cd: { vague: -6 } }), t('Eaux vives', 'Relève : recharge réduite de 60 s.', { cd: { rez: -60 } })],
+    ],
+    lameombre: [
+      [t('Ombre fulgurante', 'Pas de l’ombre inflige 70 000 au lieu de 40 000.', { sp: { pas: { dmg: 30000 } } }), t('Pas léger', 'Pas de l’ombre : recharge réduite de 8 s.', { cd: { pas: -8 } })],
+      [t('Venin', '+10 % de dégâts.', { dps: 1.1 }), t('Écailles noires', '+10 % de PV.', { hp: 1.1 })],
+      [t('Coupe-souffle', 'Interruption : recharge réduite de 4 s.', { cd: { kick: -4 } }), t('Danse des lames', '+5 % de dégâts et Pas de l’ombre : recharge réduite de 4 s.', { dps: 1.05, cd: { pas: -4 } })],
+    ],
+    fracasseur: [
+      [t('Cyclone', 'Tourbillon frappe à 10 m au lieu de 7.', { sp: { tourbillon: { r: 3 } } }), t('Ouragan', 'Tourbillon dure 6 s au lieu de 4.', { sp: { tourbillon: { dur: 2 } } })],
+      [t('Rage', '+10 % de dégâts.', { dps: 1.1 }), t('Fourrure épaisse', '+10 % de PV.', { hp: 1.1 })],
+      [t('Cri prolongé', 'Cri de guerre dure 18 s au lieu de 12.', { sp: { cri: { dur: 6 } } }), t('Hurlement', 'Cri de guerre donne +35 % de dégâts au lieu de +25 %.', { sp: { cri: { mult: 0.1 } } })],
+    ],
+    spectre: [
+      [t('Calibre lourd', 'Tir de précision inflige 85 000 au lieu de 55 000.', { sp: { tir: { dmg: 30000 } } }), t('Visée rapide', 'Tir de précision : recharge réduite de 8 s.', { cd: { tir: -8 } })],
+      [t('Optique', '+10 % de dégâts.', { dps: 1.1 }), t('Blindage', '+10 % de PV.', { hp: 1.1 })],
+      [t('Coup d’arrêt', 'Interruption : recharge réduite de 4 s.', { cd: { kick: -4 } }), t('Œil froid', '+5 % de dégâts et Tir de précision : recharge réduite de 4 s.', { dps: 1.05, cd: { tir: -4 } })],
+    ],
+    bricoleur: [
+      [t('Tourelle lourde', 'La Tourelle fait 50 % de dégâts en plus.', { sp: { tourelle: { dps: 1200 } } }), t('Tourelle durable', 'La Tourelle tient 25 s au lieu de 15.', { sp: { tourelle: { dur: 10 } } })],
+      [t('Surcharge', '+10 % de dégâts.', { dps: 1.1 }), t('Plastron', '+10 % de PV.', { hp: 1.1 })],
+      [t('Dôme renforcé', 'Le Dôme réduit les dégâts de 50 % au lieu de 35 %.', { sp: { dome: { dr: 0.15 } } }), t('Grand dôme', 'Le Dôme fait 8,5 m et tient 11 s.', { sp: { dome: { r: 2, dur: 3 } } })],
+    ],
+  };
+  // effets cumulés des talents choisis d'une classe (choix : [index ou null] par palier, unlocked : nombre de paliers ouverts)
+  function talentFx(cls, choice, unlocked) {
+    const fx = { hp: 1, dps: 1, hps: 1, cd: {}, sp: {} };
+    (TALENTS[cls] || []).forEach((tier, k) => {
+      const c = choice && choice[k]; if (k >= unlocked || c == null || !tier[c]) return;
+      const f = tier[c].fx;
+      for (const m of ['hp', 'dps', 'hps']) if (f[m]) fx[m] *= f[m];
+      for (const id in f.cd || {}) fx.cd[id] = (fx.cd[id] || 0) + f.cd[id];
+      for (const id in f.sp || {}) { fx.sp[id] ||= {}; for (const key in f.sp[id]) fx.sp[id][key] = (fx.sp[id][key] || 0) + f.sp[id][key]; }
+    });
+    return fx;
+  }
 
   // ---------- vivier : 2 raideurs par classe ----------
   const POOL = [
@@ -619,72 +728,79 @@ const DATA = (() => {
   const BOSSES = [
     {
       id: 'vorr', name: 'Vorr', title: 'la Sentinelle brisée', model: 'vorr', hp: 2.2e6, enrage: 300, color: '#ffb35a', rad: 3.4,
-      lore: 'Le premier gardien de la Citadelle. Son armure s’effrite, mais chaque coup qu’il porte fend la roche.',
-      focus: 'Changer de tank au bon moment, garder le raid derrière le boss, sortir Vorr de ses flaques.',
+      lore: 'Le premier gardien de la Citadelle veille sur la Forge effondrée. Son armure de basalte s’effrite sur un cœur de magma, et chaque coup de son marteau fend la roche jusqu’à la lave.',
+      focus: 'Changer de tank au bon moment, garder le raid derrière Vorr, le sortir de ses flaques, esquiver les fissures, puis tenir dans une arène qui rétrécit.',
       phases: [
-        { to: 0.3, name: 'Gardien', abilities: {
+        { to: 0.45, name: 'Gardien', abilities: {
           coup: { kind: 'buster', name: 'Coup broyeur', first: 8, every: 12, cast: 1.5, dmg: 15000, stack: 'Écrasé', mult: 1.5, stackDur: 22, call: 'taunt',
             desc: 'Gros coup sur le tank actif. Chaque cumul d’Écrasé augmente le suivant de 50 %. Provocation avec l’autre tank à 2 ou 3 cumuls, et Égide ou Carapace avant un coup chargé.' },
           frontal: { kind: 'frontal', name: 'Frappe circulaire', first: 14, every: 17, cast: 2, dmg: 30000, angle: 35, range: 14, call: 'pos',
             desc: 'Cône devant Vorr, vers son tank. Personne d’autre que les tanks devant lui.' },
-          onde: { kind: 'raidcast', name: 'Onde sismique', first: 18, every: 20, cast: 2, dmg: 12500, call: 'heal',
+          onde: { kind: 'raidcast', name: 'Onde sismique', first: 18, every: 20, cast: 2, dmg: 12500, call: 'heal', m: { dmg: 12000 },
             desc: 'Dégâts sur tout le raid. Garde tout le monde à portée des soigneurs (16 m).' },
-          corrosion: { kind: 'dots', name: 'Corrosion', first: 26, every: 28, count: 2, dps: 3500, dur: 14, call: 'dispel', h: { count: 3 }, m: { count: 4, dur: 10, explode: { r: 6, dmg: 12000 } },
+          corrosion: { kind: 'dots', name: 'Corrosion', first: 26, every: 28, count: 2, dps: 3500, dur: 14, call: 'dispel', h: { count: 3 }, m: { count: 3, dur: 10, explode: { r: 6, dmg: 12000 } },
             desc: 'Effet néfaste qui ronge sa cible tant qu’il n’est pas purgé. Sélectionne la cible puis Purge.' },
           flaque: { kind: 'pool', name: 'Flaque de scories', first: 32, every: 36, r: 4.5, dur: 30, call: 'tank',
             desc: 'Une flaque se forme sous Vorr. Tant qu’il y reste, ses dégâts grimpent de 8 % toutes les 3 s. Déplace son tank à 8-10 m.' },
+          fissures: { kind: 'fissures', name: 'Fissures de magma', first: 12, every: 24, count: 2, width: 2.8, len: 24, arm: 2.8, dur: 1.5, dps: 16000, call: 'move', h: { count: 3, arm: 2.5 }, m: { count: 4, arm: 2.2 },
+            desc: 'Vorr frappe le sol : des fissures filent vers plusieurs persos, puis entrent en éruption. Décale sur le côté ceux qui sont sur une ligne avant l’éruption.' },
         } },
-        { to: 0, name: 'Fureur', dmgMult: 1.25, abilities: {
+        { to: 0, name: 'Effondrement', dmgMult: 1.2, collapse: 13.5, abilities: {
           coup: { inherit: true }, frontal: { inherit: true }, corrosion: { inherit: true }, flaque: { inherit: true },
-          onde: { inherit: true, every: 15 },
+          onde: { inherit: true, every: 17 }, fissures: { inherit: true, first: 8, every: 18 },
         } },
       ],
     },
     {
       id: 'jumelles', name: 'Séla et Néria', title: 'les Jumelles astrales', model: 'twins', hp: 2.3e6, enrage: 330, color: '#ffd76a', twins: true, rad: 2.6,
-      lore: 'Le soleil et la lune de Vael-Kor, liées par un serment que même la mort n’a pas rompu. Leur vie est commune.',
-      focus: 'Un tank par jumelle, loin l’une de l’autre ; interrompre Séla ; ne jamais rester entre elles.',
+      lore: 'Le soleil et la lune de Vael-Kor veillent sur l’Observatoire céleste, liées par un serment que même la mort n’a pas rompu. Leur vie est commune, et leur colère embrase ou gèle tour à tour la moitié du monde.',
+      focus: 'Un tank par jumelle, loin l’une de l’autre ; interrompre Séla ; ne jamais rester entre elles ; changer de côté à chaque Équinoxe.',
       link: { dist: 14, h: { dist: 16 }, m: { dist: 18 } },
       phases: [
         { to: 0.4, name: 'Dualité', abilities: {
           brulure: { kind: 'meleeStack', name: 'Brûlure et Givre', body: -1, every: 6, stack: 'Astre', mult: 0.12, stackDur: 30, call: 'taunt',
             desc: 'Chaque jumelle marque son tank (+12 % de dégâts subis par cumul). Vers 5 cumuls, échange avec deux Provocations.' },
-          eruption: { kind: 'raidcast', name: 'Éruption solaire', body: 0, first: 16, every: 26, cast: 3, dmg: 11000, interruptible: true, call: 'kick', m: { cast: 2.5 },
+          eruption: { kind: 'raidcast', name: 'Éruption solaire', body: 0, first: 16, every: 26, cast: 3, dmg: 11000, interruptible: true, call: 'kick',
             desc: 'Séla incante une explosion sur tout le raid. Interruption.' },
-          pluie: { kind: 'zones', name: 'Pluie d’étoiles', first: 10, every: 22, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
+          pluie: { kind: 'zones', name: 'Pluie d’étoiles', first: 10, every: 22, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 4, arm: 2 },
             desc: 'Des impacts s’arment sous plusieurs persos : sors-les des cercles.' },
           rayon: { kind: 'beam', name: 'Rayon jumeau', first: 24, every: 30, warn: 2.5, dur: 6, dps: 9000, width: 1.4, call: 'pos', h: { dps: 12000 },
             desc: 'Un rayon relie les deux jumelles. Personne entre elles.' },
           maree: { kind: 'raidcast', name: 'Marée lunaire', body: 1, first: 12, every: 22, cast: 2, dmg: 9000, call: 'heal', h: { dmg: 10000 },
             desc: 'Néria inonde le raid de lumière froide. Dégâts de groupe à soigner.' },
+          equinoxe: { kind: 'half', name: 'Équinoxe', first: 30, every: 30, warn: 4.5, dur: 4, dps: 9000, call: 'move', h: { warn: 4, dps: 10000 }, m: { warn: 3, dps: 11000 },
+            desc: 'La moitié de l’Observatoire du côté de Séla s’embrase, ou celle de Néria gèle (les côtés alternent). Fais traverser la ligne du milieu à tout le raid avant la fin du compte à rebours ; les tanks ne craignent rien.' },
         } },
         { to: 0, name: 'Fusion', dmgMult: 1.15, abilities: {
           brulure: { inherit: true }, pluie: { inherit: true },
-          eruption: { inherit: true, every: 20 }, rayon: { inherit: true, every: 24 }, maree: { inherit: true, every: 18 },
+          eruption: { inherit: true, every: 20 }, rayon: { inherit: true, every: 24 }, maree: { inherit: true, every: 18 }, equinoxe: { inherit: true, first: 14, every: 22 },
         } },
       ],
     },
     {
       id: 'nyxar', name: 'Archonte Nyxar', title: 'Gardien du Noyau', model: 'nyxar', hp: 2.2e6, enrage: 360, color: '#c46bff', rad: 3.4,
-      lore: 'Forgé pour garder le cœur stellaire de la Citadelle, l’Archonte obéit désormais au Néant qui ronge son Noyau.',
-      focus: 'Changements de tank, interruptions, écartement des marqués, adds à tuer, soak final.',
+      lore: 'Forgé pour garder le cœur stellaire de la Citadelle, l’Archonte trône dans la Salle du Noyau. Il obéit désormais au Néant qui ronge son cœur, et les machines de la salle tournent leurs rayons contre ceux qui y entrent.',
+      focus: 'Changements de tank, interruptions, écartement des marqués, esquive des Rayons, adds à tuer, soak final.',
       phases: [
         { to: 0.6, name: 'Noyau', abilities: {
           fendoir: { kind: 'buster', name: 'Fendoir gravitique', first: 6, every: 11, cast: 1.5, dmg: 14000, stack: 'Fracture', mult: 1.5, stackDur: 25, call: 'taunt',
             desc: 'Gros coup sur le tank, cumule Fracture (+50 % au suivant). Change de tank à 2-3 cumuls.' },
-          chant: { kind: 'raidcast', name: 'Chant du Néant', first: 18, every: 30, cast: 3.5, dmg: 15000, dot: 1800, dotDur: 6, interruptible: true, call: 'kick', h: { cast: 3, every: 26 }, m: { cast: 2.5, every: 22 },
+          chant: { kind: 'raidcast', name: 'Chant du Néant', first: 18, every: 30, cast: 3.5, dmg: 15000, dot: 1800, dotDur: 6, interruptible: true, call: 'kick', h: { cast: 3, every: 26 }, m: { cast: 2.2, every: 22 },
             desc: 'Incantation interruptible. Sinon : dégâts lourds sur le raid puis un écho qui brûle 6 s.' },
           marques: { kind: 'marks', name: 'Marques néantes', first: 30, every: 38, count: 2, r: 6.5, time: 6, dmg: 17000, call: 'spread', h: { count: 3, every: 34 }, m: { count: 4, every: 32, time: 5 },
             desc: 'Des persos marqués explosent après 6 s et touchent tous les alliés à moins de 6,5 m. Écarte les marqués.' },
+          rayons: { kind: 'sweep', name: 'Rayons du Noyau', first: 22, every: 32, warn: 4, dur: 5, span: 2.1, eye: 3, width: 2.4, dps: 16000, call: 'move', h: { warn: 3.5 }, m: { warn: 3, dur: 4.5, every: 34 },
+            desc: 'Deux secteurs opposés s’allument au sol, puis deux rayons partis du Noyau les balaient. Regroupe le raid dans un des angles restés éteints, ou tout près du centre ; les tanks ne craignent rien.' },
         } },
         { to: 0.3, name: 'Échos', invuln: 5, abilities: {
           echos: { kind: 'adds', type: 'echo', name: 'Échos du Vide', first: 0, every: 55, count: 3, hp: 60000, call: 'focus', h: { count: 4, every: 60 }, m: { count: 4, every: 55 },
             desc: 'Des Échos protègent Nyxar (−50 % de dégâts) et lancent des Éclats. Ordre d’attaque sur eux ; ceux qui survivent explosent en phase 3.' },
           fendoir: { inherit: true, first: 8 },
-          puits: { kind: 'zones', name: 'Puits gravitique', first: 14, every: 30, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
+          puits: { kind: 'zones', name: 'Puits gravitique', first: 14, every: 30, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 4, arm: 2 },
             desc: 'Des puits s’ouvrent sous plusieurs persos et s’arment vite. Sors-les.' },
           chant: { inherit: true, first: 20 },
           marques: { inherit: true, first: 26, every: 30 },
+          rayons: { inherit: true, first: 34, every: 36 },
         } },
         { to: 0, name: 'Effondrement', invuln: 4, aura: 160, ramp: 9, abilities: {
           fendoir: { inherit: true, first: 6 },
@@ -697,8 +813,8 @@ const DATA = (() => {
     },
     {
       id: 'azhal', name: 'Azhal', title: 'le Cœur du Néant', model: 'azhal', hp: 2.25e6, enrage: 390, color: '#7a5cff', rad: 3.6,
-      lore: 'Ce qui dévorait le Noyau depuis trois siècles. Une faim qui a pris forme, et qui a enfin trouvé sa proie.',
-      focus: 'Abattre les orbes, tanker les gardiens, ressortir le raid de la singularité, puis tout à la fois.',
+      lore: 'Ce qui dévorait le Noyau depuis trois siècles. Une faim qui a pris forme au bord de l’Horizon, là où la Citadelle se défait dalle par dalle dans le Néant.',
+      focus: 'Abattre les orbes, tanker les gardiens au Séisme, ressortir le raid de la singularité, puis tenir sur une plateforme qui s’effrite.',
       phases: [
         { to: 0.7, name: 'Éveil', abilities: {
           griffe: { kind: 'buster', name: 'Griffe du Néant', first: 7, every: 11, cast: 1.5, dmg: 15000, stack: 'Lacération', mult: 1.5, stackDur: 24, call: 'taunt',
@@ -713,20 +829,21 @@ const DATA = (() => {
         { to: 0.4, name: 'Singularité', invuln: 4, center: true, shieldWhileAdds: 0.3, abilities: {
           gardiens: { kind: 'adds', type: 'guardian', name: 'Gardiens du Vide', first: 0, every: 999, count: 2, hp: 160000, melee: 1300, call: 'tank', m: { count: 3 },
             desc: 'Des colosses qui frappent un soigneur. Provocation ou Séisme pour les faire tanker. Tant qu’ils vivent, Azhal ne subit que 30 % des dégâts. Leur Fléau s’interrompt.' },
-          singularite: { kind: 'pulse', name: 'Singularité', first: 6, every: 13, h: { every: 12 }, m: { every: 10 }, pull: 4, r: 4.2, dps: 7000, call: 'move',
+          singularite: { kind: 'pulse', name: 'Singularité', first: 6, every: 13, h: { every: 12 }, m: { every: 12 }, pull: 4, r: 4.2, dps: 7000, call: 'move',
             desc: 'Azhal aspire le raid de 4 m vers lui. Le cœur broie : ressors les persos aspirés.' },
-          meteores: { kind: 'zones', name: 'Pluie de météores', first: 12, every: 22, count: 3, r: 3.5, arm: 3, dur: 6, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
+          meteores: { kind: 'zones', name: 'Pluie de météores', first: 12, every: 22, count: 3, r: 3.5, arm: 3, dur: 6, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 4, arm: 2 },
             desc: 'Impacts sous plusieurs persos.' },
           eclipse: { kind: 'eclipse', name: 'Éclipse', first: 20, every: 40, dur: 8, dps: 1200, only: 'hm', call: 'cd',
             desc: 'Soins réduits de moitié pendant 8 s et dégâts continus. Nuée ou Dôme.' },
         } },
-        { to: 0, name: 'Dévoreur', invuln: 4, aura: 150, ramp: 6, abilities: {
+        { to: 0, name: 'Dévoreur', invuln: 4, aura: 150, ramp: 6, m: { ramp: 5 }, abilities: {
           griffe: { inherit: true, first: 6 },
-          convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack',
+          convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack', m: { dmg: 100000 },
             desc: 'Cercle à partager : au moins 4 persos hors tanks, idéalement plus.' },
-          tenebres: { inherit: true, first: 18 },
           hurlement: { inherit: true, first: 24, every: 26 },
           orbes: { inherit: true, first: 30, every: 45, only: 'm' },
+          effritement: { kind: 'holes', name: 'Effritement', first: 8, every: 18, count: 2, arm: 4, dps: 9000, call: 'move', h: { count: 3, arm: 3.5 }, m: { count: 4, arm: 3, every: 24 },
+            desc: 'Les dalles de l’Horizon se fissurent sous plusieurs persos, puis tombent dans le Néant. Sors-les avant la chute : le trou reste jusqu’à la fin du combat, brûle ceux qui le traversent, et l’espace se réduit.' },
         } },
       ],
     },
@@ -736,7 +853,7 @@ const DATA = (() => {
   const DIFFS = {
     normal:   { key: 'normal',   name: 'Normal',   size: 10, hpMult: 0.62, dmgMult: 0.9,  enrageMult: 1.0,  addMult: 0.7,  loot: 3, lootPow: 0.05, hints: true },
     heroique: { key: 'heroique', name: 'Héroïque', size: 10, hpMult: 0.95, dmgMult: 1.1,  enrageMult: 1.35, addMult: 0.95, loot: 4, lootPow: 0.08, hints: false },
-    mythique: { key: 'mythique', name: 'Mythique', size: 10, hpMult: 1.2,  dmgMult: 1.2,  enrageMult: 1.6,  addMult: 1.1,  loot: 5, lootPow: 0.1,  hints: false },
+    mythique: { key: 'mythique', name: 'Mythique', size: 10, hpMult: 1.3,  dmgMult: 1.3,  enrageMult: 1.6,  addMult: 1.1,  loot: 5, lootPow: 0.1,  hints: false },
   };
 
   const LOOT = {
@@ -776,7 +893,7 @@ const DATA = (() => {
     ombre: { cls: 'lame', role: 'dps', range: 'melee' }, duel: { cls: 'lame', role: 'dps', range: 'melee' },
   };
 
-  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, VSPECS };
+  return { CLASSES, CLASS_ORDER, SPELLS, TALENTS, TALENT_TIERS, talentFx, POOL, BOSSES, DIFFS, LOOT, VSPECS };
 })();
 
 
@@ -794,9 +911,16 @@ const GAME = (() => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const fmtT = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   const ARENA = 19.5;
-  const inArena = p => { const d = Math.hypot(p.x, p.z); if (d > ARENA) { p.x *= ARENA / d; p.z *= ARENA / d; } return p; };
+  const inArena = (p, R = ARENA) => { const d = Math.hypot(p.x, p.z); if (d > R) { p.x *= R / d; p.z *= R / d; } return p; };
+  const LAVA_DPS = 14000;   // hors de l'arène effondrée
+  // valeur d'un champ de sort pour un lanceur, talents compris ; recharge idem
+  const spv = (by, id, k) => (SPELLS[id][k] || 0) + (((((by && by.tal) || {}).sp || {})[id] || {})[k] || 0);
+  const spcd = (by, id) => Math.max(1, SPELLS[id].cd + ((((by && by.tal) || {}).cd || {})[id] || 0));
+  // dalles hexagonales de l'Horizon (Azhal) : centres partagés avec le rendu
+  const HEX = 2.6;
+  const HEX_TILES = (() => { const out = []; for (let q = -9; q <= 9; q++) for (let r = -9; r <= 9; r++) { const x = HEX * Math.sqrt(3) * (q + r / 2), z = HEX * 1.5 * r; if (Math.hypot(x, z) <= 20.6) out.push({ x, z }); } return out; })();
   const HEAL_RANGE = 16, RANGED_RANGE = 36, SPEED = 6.5, LEASH = 10;
-  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt' };
+  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move', half: 'move', sweep: 'move', holes: 'move' };
 
   // ---------- résolution d'un boss pour une difficulté ----------
   function resolveBoss(B, dk) {
@@ -814,7 +938,10 @@ const GAME = (() => {
         delete fin.h; delete fin.m; delete fin.only;
         abilities[id] = fin;
       }
-      return Object.assign({}, ph, { abilities });
+      // une phase peut aussi avoir ses surcharges h / m (ex. montée de l'aura)
+      const fin = Object.assign({}, ph, (sfx && ph[sfx]) || {}, { abilities });
+      delete fin.h; delete fin.m;
+      return fin;
     });
     let link = null;
     if (B.link) link = Object.assign({}, B.link, (sfx && B.link[sfx]) || {});
@@ -831,9 +958,10 @@ const GAME = (() => {
     const defs = opts.raid.slice().sort((a, b) => roleOrder[CLASSES[a.cls].role] - roleOrder[CLASSES[b.cls].role] || CLASS_ORDER.indexOf(a.cls) - CLASS_ORDER.indexOf(b.cls));
     const raiders = defs.map((d, i) => {
       const C = CLASSES[d.cls];
-      const maxHp = Math.round(C.hp * (d.pow || 1));
+      const tal = d.tal || null;
+      const maxHp = Math.round(C.hp * (d.pow || 1) * (tal ? tal.hp || 1 : 1));
       return {
-        i, id: d.id, name: d.name, cls: d.cls, role: C.role, range: C.range, pow: d.pow || 1, maxHp, hp: maxHp, alive: true,
+        i, id: d.id, name: d.name, cls: d.cls, role: C.role, range: C.range, pow: d.pow || 1, tal, maxHp, hp: maxHp, alive: true,
         vcls: C.look.style, vspec: C.look.spec, isMe: false,
         pos: { x: 0, z: 9 }, anchor: { x: 0, z: 9 }, orders: [], focus: null, moving: false, inReach: false,
         healMode: 'raid', healFix: -1, healTarget: -1, atkTarget: 'boss',
@@ -852,6 +980,7 @@ const GAME = (() => {
     const S = {
       D, B, rng, t: 0, started: false, phase: 0, phaseStart: 0, over: false, result: null, endT: 0, size: raiders.length,
       hp: B.hp * D.hpMult, maxHp: B.hp * D.hpMult, invulnUntil: 0, enrage: Math.round(B.enrage * D.enrageMult),
+      arenaR: ARENA, lavaAt: 0,   // rayon jouable (l'Effondrement le réduit) ; la lave brûle au-delà à partir de lavaAt
       bodies, raiders, me: -1,
       adds: [], zones: [], pending: [], turrets: [], domes: [],
       timers: {}, buffs: { criUntil: 0, eclipseUntil: 0, chantDotUntil: 0, chantDot: 0 },
@@ -923,6 +1052,14 @@ const GAME = (() => {
       alert(S, 'PHASE ' + (p + 1) + ' — ' + ph.name.toUpperCase(), 'phase');
     }
     S.bodies[0].centerMove = !!ph.center;
+    if (ph.collapse) {
+      // le bord de l'arène s'écroule : quelques secondes pour rentrer, puis la lave brûle au-delà
+      const delay = ph.collapseDelay || 4;
+      S.arenaR = ph.collapse; S.lavaAt = S.t + delay;
+      S.events.push({ type: 'collapse', r: ph.collapse, delay });
+      alert(S, 'EFFONDREMENT — ramène tout le monde à moins de ' + String(ph.collapse).replace('.', ',') + ' m du centre', 'danger', 'move');
+      log(S, 'Le bord de l’arène s’effondre dans la lave.', 'bad');
+    }
     if (p > 0) {
       const echoes = S.adds.filter(a => a.alive && a.type === 'echo');
       if (echoes.length) {
@@ -982,7 +1119,7 @@ const GAME = (() => {
     if (ex) { ex.until = S.t + dur; ex.hps = Math.max(ex.hps, hps); ex.src = src.i; return; }
     t.hots.push({ src: src.i, hps, until: S.t + dur, kind });
   }
-  function dmgMultRaid(S) { return S.t < S.buffs.criUntil ? SPELLS.cri.mult : 1; }
+  function dmgMultRaid(S) { return S.t < S.buffs.criUntil ? (S.buffs.criMult || SPELLS.cri.mult) : 1; }
 
   // ---------- capacités du boss ----------
   function bodyFor(S, a) { return S.bodies[a.body > 0 ? a.body : 0] || S.bodies[0]; }
@@ -1043,7 +1180,10 @@ const GAME = (() => {
         const b = mainBody(S); const tk = S.raiders[b.target];
         let dx = 0, dz = 1;
         if (tk) { dx = b.pos.x - tk.pos.x; dz = b.pos.z - tk.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d; }
-        const c = inArena({ x: b.pos.x + dx * 7, z: b.pos.z + dz * 7 });
+        let c = inArena({ x: b.pos.x + dx * 7, z: b.pos.z + dz * 7 });
+        // jamais sur un trou de l'Horizon : on tourne autour du boss jusqu'à trouver un sol intact
+        const holed = p => S.zones.some(q => q.type === 'hole' && dist(p, q) < q.r + a.r);
+        for (let k = 1; k < 12 && holed(c); k++) { const an = Math.atan2(dx, dz) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.45; c = inArena({ x: b.pos.x + Math.sin(an) * 7, z: b.pos.z + Math.cos(an) * 7 }); }
         const z = { type: 'soak', id: 's' + Math.floor(S.t * 100), x: c.x, z: c.z, r: a.r, born: S.t, at: S.t + a.time, abId: id, dmg: a.dmg, need: a.need || 4 };
         S.zones.push(z);
         S.pending.push({ at: z.at, fn: () => resolveSoak(S, z, id) });
@@ -1074,6 +1214,46 @@ const GAME = (() => {
         alert(S, 'SINGULARITÉ — ressors les persos aspirés', 'warn', 'move');
         break;
       }
+      case 'fissures': {
+        // des lignes partent du boss vers plusieurs persos, puis entrent en éruption
+        const b = mainBody(S), ts = pick(aliveNT, a.count), r0 = bodyRad(S), len = a.len || 24;
+        for (const r of ts) {
+          let dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+          S.zones.push({ type: 'fissure', id: 'f' + Math.floor(S.t * 100) + '_' + r.i, x: b.pos.x + dx * r0, z: b.pos.z + dz * r0, x2: b.pos.x + dx * (r0 + len), z2: b.pos.z + dz * (r0 + len), w: a.width, r: 0, born: S.t, armAt: S.t + a.arm, endAt: S.t + a.arm + a.dur, dps: a.dps, abId: id });
+        }
+        S.events.push({ type: 'fissures', body: 0, arm: a.arm });
+        alert(S, a.name.toUpperCase() + ' — sors des lignes', 'warn', 'move');
+        break;
+      }
+      case 'half': {
+        // une moitié de l'arène s'embrase (Séla, x < 0) ou gèle (Néria, x > 0) ; les côtés alternent
+        const side = S.halfNext || (S.rng() < 0.5 ? -1 : 1); S.halfNext = -side;
+        S.zones.push({ type: 'half', id: 'h' + Math.floor(S.t * 100), side, x: 0, z: 0, r: 0, born: S.t, armAt: S.t + a.warn, endAt: S.t + a.warn + a.dur, dps: a.dps, abId: id });
+        S.events.push({ type: 'half', side, warn: a.warn, dur: a.dur, body: side < 0 ? 0 : 1 });
+        alert(S, a.name.toUpperCase() + ' — ' + (side < 0 ? 'le côté de Séla s’embrase' : 'le côté de Néria gèle') + ' : change de côté', 'warn', 'move');
+        break;
+      }
+      case 'sweep': {
+        const a0 = S.rng() * Math.PI * 2, dir = S.rng() < 0.5 ? -1 : 1;
+        S.zones.push({ type: 'sweep', id: 'sw' + Math.floor(S.t * 100), x: 0, z: 0, r: 0, a0, dir, span: a.span, eye: a.eye, w: a.width, born: S.t, armAt: S.t + a.warn, endAt: S.t + a.warn + a.dur, dps: a.dps, abId: id });
+        S.events.push({ type: 'sweep', warn: a.warn, dur: a.dur });
+        alert(S, a.name.toUpperCase() + ' — sors des secteurs allumés', 'warn', 'move');
+        break;
+      }
+      case 'holes': {
+        // des dalles se fissurent sous des persos, puis tombent : le trou reste jusqu'à la fin du combat
+        const ts = pick(aliveNT, a.count), used = new Set(S.zones.filter(q => q.type === 'hole').map(q => q.tile));
+        for (const r of ts) {
+          let best = -1, bd = 1e9;
+          HEX_TILES.forEach((h, k) => { if (used.has(k) || Math.hypot(h.x, h.z) < 4.5) return; const d = Math.hypot(h.x - r.pos.x, h.z - r.pos.z); if (d < bd) { bd = d; best = k; } });
+          if (best < 0) continue; used.add(best);
+          const h = HEX_TILES[best];
+          S.zones.push({ type: 'hole', id: 'ho' + best, tile: best, x: h.x, z: h.z, r: HEX * 0.92, born: S.t, armAt: S.t + a.arm, endAt: 1e9, dps: a.dps, abId: id });
+        }
+        S.events.push({ type: 'holes' });
+        alert(S, a.name.toUpperCase() + ' — sors-les des dalles qui se fissurent', 'warn', 'move');
+        break;
+      }
       case 'eclipse': {
         S.buffs.eclipseUntil = S.t + a.dur; S.buffs.eclipseDps = a.dps;
         S.events.push({ type: 'eclipse' });
@@ -1081,6 +1261,22 @@ const GAME = (() => {
         break;
       }
     }
+  }
+  // Rayons du Noyau : deux rayons opposés partent du centre et balaient chacun un secteur
+  const wrapA = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
+  function sweepAngle(z, t) { const k = clamp((t - z.armAt) / (z.endAt - z.armAt), 0, 1); return z.a0 + z.dir * z.span * k; }
+  // dans un des deux secteurs balayés (hors de l'œil central)
+  function inSweepSector(z, p, margin) {
+    if (Math.hypot(p.x, p.z) < z.eye - (margin || 0)) return false;
+    const th = Math.atan2(p.z, p.x), m = (margin || 0) / Math.max(3, Math.hypot(p.x, p.z));
+    for (const off of [0, Math.PI]) { const rel = wrapA(th - z.a0 - off) * z.dir; if (rel > -m && rel < z.span + m) return true; }
+    return false;
+  }
+  function onBeam(z, p, t) {
+    const d = Math.hypot(p.x, p.z); if (d < z.eye) return false;
+    const th = Math.atan2(p.z, p.x), b = sweepAngle(z, t);
+    for (const off of [0, Math.PI]) { const dl = wrapA(th - b - off); if (Math.abs(dl) < Math.PI / 2 && d * Math.abs(Math.sin(dl)) < z.w / 2) return true; }
+    return false;
   }
   function inCone(b, facing, p, a) {
     const dx = p.x - b.pos.x, dz = p.z - b.pos.z, d = Math.hypot(dx, dz);
@@ -1159,6 +1355,7 @@ const GAME = (() => {
         const k = maxR > 4 ? 4 / maxR : 1;
         rs.forEach((r, j) => assign.set(r, inArena({ x: cmd.x + (pts[j].x - cx) * k, z: cmd.z + (pts[j].z - cz) * k })));
       }
+      for (const [r, s] of assign) inArena(s, S.arenaR - 0.4);
       for (const [r, s] of assign) {
         if (!S.started) { r.pos = { x: s.x, z: s.z }; r.anchor = { x: s.x, z: s.z }; r.orders = []; continue; }
         if (cmd.queue) r.orders.push({ x: s.x, z: s.z }); else { r.orders = [{ x: s.x, z: s.z }]; r.focus = null; }
@@ -1231,7 +1428,7 @@ const GAME = (() => {
     const selAlive = sel.filter(r => r.alive);
     let by = null, tgtR = null, E = null, gp = null;
     const done = (extra) => {
-      by.cds[id] = S.t + sp.cd;
+      by.cds[id] = S.t + spcd(by, id);
       S.spellUse[id] = (S.spellUse[id] || 0) + 1;
       S.events.push(Object.assign({ type: 'spell', id, by: by.i, target: tgtR ? tgtR.i : -1, x: gp ? gp.x : E ? E.pos.x : tgtR ? tgtR.pos.x : by.pos.x, z: gp ? gp.z : E ? E.pos.z : tgtR ? tgtR.pos.z : by.pos.z }, extra || {}));
       return MSG(true, by.name + ' : ' + sp.name + (tgtR && tgtR !== by ? ' → ' + tgtR.name : E ? ' → ' + E.name : ''));
@@ -1269,26 +1466,26 @@ const GAME = (() => {
       }
       case 'egide': case 'carapace': {
         by = ready.find(r => sel.includes(r)) || ready.find(r => isTanking(S, r)) || ready[0];
-        by.mit.push({ until: S.t + sp.dur, dr: sp.dr, src: id });
+        by.mit.push({ until: S.t + spv(by, id, 'dur'), dr: Math.min(0.9, spv(by, id, 'dr')), src: id });
         tgtR = by;
-        return done({ dur: sp.dur });
+        return done({ dur: spv(by, id, 'dur') });
       }
       case 'seisme': {
-        const withAdds = ready.map(r => ({ r, n: S.adds.filter(a => a.alive && a.type !== 'orb' && dist(a.pos, r.pos) <= sp.r).length + S.adds.filter(a => a.alive && a.type === 'orb' && dist(a.pos, r.pos) <= sp.r).length }));
+        const withAdds = ready.map(r => ({ r, n: S.adds.filter(a => a.alive && dist(a.pos, r.pos) <= spv(r, id, 'r')).length }));
         const pickR = withAdds.find(x => sel.includes(x.r) && x.n) || withAdds.sort((a, b) => b.n - a.n)[0];
         if (!pickR.n) return MSG(false, 'Aucun add à 9 m d’un Titan');
         by = pickR.r;
-        for (const a of S.adds) if (a.alive && dist(a.pos, by.pos) <= sp.r) {
-          a.stunUntil = S.t + sp.stun; if (a.cast) { if (a.cast.interruptible) M(S, a.cast.id).ok++; a.cast = null; }
+        for (const a of S.adds) if (a.alive && dist(a.pos, by.pos) <= spv(by, id, 'r')) {
+          a.stunUntil = S.t + spv(by, id, 'stun'); if (a.cast) { if (a.cast.interruptible) M(S, a.cast.id).ok++; a.cast = null; }
           if (a.type === 'guardian') { a.target = by.i; a.tanked = true; }
           dealAdd(S, by, a, sp.dmg * by.pow);
         }
-        return done({ r: sp.r });
+        return done({ r: spv(by, id, 'r') });
       }
       case 'nuee': {
         by = ready[0];
-        for (const r of S.raiders) if (r.alive) addHot(S, by, r, r.maxHp * sp.pct, sp.dur, 'nuee');
-        return done({ dur: sp.dur });
+        for (const r of S.raiders) if (r.alive) addHot(S, by, r, r.maxHp * spv(by, id, 'pct'), spv(by, id, 'dur'), 'nuee');
+        return done({ dur: spv(by, id, 'dur') });
       }
       case 'purge': {
         const has = r => r.alive && r.debuffs.some(d => d.dispel);
@@ -1305,7 +1502,7 @@ const GAME = (() => {
         if (!tgtR || !tgtR.alive) tgtR = alive(S).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
         if (!tgtR) return MSG(false, '');
         by = near(ready, tgtR.pos);
-        tgtR.absorb = Math.max(tgtR.absorb > 0 && S.t < tgtR.absorbUntil ? tgtR.absorb : 0, tgtR.maxHp * sp.absorb * by.pow); tgtR.absorbUntil = S.t + sp.dur; tgtR.absorbSrc = by.i;
+        tgtR.absorb = Math.max(tgtR.absorb > 0 && S.t < tgtR.absorbUntil ? tgtR.absorb : 0, tgtR.maxHp * spv(by, id, 'absorb') * by.pow); tgtR.absorbUntil = S.t + spv(by, id, 'dur'); tgtR.absorbSrc = by.i;
         return done();
       }
       case 'rez': {
@@ -1314,7 +1511,7 @@ const GAME = (() => {
         tgtR = dead[0] || S.raiders.filter(r => !r.alive).sort((a, b) => order[a.role] - order[b.role] || b.stats.deaths - a.stats.deaths)[0];
         if (!tgtR) return MSG(false, 'Personne à relever');
         by = near(ready, tgtR.pos);
-        tgtR.alive = true; tgtR.hp = tgtR.maxHp * sp.hp; tgtR.anchor = { x: tgtR.pos.x, z: tgtR.pos.z }; tgtR.orders = []; tgtR.focus = null;
+        tgtR.alive = true; tgtR.hp = tgtR.maxHp * Math.min(1, spv(by, id, 'hp')); tgtR.anchor = { x: tgtR.pos.x, z: tgtR.pos.z }; tgtR.orders = []; tgtR.focus = null;
         S.events.push({ type: 'rez', i: tgtR.i });
         log(S, tgtR.name + ' est relevé par ' + by.name + '.', 'good');
         return done();
@@ -1323,8 +1520,8 @@ const GAME = (() => {
         if (!ctx.ground) return MSG(false, 'Touche le sol pour placer ' + sp.name, 'ground');
         gp = inArena({ x: ctx.ground.x, z: ctx.ground.z });
         by = near(ready, gp);
-        for (const r of S.raiders) if (r.alive && dist(r.pos, gp) <= sp.r) { heal(S, by, r, r.maxHp * sp.pct * by.pow * healMult(S)); addHot(S, by, r, r.maxHp * sp.hot * by.pow, sp.dur, 'vague'); }
-        return done({ r: sp.r });
+        for (const r of S.raiders) if (r.alive && dist(r.pos, gp) <= spv(by, id, 'r')) { heal(S, by, r, r.maxHp * spv(by, id, 'pct') * by.pow * healMult(S)); addHot(S, by, r, r.maxHp * sp.hot * by.pow, sp.dur, 'vague'); }
+        return done({ r: spv(by, id, 'r') });
       }
       case 'pas': {
         E = enemyRef(S, ctx.enemy) || enemyRef(S, { kind: 'body', k: S.bodies.indexOf(nearestBody(S, raidCenter(S))) });
@@ -1333,38 +1530,38 @@ const GAME = (() => {
         let dx = by.pos.x - E.pos.x, dz = by.pos.z - E.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
         const to = inArena({ x: E.pos.x + dx * (E.rad + 1.2), z: E.pos.z + dz * (E.rad + 1.2) });
         by.pos = { x: to.x, z: to.z }; by.anchor = { x: to.x, z: to.z }; by.orders = [];
-        if (E.add) { by.focus = { kind: 'add', id: E.add.id }; dealAdd(S, by, E.add, sp.dmg * by.pow * dmgMultRaid(S)); }
-        else bossDamage(S, by, sp.dmg * by.pow * dmgMultRaid(S));
+        if (E.add) { by.focus = { kind: 'add', id: E.add.id }; dealAdd(S, by, E.add, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S)); }
+        else bossDamage(S, by, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S));
         return done({ fx: from.x, fz: from.z });
       }
       case 'tir': {
         E = enemyRef(S, ctx.enemy) || enemyRef(S, { kind: 'body', k: 0 });
         by = near(ready, E.pos);
-        if (E.add) dealAdd(S, by, E.add, sp.dmg * by.pow * dmgMultRaid(S)); else bossDamage(S, by, sp.dmg * by.pow * dmgMultRaid(S));
+        if (E.add) dealAdd(S, by, E.add, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S)); else bossDamage(S, by, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S));
         return done();
       }
       case 'tourbillon': {
         const enemyP = enemyRef(S, ctx.enemy);
         by = ready.find(r => sel.includes(r)) || near(ready, enemyP ? enemyP.pos : nearestBody(S, raidCenter(S)).pos);
-        by.whirlUntil = S.t + sp.dur;
+        by.whirlUntil = S.t + spv(by, id, 'dur');
         tgtR = by;
-        return done({ dur: sp.dur, r: sp.r });
+        return done({ dur: spv(by, id, 'dur'), r: spv(by, id, 'r') });
       }
-      case 'cri': { by = ready[0]; S.buffs.criUntil = S.t + sp.dur; log(S, by.name + ' pousse un Cri de guerre.', 'cd'); return done({ dur: sp.dur }); }
+      case 'cri': { by = ready[0]; S.buffs.criUntil = S.t + spv(by, id, 'dur'); S.buffs.criMult = spv(by, id, 'mult'); log(S, by.name + ' pousse un Cri de guerre.', 'cd'); return done({ dur: spv(by, id, 'dur') }); }
       case 'tourelle': {
         if (!ctx.ground) return MSG(false, 'Touche le sol pour poser la Tourelle', 'ground');
         gp = inArena({ x: ctx.ground.x, z: ctx.ground.z });
         by = near(ready, gp);
-        const tu = { id: 'tu' + Math.floor(S.t * 100), x: gp.x, z: gp.z, until: S.t + sp.dur, by: by.i, pow: by.pow, shotT: 0 };
+        const tu = { id: 'tu' + Math.floor(S.t * 100), x: gp.x, z: gp.z, until: S.t + spv(by, id, 'dur'), by: by.i, pow: by.pow, dps: spv(by, id, 'dps'), shotT: 0 };
         S.turrets.push(tu);
-        return done({ tid: tu.id, dur: sp.dur });
+        return done({ tid: tu.id, dur: spv(by, id, 'dur') });
       }
       case 'dome': {
         if (!ctx.ground) return MSG(false, 'Touche le sol pour poser le Dôme', 'ground');
         gp = inArena({ x: ctx.ground.x, z: ctx.ground.z });
         by = near(ready, gp);
-        S.domes.push({ x: gp.x, z: gp.z, r: sp.r, dr: sp.dr, until: S.t + sp.dur });
-        return done({ r: sp.r, dur: sp.dur });
+        S.domes.push({ x: gp.x, z: gp.z, r: spv(by, id, 'r'), dr: Math.min(0.9, spv(by, id, 'dr')), until: S.t + spv(by, id, 'dur') });
+        return done({ r: spv(by, id, 'r'), dur: spv(by, id, 'dur') });
       }
     }
     return MSG(false, '');
@@ -1395,8 +1592,12 @@ const GAME = (() => {
       if ((z.type === 'puits' || z.type === 'core') && dist(p, z) < z.r + 0.6) return true;
       if (z.type === 'pool' && r.role !== 'tank' && dist(p, z) < z.r + 0.6) return true;
       if (z.type === 'beam' && r.role !== 'tank' && S.bodies.length > 1 && segDist(p, S.bodies[0].pos, S.bodies[1].pos) < z.width + 0.8) return true;
+      if (z.type === 'fissure' && r.role !== 'tank' && segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 0.6) return true;
+      if (z.type === 'half' && r.role !== 'tank' && p.x * z.side > -0.8) return true;
+      if (z.type === 'sweep' && r.role !== 'tank' && inSweepSector(z, p, 0.8)) return true;
+      if (z.type === 'hole' && dist(p, z) < z.r + 0.6) return true;
     }
-    return false;
+    return S.lavaAt > 0 && Math.hypot(p.x, p.z) > S.arenaR;
   }
   // cible de combat d'un perso
   function combatTarget(S, r) {
@@ -1415,7 +1616,8 @@ const GAME = (() => {
   }
 
   // ---------- boucle ----------
-  function moveToward(p, q, step) { const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); if (d < 1e-3) return 0; const k = Math.min(1, step / d); p.x += dx * k; p.z += dz * k; inArena(p); return d * k; }
+  // R : rayon jouable ; un perso déjà au-delà (arène effondrée) peut rentrer mais pas s'éloigner davantage
+  function moveToward(p, q, step, R) { const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); if (d < 1e-3) return 0; const d0 = Math.hypot(p.x, p.z); const k = Math.min(1, step / d); p.x += dx * k; p.z += dz * k; inArena(p, R ? Math.min(ARENA, Math.max(R, d0)) : ARENA); return d * k; }
   function step(S, dt) {
     if (S.over || !S.started) return;
     const D = S.D;
@@ -1461,7 +1663,7 @@ const GAME = (() => {
     }
     // expirations
     for (const r of S.raiders) { for (const k in r.stacks) if (t > r.stacks[k].exp) delete r.stacks[k]; if (r.mit.length) r.mit = r.mit.filter(m => t < m.until); }
-    S.zones = S.zones.filter(z => !((z.type === 'puits' || z.type === 'pool' || z.type === 'beam') && t >= z.endAt));
+    S.zones = S.zones.filter(z => !((z.type === 'puits' || z.type === 'pool' || z.type === 'beam' || z.type === 'fissure' || z.type === 'half' || z.type === 'sweep') && t >= z.endAt));
     if (!S.B.phases[S.phase].abilities.singularite) S.zones = S.zones.filter(z => z.type !== 'core');
     S.domes = S.domes.filter(d => t < d.until);
     for (const tu of S.turrets) if (t >= tu.until && !tu.gone) { tu.gone = true; S.events.push({ type: 'turretEnd', id: tu.id }); }
@@ -1540,7 +1742,7 @@ const GAME = (() => {
           else desired = danger(S, r.anchor, r) ? null : r.anchor;
         }
       } else if (!desired) desired = r.anchor;
-      if (desired && dist(r.pos, desired) > 0.08) { const mv = moveToward(r.pos, desired, SPEED * dt); r.moving = mv > 0.0005; r.stats.moved += mv; }
+      if (desired && dist(r.pos, desired) > 0.08) { const mv = moveToward(r.pos, desired, SPEED * dt, S.arenaR); r.moving = mv > 0.0005; r.stats.moved += mv; }
       else r.moving = false;
       if (r.role !== 'heal') r.healTarget = -1;
     }
@@ -1551,15 +1753,15 @@ const GAME = (() => {
       if (!r.alive) continue;
       const C = CLASSES[r.cls];
       const E = combatTarget(S, r); if (!E) continue;
-      let m = C.dps * r.pow * raidMult;
+      let m = C.dps * r.pow * raidMult * (r.tal ? r.tal.dps || 1 : 1);
       if (r.moving) m *= r.range === 'melee' ? 0.8 : 0.5;
       if (!r.inReach) m = 0;
       const amount = m * dt;
       if (amount > 0) { if (E.add) dealAdd(S, r, E.add, amount); else bossDamage(S, r, amount); }
       if (t < r.whirlUntil) {
-        const w = SPELLS.tourbillon, wd = w.dps * r.pow * raidMult * dt;
-        for (const a of S.adds) if (a.alive && dist(a.pos, r.pos) <= w.r + a.rad) dealAdd(S, r, a, wd);
-        for (const b of S.bodies) if (dist(b.pos, r.pos) <= w.r + rad) { bossDamage(S, r, wd); break; }
+        const w = SPELLS.tourbillon, wd = w.dps * r.pow * raidMult * dt, wr = spv(r, 'tourbillon', 'r');
+        for (const a of S.adds) if (a.alive && dist(a.pos, r.pos) <= wr + a.rad) dealAdd(S, r, a, wd);
+        for (const b of S.bodies) if (dist(b.pos, r.pos) <= wr + rad) { bossDamage(S, r, wd); break; }
       }
     }
     // tourelles
@@ -1568,7 +1770,7 @@ const GAME = (() => {
       let tgt = pool.length ? near(pool, tp) : null, body = null;
       if (!tgt) { const b = nearestBody(S, tp); if (dist(b.pos, tp) <= SPELLS.tourelle.range + rad) body = b; }
       const src = S.raiders[tu.by] || S.raiders[0];
-      const amount = SPELLS.tourelle.dps * tu.pow * raidMult * dt;
+      const amount = (tu.dps || SPELLS.tourelle.dps) * tu.pow * raidMult * dt;
       if (tgt) dealAdd(S, src, tgt, amount); else if (body) bossDamage(S, src, amount);
       tu.shotT -= dt;
       if (tu.shotT <= 0 && (tgt || body)) { tu.shotT = 0.45; const p = tgt ? tgt.pos : body.pos; S.events.push({ type: 'turretShot', id: tu.id, x: tu.x, z: tu.z, tx: p.x, tz: p.z, add: !!tgt }); }
@@ -1601,7 +1803,12 @@ const GAME = (() => {
         }
         if (z.type === 'pool' && r.role !== 'tank' && dist(r.pos, z) < z.r) dmg(S, r, 3000 * dt, 'Flaque de scories', { avoidable: true, mech: true });
         if (z.type === 'beam' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, S.bodies[0].pos, S.bodies[1].pos) < z.width) { const a = dmg(S, r, z.dps * dt, 'Rayon jumeau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'hole' && t >= z.armAt && dist(r.pos, z) < z.r) { const a = dmg(S, r, z.dps * dt, 'Chute dans le Néant', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'sweep' && t >= z.armAt && r.role !== 'tank' && onBeam(z, r.pos, t)) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Rayons du Noyau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'half' && t >= z.armAt && r.role !== 'tank' && r.pos.x * z.side > -0.3) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Équinoxe', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'fissure' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, z, { x: z.x2, z: z.z2 }) < z.w / 2) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Fissure de magma', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
       }
+      if (S.lavaAt && t >= S.lavaAt && Math.hypot(r.pos.x, r.pos.z) > S.arenaR + 0.3) { const a = dmg(S, r, LAVA_DPS * dt, 'Lave', { avoidable: true, mech: true }); M(S, 'lave').dmg += a; M(S, 'lave').hits += dt; }
       for (let k = r.debuffs.length - 1; k >= 0; k--) {
         const db = r.debuffs[k];
         if (t >= db.until) {
@@ -1628,7 +1835,7 @@ const GAME = (() => {
     for (const r of al) if (!healers.some(h => dist(h.pos, r.pos) <= HEAL_RANGE)) r.stats.oor += dt;
     for (const h of healers) {
       const C = CLASSES[h.cls];
-      const budget = C.hps * h.pow * hm * dt * (h.moving ? 0.75 : 1);
+      const budget = C.hps * h.pow * (h.tal ? h.tal.hps || 1 : 1) * hm * dt * (h.moving ? 0.75 : 1);
       const inR = al.filter(x => dist(x.pos, h.pos) <= HEAL_RANGE && x.hp < x.maxHp);
       if (!inR.length) { h.healTarget = -1; continue; }
       const byPct = inR.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
@@ -1715,6 +1922,10 @@ const GAME = (() => {
         case 'pool': if ((m.hits || 0) >= 4) push(3, 'Boss laissé dans la Flaque', 'Vorr a pris ' + m.hits + ' cumuls de puissance. Déplace son tank à 8-10 m dès qu’elle apparaît.'); break;
         case 'zones': if (m.dmg > 60000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 150000)), 'Trop de temps dans ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Les persos ne bougent pas seuls : sélectionne-les et sors-les du cercle avant qu’il s’arme.'); break;
         case 'beam': if ((m.hits || 0) > 2) push(3, 'Persos pris dans le Rayon', 'Le rayon a frappé pendant ' + Math.round(m.hits) + ' s cumulées. Personne entre les Jumelles.'); break;
+        case 'holes': if (m.dmg > 40000 * S.D.dmgMult) push(3 + Math.min(3, Math.floor(m.dmg / 100000)), 'Persos tombés dans le Néant', Math.round(m.dmg / 1000) + 'k de dégâts subis. Une dalle qui se fissure tombe 3 s plus tard : sors le perso dès l’alerte, et ne repasse jamais sur un trou.'); break;
+        case 'sweep': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos balayés par les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les secteurs s’allument, regroupe le raid dans un angle éteint ou tout près du centre.'); break;
+        case 'half': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos du mauvais côté', Math.round(m.dmg / 1000) + 'k de dégâts subis pendant l’' + a.name + '. Dès l’alerte, sélectionne tout le monde et fais traverser la ligne du milieu.'); break;
+        case 'fissures': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos dans les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les lignes apparaissent, sélectionne les persos dessus et décale-les sur le côté.'); break;
         case 'marks': if (m.hits >= 2) push(3 + Math.min(3, Math.floor(m.hits / 3)), a.name + ' mal gérées', m.hits + ' alliés touchés par une explosion. Sors chaque marqué à plus de 6,5 m des autres.'); break;
         case 'soak': if (m.fails) push(3 + m.fails, a.name + ' mal partagée', 'Persos dans le cercle : ' + m.extra.join(', ') + '. Il en faut au moins ' + (a.need || 4) + ', hors tanks.'); break;
         case 'adds':
@@ -1725,6 +1936,7 @@ const GAME = (() => {
     }
     const g = S.mech.gardiens; if (g && (g.loose || 0) > 6) push(4, 'Gardien non tanké', 'Un Gardien a frappé des non-tanks pendant ' + Math.round(g.loose) + ' s. Provocation sur le Gardien, ou Séisme avec un Titan à côté.');
     const fl = S.mech.fleau; if (fl && fl.fails) push(2 + fl.fails, 'Fléau non interrompu', fl.fails + ' Fléau(x) sont passés.');
+    const lv = S.mech.lave; if (lv && lv.hits > 2) push(4, 'Persos restés dans la lave', 'La lave a brûlé pendant ' + Math.round(lv.hits) + ' s cumulées. À l’Effondrement, ramène tout le monde vers le centre, placement compris.');
     const st = S.mech.stacks; if (st && st.max >= 4 && !S.B.twins) push(3 + st.max - 3, 'Cumuls trop hauts sur un tank', 'Le tank a atteint ' + st.max + ' cumuls. Provocation avec l’autre tank à 2-3 cumuls.');
     if (S.B.twins && st && st.max >= 8) push(3, 'Jumelles pas assez échangées', 'Un tank a atteint ' + st.max + ' cumuls d’Astre. Échange vers 5 avec deux Provocations.');
     if (S.mech.lien && S.mech.lien.dmg > 6) push(4, 'Jumelles trop proches', 'Le Lien stellaire est resté actif ' + Math.round(S.mech.lien.dmg) + ' s. Garde les deux tanks à plus de ' + S.B.link.dist + ' m l’un de l’autre.');
@@ -1768,7 +1980,7 @@ const GAME = (() => {
     });
   }
 
-  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, HEAL_RANGE, resolveBoss, createFight, defaultPlacement, pull, step, order, setHealMode, cast, spellBar, barIds, timersView, analyze, rollLoot, lootFits, fmtT, mulberry32, segDist, dist, enemyRef, isTanking, interruptibles };
+  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, HEAL_RANGE, HEX, HEX_TILES, sweepAngle, inSweepSector, resolveBoss, createFight, defaultPlacement, pull, step, order, setHealMode, cast, spellBar, barIds, timersView, analyze, rollLoot, lootFits, fmtT, mulberry32, segDist, dist, enemyRef, isTanking, interruptibles };
 })();
 
 
@@ -1831,7 +2043,7 @@ var R3 = window.THREE ? (() => {
     const m = new T.MeshStandardMaterial({
       color: new T.Color(o.color || '#ffffff').convertSRGBToLinear(), metalness: o.metal ?? 0.9, roughness: o.rough ?? 0.4,
       emissive: new T.Color(o.emis || '#000000').convertSRGBToLinear(), emissiveIntensity: o.emisI || 0, envMapIntensity: o.env ?? 1, skinning: !!o.skinning,
-      side: o.side || T.FrontSide, transparent: !!o.transparent, opacity: o.opacity ?? 1,
+      side: o.side || T.FrontSide, transparent: !!o.transparent, opacity: o.opacity ?? 1, flatShading: !!o.flat,
     });
     m.extensions = { derivatives: true };
     const u = {
@@ -1955,7 +2167,7 @@ var R3 = window.THREE ? (() => {
       (A.tex[set] ||= {})[kind] = t; tick(); res();
     }, undefined, () => rej(new Error(file)))));
     const gl = T.GLTFLoader ? new T.GLTFLoader() : null;
-    const pGlb = (file, key) => new Promise((res, rej) => { if (!gl) return rej(new Error('GLTFLoader')); gl.load(ASSET_BASE + file, g => { if (key === 'trooper') g.animations.forEach(c => { c.tracks = c.tracks.filter(t => !/\.scale$/.test(t.name)); }); A[key] = g; tick(); res(); }, undefined, () => rej(new Error(file))); });
+    const pGlb = (file, key) => new Promise((res, rej) => { if (!gl) return rej(new Error('GLTFLoader')); gl.load(ASSET_BASE + file, g => { g.animations.forEach(c => { c.tracks = c.tracks.filter(t => !/\.scale$/.test(t.name)); }); A[key] = g; tick(); res(); }, undefined, () => rej(new Error(file))); });
     return Promise.all([...pTex, pGlb('trooper.json', 'trooper'), pGlb('colossus.json', 'colossus')]).then(() => { buildArena(); buildMegastructure(); buildEnvironment(); ready = true; });
   }
 
@@ -2019,6 +2231,16 @@ var R3 = window.THREE ? (() => {
           vec3 c = vec3(0.85,0.75,0.68) * 0.9;
           gl_FragColor = vec4(c*a, a*0.85); }`,
     });
+  }
+  // bloc de pierre taillé : dodécaèdre aux sommets décalés, pour des facettes nettes
+  function shardGeo(seed) {
+    const g = new T.DodecahedronGeometry(1, 0), p = g.attributes.position, v = new T.Vector3(), seen = new Map();
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i); const key = v.x.toFixed(3) + v.y.toFixed(3) + v.z.toFixed(3);
+      if (!seen.has(key)) seen.set(key, 0.82 + 0.3 * Math.abs(Math.sin(seen.size * 12.9898 + seed * 78.233)));
+      v.multiplyScalar(seen.get(key)); v.y *= 0.8; p.setXYZ(i, v.x, v.y, v.z);
+    }
+    g.computeVertexNormals(); return g;
   }
   function rockGeo(seed, detail) {
     const g = new T.IcosahedronGeometry(1, detail || 2);
@@ -2123,13 +2345,15 @@ var R3 = window.THREE ? (() => {
     }
   }
   function buildArena() {
+    // plateforme du Noyau : arène par défaut (Nyxar, et les boss qui n'ont pas encore la leur)
+    const g = new T.Group(); scene.add(g); L.arenaDefault = g;
     const F = A.tex.floor;
     // sol
     const fg = new T.CircleGeometry(22, 6, 0); const fp = fg.attributes.position, fuv = fg.attributes.uv;
     for (let i = 0; i < fp.count; i++) fuv.setXY(i, fp.getX(i) / 12, fp.getY(i) / 12);
     fg.setAttribute('uv2', fuv);
     const floorMat = new T.MeshStandardMaterial({ map: F.albedo, normalMap: F.normal, roughnessMap: F.orm, metalnessMap: F.orm, aoMap: F.orm, emissiveMap: F.emissive, emissive: hdr('#6fd4ff', 1.0), roughness: 1.15, metalness: 1, envMapIntensity: 0.28, normalScale: new T.Vector2(0.6, -0.6) });
-    const floor = new T.Mesh(fg, floorMat); floor.rotation.x = -PI / 2; floor.receiveShadow = true; scene.add(floor); L.floor = floor;
+    const floor = new T.Mesh(fg, floorMat); floor.rotation.x = -PI / 2; floor.receiveShadow = true; g.add(floor); L.floor = floor;
     // surcouche lumineuse (couleur de phase)
     const ov = new T.Mesh(new T.CircleGeometry(22, 6), SM({
       transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: { uTime: U.time, uPhase: U.phase, uEclipse: U.eclipse },
@@ -2142,36 +2366,50 @@ var R3 = window.THREE ? (() => {
           float runes = step(0.5, fract(ang*12.0/6.2832 + 0.25)) * (1.0 - smoothstep(0.0, 0.18, abs(d-6.4)));
           c += uPhase * runes * 0.25 * (0.6+0.4*sin(uTime*2.0 + ang*6.0));
           c += vec3(0.4,0.75,1.0)*(1.0 - smoothstep(0.0, 0.04, abs(d-12.0)))*0.35;
+          // conduits vers les six pylônes, parcourus d'impulsions ; œil du Noyau au centre
+          float sp = abs(mod(ang + 0.5235988, 1.0471976) - 0.5235988) * d;
+          float duct = (1.0 - smoothstep(0.08, 0.22, sp)) * step(3.2, d) * step(d, 19.5);
+          c += vec3(0.62,0.4,1.0) * duct * (0.25 + 0.75 * pow(0.5 + 0.5 * sin(d * 0.9 - uTime * 4.0), 6.0)) * 0.9;
+          c += vec3(0.7,0.45,1.0) * (1.0 - smoothstep(0.0, 0.06, abs(d - 3.0))) * (0.8 + 0.2 * sin(uTime * 3.0));
           c += vec3(0.45,0.8,1.0)*smoothstep(0.96, 0.995, edgeT)*1.2;
           float s = fract(uTime*0.06); c += vec3(0.3,0.6,1.0)*(1.0 - smoothstep(0.0, 0.6, abs(d - s*24.0)))*0.25*(1.0-s);
           c *= 1.0 - uEclipse*0.5;
           gl_FragColor = vec4(c, 1.0); }`,
-    })); ov.rotation.x = -PI / 2; ov.position.y = 0.012; scene.add(ov);
+    })); ov.rotation.x = -PI / 2; ov.position.y = 0.012; g.add(ov);
     // bordure
     const rimMat = triMat({ set: 'hull', world: true, scale: 0.22, color: '#9aa2b2', metal: 0.9, rough: 0.55, bump: 0.035, line: '#7fd4ff', lineI: 3.5 });
     const ap = 22 * Math.cos(PI / 6), postM = [];
     for (let k = 0; k < 6; k++) {
       const a = PI / 6 + k * PI / 3;   // milieu de l'arête
-      const g = new T.Group(); g.rotation.y = -a + PI / 2; scene.add(g);
-      const wall = new T.Mesh(new T.BoxGeometry(22.2, 1.5, 1.6), rimMat); wall.position.set(0, -0.35, -(ap + 0.8)); wall.receiveShadow = true; wall.castShadow = true; g.add(wall);
-      const lip = new T.Mesh(new T.BoxGeometry(22.4, 0.25, 0.5), rimMat); lip.position.set(0, 0.5, -(ap + 0.25)); g.add(lip);
-      const strip = new T.Mesh(new T.BoxGeometry(21, 0.06, 0.08), glowMat('#7fd4ff', 7)); strip.position.set(0, 0.64, -(ap + 0.05)); g.add(strip);
-      g.updateMatrixWorld(true);
-      for (let j = -4; j <= 4; j++) { tmpV.set(j * 2.4, 1.2, -(ap + 1.3)).applyMatrix4(g.matrixWorld); postM.push(new T.Matrix4().makeRotationY(g.rotation.y).setPosition(tmpV)); }
-      const rail = new T.Mesh(new T.BoxGeometry(22, 0.1, 0.1), glowMat('#ff9b4a', 5)); rail.position.set(0, 1.8, -(ap + 1.3)); g.add(rail);
+      const side = new T.Group(); side.rotation.y = -a + PI / 2; g.add(side);
+      const wall = new T.Mesh(new T.BoxGeometry(22.2, 1.5, 1.6), rimMat); wall.position.set(0, -0.35, -(ap + 0.8)); wall.receiveShadow = true; wall.castShadow = true; side.add(wall);
+      const lip = new T.Mesh(new T.BoxGeometry(22.4, 0.25, 0.5), rimMat); lip.position.set(0, 0.5, -(ap + 0.25)); side.add(lip);
+      const strip = new T.Mesh(new T.BoxGeometry(21, 0.06, 0.08), glowMat('#7fd4ff', 7)); strip.position.set(0, 0.64, -(ap + 0.05)); side.add(strip);
+      side.updateMatrixWorld(true);
+      for (let j = -4; j <= 4; j++) { tmpV.set(j * 2.4, 1.2, -(ap + 1.3)).applyMatrix4(side.matrixWorld); postM.push(new T.Matrix4().makeRotationY(side.rotation.y).setPosition(tmpV)); }
+      const rail = new T.Mesh(new T.BoxGeometry(22, 0.1, 0.1), glowMat('#ff9b4a', 5)); rail.position.set(0, 1.8, -(ap + 1.3)); side.add(rail);
     }
     const posts = new T.InstancedMesh(new T.BoxGeometry(0.22, 1.2, 0.22), rimMat, postM.length);
-    postM.forEach((m, i) => posts.setMatrixAt(i, m)); posts.castShadow = true; scene.add(posts);
+    postM.forEach((m, i) => posts.setMatrixAt(i, m)); posts.castShadow = true; g.add(posts);
     // dessous et noyau
     const under = new T.Mesh(new T.CylinderGeometry(23.3, 7, 13, 6, 3, true), triMat({ set: 'hull', world: true, scale: 0.18, color: '#7a8292', metal: 0.9, rough: 0.5, bump: 0.03, line: '#ffa25a', lineI: 4 }));
-    under.position.y = -7.6; under.rotation.y = 0; scene.add(under);
-    const core = new T.Mesh(new T.IcosahedronGeometry(2.2, 3), coreMat({ value: new T.Color('#7fd8ff') }, 5)); core.position.y = -15.4; scene.add(core); L.core = core;
-    const coreGlow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#6fd0ff', 4), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); coreGlow.scale.set(24, 24, 1); coreGlow.position.y = -15.4; scene.add(coreGlow);
+    under.position.y = -7.6; under.rotation.y = 0; g.add(under);
+    const core = new T.Mesh(new T.IcosahedronGeometry(2.2, 3), coreMat({ value: new T.Color('#7fd8ff') }, 5)); core.position.y = -15.4; g.add(core); L.core = core;
+    const coreGlow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#6fd0ff', 4), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); coreGlow.scale.set(24, 24, 1); coreGlow.position.y = -15.4; g.add(coreGlow);
     const shaftG = new T.CylinderGeometry(0.6, 6, 120, 24, 1, true); shaftG.translate(0, -60, 0);
     const shaft = new T.Mesh(shaftG, SM({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time },
       vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
       fragmentShader: NOISE + `uniform float uTime; varying vec2 vUv; void main(){ float n = fbm(vec3(vUv.x*8.0, vUv.y*6.0 + uTime*0.6, 0.0)); float a = smoothstep(0.0,0.9,vUv.y)*(0.25+0.75*n)*0.6; gl_FragColor = vec4(vec3(0.35,0.75,1.0)*a*2.0, a); }` }));
-    shaft.position.y = -16; scene.add(shaft);
+    shaft.position.y = -16; g.add(shaft);
+    // anneaux gyroscopiques de la Salle du Noyau
+    const gyroMat = triMat({ set: 'hull', world: false, scale: 0.4, color: '#5a5f70', metal: 0.95, rough: 0.35, bump: 0.02, line: '#b07cff', lineI: 4, env: 0.9 });
+    L.gyros = [];
+    [[30, 0.18, 0.06], [34, -0.12, -0.045]].forEach(([r, w0, w], k) => {
+      const piv = new T.Group(); piv.position.y = 2; piv.rotation.z = k ? 1.1 : 0.35; g.add(piv);
+      const ring = new T.Mesh(new T.TorusGeometry(r, 0.55, 10, 160), gyroMat); piv.add(ring);
+      for (let j = 0; j < 8; j++) { const a = j / 8 * PI * 2; const n = new T.Mesh(new T.BoxGeometry(1.4, 1.4, 2.2), gyroMat); n.position.set(Math.cos(a) * r, Math.sin(a) * r, 0); n.rotation.z = a; ring.add(n); const lt = new T.Mesh(new T.SphereGeometry(0.35, 12, 8), glowMat('#c08bff', 5)); lt.position.set(Math.cos(a) * (r - 0.9), Math.sin(a) * (r - 0.9), 0); ring.add(lt); }
+      L.gyros.push({ ring, w });
+    });
     // pylônes
     const pyMat = triMat({ set: 'hull', world: true, scale: 0.3, color: '#8a92a4', metal: 0.92, rough: 0.4, bump: 0.035, line: '#7fd4ff', lineI: 5 });
     const prof = [[0.01, 0], [1.3, 0], [1.3, 0.6], [0.9, 0.9], [0.75, 4], [0.95, 4.3], [0.95, 4.8], [0.55, 5.2], [0.45, 8.6], [0.75, 8.9], [0.3, 9.6], [0.01, 9.7]].map(([x, y]) => new T.Vector2(x, y));
@@ -2179,8 +2417,8 @@ var R3 = window.THREE ? (() => {
     L.crystals = [];
     for (let k = 0; k < 6; k++) {
       const a = k / 6 * PI * 2, x = Math.cos(a) * 23.8, z = -Math.sin(a) * 23.8;
-      const py = new T.Mesh(pyGeo, pyMat); py.position.set(x, -0.6, z); py.castShadow = true; scene.add(py);
-      const cr = new T.Mesh(new T.OctahedronGeometry(0.75, 0), new T.MeshStandardMaterial({ color: 0x9feaff, emissive: hdr('#7fe0ff', 4), metalness: 0.1, roughness: 0.1 })); cr.position.set(x, 11, z); cr.scale.set(0.8, 1.6, 0.8); scene.add(cr);
+      const py = new T.Mesh(pyGeo, pyMat); py.position.set(x, -0.6, z); py.castShadow = true; g.add(py);
+      const cr = new T.Mesh(new T.OctahedronGeometry(0.75, 0), new T.MeshStandardMaterial({ color: 0x9feaff, emissive: hdr('#7fe0ff', 4), metalness: 0.1, roughness: 0.1 })); cr.position.set(x, 11, z); cr.scale.set(0.8, 1.6, 0.8); g.add(cr);
       const sp = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#7fe0ff', 3), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); sp.scale.set(7, 7, 1); cr.add(sp);
       L.crystals.push(cr);
     }
@@ -2199,6 +2437,328 @@ var R3 = window.THREE ? (() => {
       const fl = new T.Mesh(new T.CircleGeometry(40, 32), new T.MeshBasicMaterial({ color: hdr('#141822', 1) })); fl.rotation.x = -PI / 2; fl.position.y = -8; es.add(fl);
       scene.environment = pm.fromScene(es, 0.035).texture; pm.dispose();
     } catch (e) { }
+  }
+
+  // ---------- arènes par boss ----------
+  // default : plateforme du Noyau (Nyxar, et les boss qui n'ont pas encore la leur) ; forge : Vorr
+  const ARENA_OF = { vorr: 'forge', twins: 'observatory', azhal: 'horizon' };
+  const THEMES = {
+    default: { fog: 0x0a0b16, fogD: 0.0032, hemiS: 0x5a6aa8, hemiG: 0x0a0a12, hemiI: 0.35, key: 0xffd9b4, keyI: 2.6, rim: 0x6fa8ff, rimI: 1.6, fill: 0xa47bff, fillI: 0.6, fillPos: [-60, 10, -40], dust: '#b9c8ff' },
+    forge: { fog: 0x1a0905, fogD: 0.0042, hemiS: 0x6a5048, hemiG: 0xff4a10, hemiI: 0.55, key: 0xffc896, keyI: 2.3, rim: 0xff7a3a, rimI: 1.4, fill: 0xff5a1a, fillI: 1.2, fillPos: [10, -40, 20], dust: '#ff8a3a' },
+    horizon: { fog: 0x07041a, fogD: 0.003, hemiS: 0x6a4ad0, hemiG: 0x100818, hemiI: 0.45, key: 0xd8c0ff, keyI: 1.9, rim: 0xff5ac8, rimI: 1.5, fill: 0x7a5cff, fillI: 1.0, fillPos: [0, -50, 10], dust: '#b18cff' },
+    observatory: { fog: 0x0c0a1c, fogD: 0.0035, hemiS: 0x8a80d8, hemiG: 0x2a2030, hemiI: 0.5, key: 0xffe2b0, keyI: 2.4, rim: 0x9fc8ff, rimI: 1.9, fill: 0xffb860, fillI: 0.8, fillPos: [-60, 10, 0], dust: '#ffe8b0' },
+  };
+  const ARENA_BUILD = { forge: () => buildForge(), observatory: () => buildObservatory(), horizon: () => buildHorizon() };
+  const arenaGroup = n => ({ default: L.arenaDefault, forge: L.arenaForge, observatory: L.arenaObs, horizon: L.arenaHor })[n] || null;
+  let arenaName = null;
+  function setArena(model) {
+    const name = ARENA_OF[model] || 'default';
+    if (!ready || name === arenaName) return;
+    arenaName = name;
+    if (!arenaGroup(name) && ARENA_BUILD[name]) ARENA_BUILD[name]();
+    for (const n of ['default', 'forge', 'observatory', 'horizon']) { const g = arenaGroup(n); if (g) g.visible = n === name; }
+    const th = THEMES[name];
+    scene.fog.color.setHex(th.fog); scene.fog.density = th.fogD;
+    L.hemi.color.setHex(th.hemiS); L.hemi.groundColor.setHex(th.hemiG); L.hemi.intensity = th.hemiI;
+    L.key.color.setHex(th.key); L.keyBase = th.keyI;
+    L.rim.color.setHex(th.rim); L.rim.intensity = th.rimI;
+    L.fill.color.setHex(th.fill); L.fill.intensity = th.fillI; L.fill.position.set(...th.fillPos);
+    if (L.dust) L.dust.material.color.copy(hdr(th.dust, 1.2));
+    if (L.towers) L.towers.forEach(o => { o.visible = name !== 'forge'; });
+  }
+
+  // bruit plus léger (3 octaves) pour les grandes surfaces
+  const NOISE3 = NOISE.replace('fbm(vec3 p)', 'fbm3(vec3 p)').replace('i<6', 'i<3');
+  function lavaMat() {
+    return SM({
+      uniforms: { uTime: U.time },
+      vertexShader: `varying vec3 vW; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vW = w.xyz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: NOISE3 + `uniform float uTime; varying vec3 vW;
+        void main(){ vec2 p = vW.xz*0.035 + vec2(uTime*0.012, uTime*0.006);
+          float n = fbm3(vec3(p, uTime*0.03));
+          float n2 = fbm3(vec3(p*2.6 + n*1.6, uTime*0.05 + 4.0));
+          float crust = smoothstep(0.30, 0.46, n2);
+          float hot = pow(1.0 - crust, 2.6);
+          vec3 c = mix(vec3(0.55,0.12,0.02), vec3(1.5,0.55,0.12), pow(1.0 - n2, 3.0)) * hot + vec3(0.035,0.012,0.008) * crust;
+          float far = smoothstep(120.0, 420.0, length(vW.xz));
+          c = mix(c, vec3(0.12,0.03,0.01), far*0.7);
+          gl_FragColor = vec4(c, 1.0); }`,
+    });
+  }
+  function lavaFallMat() {
+    return SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time, uSeed: { value: Math.random() * 10 } },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: NOISE3 + `uniform float uTime; uniform float uSeed; varying vec2 vUv;
+        void main(){ float n = fbm3(vec3(vUv.x*5.0 + uSeed, vUv.y*3.0 + uTime*0.55, uSeed));
+          float w = 0.32 + 0.12*sin(vUv.y*6.0 + uSeed);
+          float a = (1.0 - smoothstep(w*0.55, w, abs(vUv.x - 0.5) + (n - 0.5)*0.25)) * smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
+          vec3 c = mix(vec3(1.0,0.28,0.05), vec3(2.6,1.1,0.3), smoothstep(0.45, 0.8, n));
+          gl_FragColor = vec4(c*a*1.6, a); }`,
+    });
+  }
+  // fissures du sol (motif de Voronoï en coordonnées monde) : cR = rayon de la zone qui restera après l'Effondrement
+  function forgeCrackMat() {
+    return SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time, uPhase: U.phase, uBound: { value: 0.25 }, uHeat: { value: 0 } },
+      vertexShader: `varying vec2 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `uniform float uTime; uniform vec3 uPhase; uniform float uBound; uniform float uHeat; varying vec2 vP;
+        vec2 h2(vec2 p){ p = vec2(dot(p, vec2(127.1,311.7)), dot(p, vec2(269.5,183.3))); return fract(sin(p)*43758.5453); }
+        float edges(vec2 p){ vec2 i = floor(p), f = fract(p); float d1 = 8.0, d2 = 8.0;
+          for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) { vec2 g = vec2(float(x), float(y)); vec2 r = g + h2(i + g) - f; float d = dot(r, r); if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) d2 = d; }
+          return sqrt(d2) - sqrt(d1); }
+        void main(){ float d = length(vP);
+          float e = edges(vP*0.30), e2 = edges(vP*0.85 + 7.0);
+          float glow = (1.0 - smoothstep(0.0, 0.05, e)) + (1.0 - smoothstep(0.0, 0.025, e2))*0.18;
+          float flick = 0.7 + 0.3*sin(uTime*1.1 + vP.x*0.35 + vP.y*0.27);
+          vec3 c = vec3(1.0,0.20,0.03) * glow * flick * (0.5 + uHeat);
+          c += uPhase*(1.0 - smoothstep(0.0, 0.07, abs(d - 6.2)))*1.1;
+          c += uPhase*(1.0 - smoothstep(0.0, 0.05, abs(d - 6.6)))*0.4;
+          c += vec3(1.0,0.36,0.08)*(1.0 - smoothstep(0.0, 0.16, abs(d - 13.5)))*uBound*(0.75 + 0.25*sin(uTime*5.0));
+          gl_FragColor = vec4(c, 1.0); }`,
+    });
+  }
+  function buildForge() {
+    const g = new T.Group(); scene.add(g); L.arenaForge = g;
+    const RIN = 13.5, ROUT = 24, DEPTH = 1.8;
+    const stone = triMat({ set: 'rock', world: false, scale: 0.16, color: '#4e403a', metal: 0.05, rough: 0.9, bump: 0.07, line: '#ff5a1a', lineI: 1.6, env: 0.3 });
+    const crack = forgeCrackMat(); L.forgeCrack = crack.uniforms;
+    // dalle centrale : ce qui reste après l'Effondrement
+    const inner = new T.Mesh(new T.CylinderGeometry(RIN, RIN - 0.4, DEPTH, 72), stone); inner.position.y = -DEPTH / 2; inner.receiveShadow = true; g.add(inner);
+    const innerC = new T.Mesh(new T.CircleGeometry(RIN, 72), crack); innerC.rotation.x = -PI / 2; innerC.position.y = 0.012; g.add(innerC);
+    // anneau extérieur en secteurs, qui tombent dans la lave
+    const col = triMat({ set: 'rock', world: false, scale: 0.5, color: '#3e322e', metal: 0.05, rough: 0.92, bump: 0.12, line: '#ff6a1a', lineI: 3, env: 0.3 });
+    const colGeo = new T.CylinderGeometry(1.0, 1.15, 1, 6);
+    L.forgePieces = [];
+    const N = 14;
+    for (let k = 0; k < N; k++) {
+      const a0 = k / N * PI * 2 + 0.006, a1 = (k + 1) / N * PI * 2 - 0.006, am = (a0 + a1) / 2;
+      const cx = Math.cos(am) * (RIN + ROUT) / 2, cz = Math.sin(am) * (RIN + ROUT) / 2;
+      const sh = new T.Shape(), n = 12;
+      for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n, r = ROUT * (1 + (i % n ? Math.sin(i * 2.3 + k) * 0.015 : 0)); const x = Math.cos(a) * r - cx, y = Math.sin(a) * r - cz; i ? sh.lineTo(x, y) : sh.moveTo(x, y); }
+      for (let i = n; i >= 0; i--) { const a = a0 + (a1 - a0) * i / n; sh.lineTo(Math.cos(a) * RIN - cx, Math.sin(a) * RIN - cz); }
+      const geo = new T.ExtrudeGeometry(sh, { depth: DEPTH, bevelEnabled: false, curveSegments: 1 }); geo.rotateX(PI / 2);
+      const piece = new T.Mesh(geo, stone); piece.position.set(cx, 0, cz); piece.receiveShadow = true; piece.castShadow = true; g.add(piece);
+      const top = new T.Mesh(new T.ShapeGeometry(sh), crack); top.rotation.x = PI / 2; top.position.y = 0.012; piece.add(top);
+      // colonne de basalte brisée sur le bord, une sur deux
+      if (k % 2 === 0) {
+        const cg = new T.Group(); const h = 3 + ((k * 37) % 7);
+        for (let j = 0; j < 3; j++) { const seg = new T.Mesh(colGeo, col); const sh2 = h * (j === 2 ? 0.25 : 0.4); seg.scale.set(1 - j * 0.12, sh2, 1 - j * 0.12); seg.position.y = j === 0 ? sh2 / 2 : j === 1 ? h * 0.4 + sh2 / 2 : h * 0.8 + sh2 / 2; seg.rotation.set((j - 1) * 0.08, j * 0.4, (k % 3 - 1) * 0.06 * j); seg.castShadow = true; cg.add(seg); }
+        const ar = (ROUT + 22.2) / 2 - 0.4; cg.position.set(Math.cos(am + 0.1) * ar - cx, 0, Math.sin(am + 0.1) * ar - cz); piece.add(cg);
+      }
+      L.forgePieces.push({ m: piece, base: piece.position.clone(), a: am, delay: 0.2 + ((k * 5) % N) / N * 2.6, v: 0, spin: (k % 2 ? 1 : -1) * (0.3 + (k % 3) * 0.15), fell: false });
+    }
+    // dessous de la plateforme : un éperon de roche veiné de magma
+    const under = new T.Mesh(new T.CylinderGeometry(RIN - 0.4, 2.5, 14, 32, 4, true), triMat({ set: 'rock', world: true, scale: 0.12, color: '#3a2e2a', metal: 0.05, rough: 0.9, bump: 0.1, line: '#ff5a1a', lineI: 5, env: 0.2 }));
+    under.position.y = -DEPTH - 7; g.add(under);
+    // mer de lave et sa lueur
+    const sea = new T.Mesh(new T.CircleGeometry(700, 48), lavaMat()); sea.rotation.x = -PI / 2; sea.position.y = -18; g.add(sea);
+    const glow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#ff5a1a', 1.6), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); glow.scale.set(90, 90, 1); glow.position.y = -16; g.add(glow);
+    // chutes de lave et falaises au loin
+    for (let k = 0; k < 5; k++) {
+      const a = 0.5 + k * 1.25, r = 170 + (k % 2) * 60, h = 150 + (k % 3) * 40;
+      const cliff = new T.Mesh(rockGeo(k * 3 + 2, 2), triMat({ set: 'rock', world: false, scale: 0.05, color: '#2a221f', metal: 0, rough: 1, bump: 0.05, line: '#ff4a10', lineI: 2, env: 0.1 }));
+      cliff.scale.set(75, h * 0.38, 55); cliff.position.set(Math.cos(a) * (r + 30), -18 + h * 0.12, Math.sin(a) * (r + 30)); g.add(cliff);
+      const fall = new T.Mesh(new T.PlaneGeometry(30, h * 0.55), lavaFallMat()); fall.position.set(Math.cos(a) * r, -18 + h * 0.275, Math.sin(a) * r); fall.lookAt(0, -18 + h * 0.275, 0); g.add(fall);
+    }
+    // rochers flottants
+    L.forgeRocks = [];
+    const rm = triMat({ set: 'rock', world: false, scale: 0.6, color: '#3a2e2a', metal: 0, rough: 0.95, bump: 0.1, line: '#ff6a1a', lineI: 4, env: 0.2 });
+    for (let k = 0; k < 12; k++) {
+      const m = new T.Mesh(rockGeo(k * 7 + 3, 1), rm); const s = 1.2 + (k % 4) * 1.1; m.scale.set(s, s * 0.8, s);
+      const a = k / 12 * PI * 2 + 0.3, r = 32 + (k % 3) * 12; m.userData = { a, r, y: -8 + (k % 5) * 3.5, w: 0.01 + (k % 3) * 0.006, ph: k };
+      g.add(m); L.forgeRocks.push(m);
+    }
+    g.visible = false;
+  }
+  // ---------- l'Observatoire céleste (Jumelles) ----------
+  // mosaïque : moitié soleil (Séla, x < 0), moitié lune (Néria, x > 0), zodiaque ; uHalf* : moitié en alerte (Équinoxe)
+  function mosaicMat() {
+    return SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, uniforms: { uTime: U.time, uPhase: U.phase, uHalfSide: { value: 0 }, uHalfK: { value: 0 }, uHalfArmed: { value: 0 } },
+      vertexShader: `varying vec2 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+      fragmentShader: `uniform float uTime; uniform vec3 uPhase; uniform float uHalfSide; uniform float uHalfK; uniform float uHalfArmed; varying vec2 vP;
+        void main(){ vec2 p = vP; float d = length(p); float a = atan(p.y, p.x);
+          float sun = step(p.x, 0.0);
+          vec3 gold = vec3(1.0,0.70,0.28), silver = vec3(0.55,0.78,1.0);
+          vec3 tint = mix(silver, gold, sun);
+          vec3 c = vec3(1.0,0.92,0.8) * (1.0 - smoothstep(0.0, 0.09, abs(p.x))) * 0.9;
+          c += tint * (1.0 - smoothstep(0.0, 0.05, abs(d - 6.4))) * 0.6;
+          c += uPhase * (1.0 - smoothstep(0.0, 0.07, abs(d - 6.0))) * 0.9;
+          c += tint * (1.0 - smoothstep(0.0, 0.05, abs(d - 12.0))) * 0.35;
+          c += tint * ((1.0 - smoothstep(0.0, 0.06, abs(d - 18.0))) + (1.0 - smoothstep(0.0, 0.06, abs(d - 20.6)))) * 0.6;
+          float tick = step(0.9, fract(a / 6.2831853 * 72.0)) * step(18.2, d) * step(d, 19.0);
+          float big = step(0.95, fract(a / 6.2831853 * 12.0)) * step(18.0, d) * step(d, 20.6);
+          c += tint * (tick * 0.45 + big * 0.8);
+          vec2 s = p - vec2(-11.5, -2.0); float ds = length(s); float as = atan(s.y, s.x);
+          float rays = smoothstep(0.55, 1.0, sin(as * 16.0)) * smoothstep(9.0, 3.6, ds) * step(3.6, ds);
+          c += gold * (rays * 0.28 + (1.0 - smoothstep(0.0, 0.08, abs(ds - 3.4))) * 0.7) * sun;
+          vec2 m = p - vec2(11.5, -2.0); float dm = length(m), dm2 = length(m - vec2(1.5, 0.7));
+          c += silver * (step(dm, 3.4) * step(3.0, dm2) * 0.3 + (1.0 - smoothstep(0.0, 0.08, abs(dm - 3.4))) * 0.45) * (1.0 - sun);
+          vec2 cell = floor(p * 0.8); float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+          c += silver * step(0.93, h) * (1.0 - smoothstep(0.0, 0.12, length(fract(p * 0.8) - 0.5))) * (1.0 - sun) * step(d, 17.5) * (0.6 + 0.4 * sin(uTime * 3.0 + h * 20.0));
+          float inHalf = step(0.0, p.x * uHalfSide) * step(0.5, abs(uHalfSide));
+          vec3 hc = uHalfSide < 0.0 ? vec3(1.0,0.45,0.1) : vec3(0.4,0.72,1.0);
+          float sweep = 1.0 - smoothstep(0.0, 1.2, abs(abs(p.x) - fract(uTime * 0.7) * 21.0));
+          float w = ((0.32 + uHalfK * 0.55) * (0.65 + 0.35 * sin(uTime * (6.0 + uHalfK * 10.0))) + sweep * 0.35) * (1.0 - uHalfArmed) + uHalfArmed * (0.9 + 0.3 * sin(uTime * 18.0 + d));
+          c += hc * inHalf * w;
+          c *= step(d, 21.7);
+          gl_FragColor = vec4(c, 1.0); }`,
+    });
+  }
+  function buildObservatory() {
+    const g = new T.Group(); scene.add(g); L.arenaObs = g;
+    const R = 22;
+    const marble = triMat({ set: 'hull', world: true, scale: 0.08, color: '#5e5c70', metal: 0.2, rough: 0.32, bump: 0.008, albedoMix: 0.2, env: 0.7 });
+    const disc = new T.Mesh(new T.CylinderGeometry(R, R - 0.6, 1.6, 96), marble); disc.position.y = -0.8; disc.receiveShadow = true; g.add(disc);
+    const mos = new T.Mesh(new T.CircleGeometry(R - 0.3, 96), mosaicMat()); mos.rotation.x = -PI / 2; mos.position.y = 0.012; g.add(mos); L.obsMosaic = mos.material.uniforms;
+    const gold = triMat({ set: 'hull', world: false, scale: 2, color: '#d9a94a', metal: 1, rough: 0.22, bump: 0.01, albedoMix: 0.2, env: 1.4 });
+    const ring = new T.Mesh(new T.TorusGeometry(R + 0.1, 0.28, 10, 160), gold); ring.rotation.x = PI / 2; ring.position.y = 0.05; g.add(ring);
+    // colonnade et lanternes (dorées côté Séla, argentées côté Néria)
+    const colGeo = new T.CylinderGeometry(0.42, 0.5, 9, 16), capGeo = new T.CylinderGeometry(0.8, 0.45, 0.6, 16), baseGeo = new T.CylinderGeometry(0.7, 0.8, 0.5, 16);
+    const colMat = triMat({ set: 'hull', world: true, scale: 0.3, color: '#a8a4b8', metal: 0.1, rough: 0.35, bump: 0.01, albedoMix: 0.2, env: 0.8 });
+    L.obsLamps = [];
+    for (let k = 0; k < 12; k++) {
+      const a = k / 12 * PI * 2 + PI / 12, x = Math.cos(a) * (R + 1.4), z = Math.sin(a) * (R + 1.4), sun = x < 0;
+      const c = new T.Mesh(colGeo, colMat); c.position.set(x, 4.5, z); c.castShadow = true; g.add(c);
+      const b = new T.Mesh(baseGeo, gold); b.position.set(x, 0.25, z); g.add(b);
+      const cap = new T.Mesh(capGeo, gold); cap.position.set(x, 9.2, z); g.add(cap);
+      const orb = new T.Mesh(new T.SphereGeometry(0.3, 16, 12), glowMat(sun ? '#ffd27a' : '#bfe6ff', 5)); orb.position.set(x, 10.3, z); g.add(orb);
+      const lamp = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr(sun ? '#ffc860' : '#9fd0ff', 2.2), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); lamp.scale.set(3, 3, 1); orb.add(lamp);
+      L.obsLamps.push({ orb, y: 10.3, ph: k });
+    }
+    // dessous : coupe inversée cerclée d'or
+    const under = new T.Mesh(new T.CylinderGeometry(R - 0.6, 3, 12, 64, 1, true), marble); under.position.y = -7.6; g.add(under);
+    for (const [y, rr] of [[-3, 17.6], [-6.5, 12.3]]) { const bd = new T.Mesh(new T.TorusGeometry(rr, 0.2, 8, 96), gold); bd.rotation.x = PI / 2; bd.position.y = y; g.add(bd); }
+    // planétaire géant au-dessus de l'arène
+    const orr = new T.Group(); orr.position.y = 54; g.add(orr); L.orrery = [];
+    orr.add(new T.Mesh(new T.SphereGeometry(1.6, 32, 16), glowMat('#fff0c8', 2)));
+    const og = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#ffe0a0', 1), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); og.scale.set(10, 10, 1); orr.add(og);
+    [[11, 0.28, '#ffcf6a', 0.16], [16, -0.2, '#bfe0ff', -0.1], [21, 0.3, '#e8b8ff', 0.06]].forEach(([r, tilt, col, w], k) => {
+      const piv = new T.Group(); piv.rotation.set(tilt, 0, tilt * 0.6); orr.add(piv);
+      const rg = new T.Mesh(new T.TorusGeometry(r, 0.13, 6, 180), gold); rg.rotation.x = PI / 2; piv.add(rg);
+      const arm = new T.Group(); piv.add(arm);
+      const pl = new T.Mesh(new T.SphereGeometry(1.2 - k * 0.15, 24, 16), new T.MeshStandardMaterial({ color: new T.Color(col).convertSRGBToLinear(), roughness: 0.4, metalness: 0.2, emissive: hdr(col, 0.5) })); pl.position.x = r; arm.add(pl);
+      const spoke = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, r, 6), gold); spoke.rotation.z = PI / 2; spoke.position.x = r / 2; arm.add(spoke);
+      L.orrery.push({ arm, w });
+    });
+    // un soleil d'or à l'ouest (côté Séla), une lune pâle à l'est (côté Néria)
+    const sd = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#ffc35a', 1.6), blending: T.AdditiveBlending, depthWrite: false, transparent: true, fog: false })); sd.scale.set(130, 130, 1); sd.position.set(-520, 110, -120); g.add(sd);
+    const sd2 = new T.Mesh(new T.SphereGeometry(24, 32, 16), glowMat('#ffe0a0', 1.4, { fog: false })); sd2.position.copy(sd.position); g.add(sd2);
+    const moon = new T.Mesh(new T.SphereGeometry(40, 48, 32), new T.MeshStandardMaterial({ color: 0xbcc8e0, roughness: 0.9, metalness: 0, emissive: hdr('#3a4a70', 0.25), fog: false })); moon.position.set(520, 140, -160); g.add(moon);
+    g.visible = false;
+  }
+  function updateObservatory(dt) {
+    if (L.orrery) L.orrery.forEach(o => { o.arm.rotation.y += o.w * dt; });
+    if (L.obsLamps) L.obsLamps.forEach(l => { l.orb.position.y = l.y + Math.sin(time * 1.3 + l.ph) * 0.25; });
+    if (Q.bloom && Math.random() < 0.5) { const a = Math.random() * PI * 2, r = Math.random() * 20; emit(Math.cos(a) * r, 0.4 + Math.random() * 4, Math.sin(a) * r, 1, Math.cos(a) < 0 ? '#ffe0a0' : '#cfe6ff', { speed: 0.15, life: 2.5, size: 0.14, vy: 0.4, grav: 0 }); }
+    // Équinoxe : la moitié visée s'embrase ou gèle
+    const u = L.obsMosaic; if (!u) return;
+    const z = S && S.zones.find(q => q.type === 'half');
+    if (!z) { u.uHalfSide.value = 0; u.uHalfK.value = 0; u.uHalfArmed.value = 0; return; }
+    const armed = S.t >= z.armAt;
+    u.uHalfSide.value = z.side; u.uHalfK.value = armed ? 0 : Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born)); u.uHalfArmed.value = armed ? 1 : 0;
+    if (armed) {
+      if (!z.fxDone) { z.fxDone = true; const rg = rigs[z.side < 0 ? 0 : 1]; if (rg) bossPlay(rg, 'bRelease'); cam.shake = Math.max(cam.shake, 0.5); flashLvl = Math.max(flashLvl, 0.2); }
+      for (let k = 0; k < 4; k++) { const x = z.side * (0.6 + Math.random() * 19), zz = (Math.random() - 0.5) * 2 * Math.sqrt(Math.max(0, 400 - x * x)); if (z.side < 0) emit(x, 0.2, zz, 1, Math.random() < 0.5 ? '#ff8a3a' : '#ffd27a', { speed: 0.6, life: 0.9, size: 0.55, vy: 5, grav: 0 }); else emit(x, 2.5 + Math.random() * 3, zz, 1, '#d8f0ff', { speed: 0.4, life: 1.2, size: 0.3, vy: -1.5, grav: -1 }); }
+    }
+  }
+  // ---------- L'Horizon (Azhal) ----------
+  // dalles hexagonales d'obsidienne au-dessus d'un trou noir ; les dalles de l'Effritement tombent dans le Néant
+  function buildHorizon() {
+    const g = new T.Group(); scene.add(g); L.arenaHor = g;
+    const tiles = GAME.HEX_TILES, H = GAME.HEX;
+    const obs = triMat({ set: 'hull', world: true, scale: 0.12, color: '#221a30', metal: 0.85, rough: 0.22, bump: 0.02, line: '#9b6bff', lineI: 1.2, env: 1.1 });
+    const tg = new T.CylinderGeometry(H * 0.96, H * 0.8, 2.4, 6); tg.translate(0, -1.2, 0);
+    const im = new T.InstancedMesh(tg, obs, tiles.length); im.receiveShadow = true; im.castShadow = true; g.add(im);
+    const rg = new T.RingGeometry(H * 0.89, H * 0.95, 6, 1); rg.rotateX(-PI / 2); rg.rotateY(PI / 2); rg.translate(0, 0.02, 0);
+    const rim = new T.InstancedMesh(rg, glowMat('#9b6bff', 1.1, { side: T.DoubleSide }), tiles.length); g.add(rim);
+    L.horTiles = tiles.map((t, k) => ({ x: t.x, z: t.z, fall: -1, spin: (k % 2 ? 1 : -1) * (0.4 + (k % 3) * 0.2) }));
+    L.horIM = [im, rim];
+    // le trou noir sous la plateforme : horizon sombre, anneau de photons, disque d'accrétion
+    const bh = new T.Group(); bh.position.set(0, -420, -60); bh.rotation.x = 0.18; g.add(bh);
+    bh.add(new T.Mesh(new T.SphereGeometry(230, 48, 24), new T.MeshBasicMaterial({ color: 0x000000, fog: false })));
+    const disk = new T.Mesh(new T.RingGeometry(260, 1100, 160, 4), SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time },
+      vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: NOISE3 + `uniform float uTime; varying vec2 vP;
+        void main(){ float r = length(vP); float a = atan(vP.y, vP.x); float t = (r - 260.0) / 840.0;
+          float sw = fbm3(vec3(cos(a - uTime*0.05*300.0/r)*r*0.006, sin(a - uTime*0.05*300.0/r)*r*0.006, t*3.0));
+          float bands = 0.5 + 0.5*sin(r*0.05 - uTime*0.6 + sw*5.0);
+          vec3 hot = mix(vec3(1.0,0.9,0.8), vec3(1.0,0.45,0.75), smoothstep(0.0,0.3,t));
+          vec3 c = mix(hot, vec3(0.45,0.25,1.0), smoothstep(0.2,0.9,t));
+          float al = pow(1.0 - t, 1.4) * smoothstep(0.0, 0.03, t) * (0.35 + 0.65*sw) * (0.55 + 0.45*bands);
+          gl_FragColor = vec4(c*al*1.6, al); }`,
+    })); disk.rotation.x = -PI / 2; bh.add(disk); L.horDisk = disk;
+    const ring = new T.Mesh(new T.TorusGeometry(238, 4, 8, 160), glowMat('#ffd9f0', 3, { fog: false })); ring.rotation.x = PI / 2; bh.add(ring);
+    // débris en orbite et aspirés
+    L.horRocks = [];
+    const rm = triMat({ set: 'rock', world: false, scale: 0.6, color: '#3a3048', metal: 0.2, rough: 0.8, bump: 0.08, line: '#b07bff', lineI: 3, env: 0.4, flat: true });
+    for (let k = 0; k < 16; k++) { const m = new T.Mesh(shardGeo(k + 3), rm); const s2 = 0.8 + (k % 5) * 0.7; m.scale.setScalar(s2); m.userData = { a: k / 16 * PI * 2, r: 26 + (k % 4) * 9, y: -6 + (k % 6) * 3, w: 0.02 + (k % 3) * 0.01, ph: k }; g.add(m); L.horRocks.push(m); }
+    setHorTiles(); g.visible = false;
+  }
+  function resetHorizon() {
+    if (!L.horTiles) return;
+    for (const t of L.horTiles) t.fall = -1;
+    setHorTiles();
+  }
+  const _hm = new T.Matrix4(), _hq = new T.Quaternion(), _he = new T.Euler(), _hs = new T.Vector3(1, 1, 1), _hp = new T.Vector3();
+  function setHorTiles() {
+    L.horTiles.forEach((t, k) => {
+      const f = t.fall < 0 ? 0 : t.fall, y = -0.5 * 14 * f * f;
+      _he.set(f * t.spin * 0.6, 0, f * t.spin * 0.4); _hq.setFromEuler(_he); _hs.setScalar(y < -40 ? 0.0001 : 1);
+      _hm.compose(_hp.set(t.x, y, t.z), _hq, _hs);
+      for (const im of L.horIM) im.setMatrixAt(k, _hm);
+    });
+    for (const im of L.horIM) im.instanceMatrix.needsUpdate = true;
+  }
+  function updateHorizon(dt) {
+    if (L.horRocks) L.horRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.5 + u.ph) * 0.6, Math.sin(u.a) * u.r); m.rotation.x += dt * 0.2; m.rotation.y += dt * 0.15; });
+    if (L.horDisk) L.horDisk.rotation.z += dt * 0.01;
+    // poussière aspirée vers le centre, en spirale
+    if (Q.bloom && Math.random() < 0.7) { const a = Math.random() * PI * 2, r = 24 + Math.random() * 10; emit(Math.cos(a) * r, -1 + Math.random() * 6, Math.sin(a) * r, 1, Math.random() < 0.5 ? '#b18cff' : '#ff8ad8', { speed: 0.2, life: 2.2, size: 0.18, vy: -0.5, grav: 0 }); }
+    let moved = false;
+    for (const t of L.horTiles) if (t.fall >= 0 && t.fall < 3) { t.fall += dt; moved = true; }
+    if (moved) setHorTiles();
+  }
+  // dalle fissurée : hexagone qui palpite, puis la dalle tombe
+  function holeFx(z, m) {
+    if (!m) {
+      m = new T.Mesh(new T.CircleGeometry(z.r, 6), decalMat('#ff5ac8', 1, 3)); m.rotation.x = -PI / 2; m.rotation.z = PI / 2; m.position.set(z.x, 0.09, z.z); m.renderOrder = 3;
+      scene.add(m); zoneM.set(z.id, m);
+      emit(z.x, 0.3, z.z, 12, '#ff8ad8', { speed: 2, life: 0.6, size: 0.3, vy: 2, grav: -4 });
+    }
+    const armed = S.t >= z.armAt;
+    if (!armed) { m.material.uniforms.uProg.value = Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born)); m.material.uniforms.uAlpha.value = 0.8 + 0.4 * Math.sin(time * 14); return; }
+    if (!m.userData.fell) {
+      m.userData.fell = true; m.visible = false;
+      const t = L.horTiles && arenaName === 'horizon' ? L.horTiles[z.tile] : null; if (t && t.fall < 0) t.fall = 0;
+      emit(z.x, 0.2, z.z, 40, '#5a4a70', { speed: 3, life: 1.2, size: 0.55, vy: 2, grav: -8 }); emit(z.x, 0.2, z.z, 25, '#ff8ad8', { speed: 4, life: 0.7, size: 0.35, vy: 3, grav: -6 });
+      cam.shake = Math.max(cam.shake, 0.3);
+    }
+  }
+  // remet la Forge intacte (nouveau combat, aperçu du hub)
+  function resetForge() {
+    if (!L.forgePieces) return;
+    for (const p of L.forgePieces) { p.m.position.copy(p.base); p.m.rotation.set(0, 0, 0); p.m.visible = true; p.v = 0; p.fell = false; }
+    L.collapse = null; L.forgeCrack.uBound.value = 0.25; L.forgeCrack.uHeat.value = 0;
+  }
+  function updateForge(dt) {
+    if (L.forgeRocks) L.forgeRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.4 + u.ph) * 0.8, Math.sin(u.a) * u.r); m.rotation.y += dt * 0.05; m.rotation.x += dt * 0.03; });
+    // braises qui montent de la lave et des fissures
+    if (Q.bloom && Math.random() < 0.9) { const a = Math.random() * PI * 2, r = Math.random() < 0.6 ? 14 + Math.random() * 12 : Math.random() * 13; emit(Math.cos(a) * r, Math.random() < 0.5 ? 0.2 : -6, Math.sin(a) * r, 1, '#ff8a3a', { speed: 0.3, life: 2.4, size: 0.16, vy: 1.6, grav: 0 }); }
+    const C = L.collapse; if (!C) return;
+    C.t += dt;
+    for (const p of L.forgePieces) {
+      if (p.fell || C.t < p.delay) continue;
+      if (!p.v) { p.v = 0.01; const ex = Math.cos(p.a) * 13.8, ez = Math.sin(p.a) * 13.8; emit(ex, 0.4, ez, 26, '#ff7a2a', { speed: 4, life: 1.0, size: 0.4, vy: 4, grav: -6 }); emit(ex, 0.5, ez, 14, '#6a5a52', { speed: 2.5, life: 1.4, size: 0.6, vy: 2, grav: -3 }); cam.shake = Math.max(cam.shake, 0.35); }
+      p.v += 16 * dt; p.m.position.y -= p.v * dt;
+      p.m.position.x += Math.cos(p.a) * dt * 1.2; p.m.position.z += Math.sin(p.a) * dt * 1.2;
+      p.m.rotation.x += Math.sin(p.a) * p.spin * dt; p.m.rotation.z -= Math.cos(p.a) * p.spin * dt;
+      if (p.m.position.y < -22) { p.fell = true; p.m.visible = false; emit(p.m.position.x, -17, p.m.position.z, 30, '#ffb050', { speed: 5, life: 1.2, size: 0.6, vy: 9, grav: -10 }); }
+    }
+    L.forgeCrack.uBound.value = Math.min(1, 0.25 + C.t / C.delay);
+    L.forgeCrack.uHeat.value = Math.min(0.6, C.t / C.delay * 0.6);
   }
 
   // ---------- particules ----------
@@ -4532,6 +5092,8 @@ var R3 = window.THREE ? (() => {
       { set: 'hull', color: '#1b1824', metal: 1, rough: 0.28, scale: 2.4, bump: 0.035, line: '#9d6bff', lineI: 1.5, albedoMix: 0.6, env: 1.3 },
       { set: 'hull', color: '#2a2235', metal: 0.9, rough: 0.25, scale: 2.4, bump: 0.02, line: '#b07cff', lineI: 6, rim: '#9d6bff', rimI: 3 });
     const sk = rig.skel; if (!sk) return rig;
+    // silhouette d'Archonte (avant l'armure) : buste haut et large, bras longs, tête fine
+    for (const [n, k] of Object.entries({ Spine2: 1.12, LeftArm: 1.1, RightArm: 1.1, Neck: 1.1, Head: 0.88 })) { const bn = bone(sk, n); if (bn) bn.scale.multiplyScalar(k); }
     const armor = triMat({ set: 'hull', world: false, scale: 4, color: '#24202e', metal: 1, rough: 0.25, bump: 0.04, line: '#a77bff', lineI: 3, env: 1.3 });
     const trim = glowMat('#b07cff', 5); rig.trims = [trim];
     for (const sd of [1, -1]) { const p = pauldron(armor, trim, 0.13); p.position.set(0.17 * sd, 0.15, -0.01); p.rotation.z = -0.55 * sd; attach(sk, 'Spine2', p); }
@@ -4549,30 +5111,80 @@ var R3 = window.THREE ? (() => {
     const robe2 = new T.Mesh(new T.ConeGeometry(1.5, 4.6, 32, 1, true), robeMat(rig.col)); robe2.position.y = 3.2; robe2.rotation.y = 1; rig.body.add(robe2);
     const shards = new T.Group(); shards.position.y = 6.2; rig.body.add(shards); rig.shards = shards;
     for (let k = 0; k < 8; k++) { const a = k / 8 * PI * 2; const s = new T.Mesh(new T.OctahedronGeometry(0.5, 0), armor); s.scale.set(0.35, 1.2, 0.22); s.position.set(Math.cos(a) * 4.2, Math.sin(k * 1.7) * 0.6, Math.sin(a) * 4.2); s.castShadow = true; shards.add(s); }
+    // aile de lames flottantes dans le dos, en éventail
+    const wing = new T.Group(); wing.position.set(0, 0.12, -0.16);
+    for (let k = 0; k < 9; k++) { const an = (k - 4) * 0.3; const bl = new T.Group(); bl.rotation.z = an; const len = 0.34 - Math.abs(k - 4) * 0.035;
+      const m2 = new T.Mesh(new T.OctahedronGeometry(1, 0), armor); m2.scale.set(0.03, len, 0.01); m2.position.y = 0.14 + len; bl.add(m2);
+      const e2 = new T.Mesh(new T.BoxGeometry(0.006, len * 1.9, 0.004), trim); e2.position.y = 0.14 + len; bl.add(e2); wing.add(bl); }
+    attach(sk, 'Spine2', wing); rig.wing = wing;
+    // couronne de pointes au-dessus de la tête et anneau gyroscopique à la taille
+    const crown = new T.Group(); for (let k = 0; k < 7; k++) { const c = new T.Mesh(new T.ConeGeometry(0.012, 0.12 + (k === 3 ? 0.06 : 0), 4), trim); c.position.set((k - 3) * 0.03, 0.22, 0.02); c.rotation.z = (k - 3) * -0.12; crown.add(c); } attach(sk, 'Head', crown);
+    const gyro = new T.Mesh(new T.TorusGeometry(2.6, 0.06, 8, 96), trim); gyro.position.y = 4.1; gyro.rotation.x = PI / 2 - 0.25; rig.body.add(gyro); rig.gyro = gyro;
     rig.floatAmp = 0.3; rig.baseY = 1.0; rig.glowS.position.set(0, 6.6, 0.6); rig.glowS.scale.set(5, 5, 1); rig.orbY = 11.5; rig.levit = true;
     return rig;
   }
   function buildVorr() {
-    const rig = colossusRig(['#ff8a3a', '#ff4a1a'], 5.4,
-      { set: 'rock', color: '#d8d0c8', metal: 0.1, rough: 0.9, scale: 1.6, bump: 0.09, line: '#ff6a1a', lineI: 5, albedoMix: 1, env: 0.6 },
-      { set: 'rock', color: '#3a2a22', metal: 0.3, rough: 0.6, scale: 1.6, bump: 0.05, line: '#ff7a2a', lineI: 9, rim: '#ff5a1a', rimI: 2.5 });
+    // golem de basalte : armure de roche sombre veinée de magma, cœur en fusion, marteau monolithe
+    const rig = colossusRig(['#ff7a2a', '#ff3a10'], 5.6,
+      { set: 'rock', color: '#6a5a52', metal: 0.05, rough: 0.92, scale: 1.4, bump: 0.1, line: '#ff6a1a', lineI: 3.2, albedoMix: 1, env: 0.4 },
+      { set: 'rock', color: '#2a1a14', metal: 0.2, rough: 0.6, scale: 1.4, bump: 0.05, line: '#ff7a2a', lineI: 6, rim: '#ff4a10', rimI: 1.6 });
     const sk = rig.skel; if (!sk) return rig;
-    const rock = triMat({ set: 'rock', world: false, scale: 3.2, color: '#d0c8c0', metal: 0.1, rough: 0.9, bump: 0.12, line: '#ff6a1a', lineI: 6, env: 0.5 });
-    const chunk = (s, x, y, z, seed) => { const m = new T.Mesh(rockGeo(seed, 1), rock); m.scale.set(s, s * 0.85, s); m.position.set(x, y, z); m.rotation.set(seed, seed * 2, seed * 0.5); m.castShadow = true; return m; };
-    const shoulder = sd => { const g = new T.Group(); g.add(chunk(0.12, 0, 0, 0, sd + 2)); g.add(chunk(0.07, 0.05 * sd, 0.08, -0.03, sd + 4)); g.add(chunk(0.06, -0.02 * sd, 0.07, 0.06, sd + 6)); g.position.set(0.19 * sd, 0.15, -0.02); return g; };
+    // silhouette de golem (avant l'armure, qui garde ainsi sa taille) : torse et bras épaissis, cou rentré ; pieds recalés au sol
+    const toe = bone(sk, 'LeftToeBase'), tp = new T.Vector3();
+    sk.updateMatrixWorld(true); const y0 = toe ? toe.getWorldPosition(tp).y : 0;
+    for (const [n, k] of Object.entries({ Spine2: 1.22, LeftArm: 1.16, RightArm: 1.16, LeftUpLeg: 1.1, RightUpLeg: 1.1, Neck: 0.78 })) { const b = bone(sk, n); if (b) b.scale.multiplyScalar(k); }
+    sk.updateMatrixWorld(true); if (toe) rig.baseY = y0 - toe.getWorldPosition(tp).y;
+    const rock = triMat({ set: 'rock', world: false, scale: 3.0, color: '#4a3e3a', metal: 0.05, rough: 0.8, bump: 0.05, line: '#ff6a1a', lineI: 2.2, env: 0.5, flat: true });
+    const basalt = triMat({ set: 'rock', world: false, scale: 4.0, color: '#3a302c', metal: 0.05, rough: 0.85, bump: 0.08, line: '#ff6a1a', lineI: 1.2, env: 0.4 });
+    rig.mats.push(rock, basalt);
+    const seam = glowMat('#ff7a2a', 7); rig.trims = [seam];
+    const chunk = (s, x, y, z, seed, m) => { const o = new T.Mesh(shardGeo(seed), m || rock); o.scale.set(s, s * 0.85, s); o.position.set(x, y, z); o.rotation.set(seed, seed * 2, seed * 0.5); o.castShadow = true; return o; };
+    const prism = (r, h, x, y, z, rx, rz) => { const o = new T.Mesh(new T.CylinderGeometry(r * 0.8, r, h, 6), basalt); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; return o; };
+    rig.vents = []; rig.breakable = [];
+    // épaulières : blocs massifs, une fente de magma et une fumerolle
+    const shoulder = sd => {
+      const g = new T.Group();
+      const a = chunk(0.17, 0, 0.01, 0, sd + 2); g.add(a); rig.breakable.push(a);
+      g.add(chunk(0.1, 0.07 * sd, 0.1, -0.04, sd + 4)); g.add(chunk(0.08, -0.03 * sd, 0.09, 0.07, sd + 6));
+      g.add(prism(0.025, 0.2, 0.05 * sd, 0.15, -0.06, -0.4, -0.35 * sd)); g.add(prism(0.02, 0.15, 0.1 * sd, 0.12, -0.02, -0.2, -0.6 * sd));
+      const s = new T.Mesh(new T.TorusGeometry(0.11, 0.008, 6, 24, PI * 1.2), seam); s.rotation.set(PI / 2, 0, sd > 0 ? 0.6 : 2.2); s.position.y = 0.02; g.add(s);
+      const v = new T.Object3D(); v.position.set(0.05 * sd, 0.2, -0.05); g.add(v); rig.vents.push(v);
+      g.position.set(0.21 * sd, 0.16, -0.02); return g;
+    };
     attach(sk, 'Spine2', shoulder(1)); attach(sk, 'Spine2', shoulder(-1));
-    const back = new T.Group(); back.add(chunk(0.2, 0, 0.05, -0.12, 7)); back.add(chunk(0.13, 0.12, 0.15, -0.1, 8)); back.add(chunk(0.12, -0.12, 0.16, -0.08, 9)); attach(sk, 'Spine2', back);
-    const helm = new T.Group(); helm.add(chunk(0.13, 0, 0.1, -0.02, 11)); const eye = new T.Mesh(new T.BoxGeometry(0.14, 0.012, 0.02), glowMat('#ffb050', 10)); eye.position.set(0, 0.07, 0.1); helm.add(eye); attach(sk, 'Head', helm);
-    for (const s of ['Left', 'Right']) { attach(sk, s + 'ForeArm', chunk(0.09, 0, 0.12, 0, s.length)); attach(sk, s + 'UpLeg', chunk(0.1, 0, 0.2, 0.03, s.length + 2)); }
-    const crack = new T.Mesh(new T.IcosahedronGeometry(0.07, 2), coreMat(rig.col, 6)); crack.position.set(0, 0.03, 0.1); crack.scale.set(1, 1.3, 0.5); attach(sk, 'Spine2', crack); rig.core = crack;
-    // marteau
+    // dos : crête de colonnes de basalte
+    const back = new T.Group();
+    back.add(chunk(0.2, 0, 0.04, -0.13, 7));
+    [[0, 0.3, -0.16, -0.35, 0], [0.08, 0.24, -0.15, -0.45, -0.3], [-0.08, 0.25, -0.15, -0.45, 0.3], [0.15, 0.18, -0.12, -0.5, -0.6], [-0.15, 0.17, -0.12, -0.5, 0.6]].forEach(([x, h, z, rx, rz], k) => back.add(prism(0.03 - k * 0.002, h, x, 0.12 + h * 0.35, z, rx, rz)));
+    attach(sk, 'Spine2', back);
+    // tête : bloc fendu, couronne de cornes, fente d'yeux
+    const helm = new T.Group(); helm.add(chunk(0.13, 0, 0.09, -0.02, 11));
+    for (let k = 0; k < 5; k++) { const c = new T.Mesh(new T.ConeGeometry(0.022, 0.16 + (k === 2 ? 0.06 : 0) - Math.abs(k - 2) * 0.02, 5), basalt); c.position.set((k - 2) * 0.05, 0.2, -0.03); c.rotation.set(-0.3, 0, (k - 2) * 0.28); c.castShadow = true; helm.add(c); }
+    const eye = new T.Mesh(new T.BoxGeometry(0.15, 0.014, 0.02), glowMat('#ffc060', 12)); eye.position.set(0, 0.075, 0.105); helm.add(eye);
+    attach(sk, 'Head', helm);
+    // bras et jambes : gantelets et genouillères de roche
+    for (const s of ['Left', 'Right']) {
+      const g = new T.Group(); const c = chunk(0.1, 0, 0.13, 0, s.length); g.add(c); g.add(chunk(0.06, 0.03, 0.2, 0.03, s.length + 5)); attach(sk, s + 'ForeArm', g); rig.breakable.push(c);
+      attach(sk, s + 'UpLeg', chunk(0.11, 0, 0.22, 0.03, s.length + 2)); attach(sk, s + 'Leg', chunk(0.08, 0, 0.05, 0.05, s.length + 9));
+    }
+    // cœur en fusion visible à travers la cuirasse
+    const core = new T.Mesh(new T.IcosahedronGeometry(0.06, 2), coreMat(rig.col, 0.7)); core.position.set(0, 0.03, 0.085); core.scale.set(1, 1.25, 0.35); attach(sk, 'Spine2', core); rig.core = core;
+    for (let k = 0; k < 4; k++) { const v = new T.Mesh(new T.BoxGeometry(0.008, 0.08 + k * 0.02, 0.006), seam); v.position.set((k - 1.5) * 0.045, 0.03 + (k % 2) * 0.03, 0.12); v.rotation.z = (k - 1.5) * 0.5; attach(sk, 'Spine2', v); }
+    const coreGlow = new T.Sprite(new T.SpriteMaterial({ map: glowTex, color: hdr('#ff6a1a', 0.7), blending: T.AdditiveBlending, depthWrite: false, transparent: true })); coreGlow.scale.set(0.28, 0.28, 1); core.add(coreGlow);
+    // marteau monolithe : manche de fer, tête de basalte cerclée de magma
     const ham = new T.Group();
-    const shaftM = triMat({ set: 'hull', world: false, scale: 6, color: '#4a4f58', metal: 0.95, rough: 0.4, bump: 0.02 });
-    const shaft = new T.Mesh(new T.CylinderGeometry(0.018, 0.018, 0.62, 10), shaftM); shaft.position.y = 0.2; ham.add(shaft);
-    const head = new T.Mesh(new T.BoxGeometry(0.24, 0.14, 0.14), rock); head.position.y = 0.5; head.castShadow = true; ham.add(head);
-    const rune = new T.Mesh(new T.BoxGeometry(0.245, 0.018, 0.145), glowMat('#ff8a3a', 8)); rune.position.y = 0.5; ham.add(rune);
-    attach(sk, 'RightHand', handDown(ham, true)); rig.hammer = ham;
-    rig.glowS.position.set(0, 5.5, 0.8); rig.glowS.scale.set(4, 4, 1); rig.orbY = 12.5; rig.heavy = true;
+    const shaftM = triMat({ set: 'hull', world: false, scale: 6, color: '#3a3d44', metal: 0.95, rough: 0.45, bump: 0.02 });
+    const shaft = new T.Mesh(new T.CylinderGeometry(0.02, 0.024, 0.95, 10), shaftM); shaft.position.y = 0.3; ham.add(shaft);
+    for (const y of [0.05, 0.2, 0.62]) { const w = new T.Mesh(new T.CylinderGeometry(0.03, 0.03, 0.035, 10), shaftM); w.position.y = y; ham.add(w); }
+    const head = new T.Group(); head.position.y = 0.82; ham.add(head);
+    const drum = new T.Mesh(new T.CylinderGeometry(0.13, 0.15, 0.46, 8), rock); drum.rotation.z = PI / 2; drum.castShadow = true; head.add(drum);
+    for (const x of [-0.17, 0.17]) { const cap = new T.Mesh(new T.CylinderGeometry(0.155, 0.11, 0.06, 8), basalt); cap.rotation.z = PI / 2; cap.position.x = x * 1.4; head.add(cap); }
+    for (const x of [-0.1, 0.1]) { const band = new T.Mesh(new T.TorusGeometry(0.145, 0.012, 6, 24), seam); band.rotation.y = PI / 2; band.position.x = x; head.add(band); }
+    const heart = new T.Mesh(new T.IcosahedronGeometry(0.04, 1), coreMat(rig.col, 2.5)); heart.position.z = 0.13; head.add(heart);
+    for (let k = 0; k < 3; k++) { const sp = new T.Mesh(new T.ConeGeometry(0.03, 0.12, 5), basalt); sp.position.set((k - 1) * 0.13, 0.15, 0); head.add(sp); }
+    attach(sk, 'RightHand', handDown(ham, true)); rig.hammer = ham; rig.hammerHead = head;
+    rig.trimK = 2.6;
+    rig.glowS.position.set(0, 5.6, 0.9); rig.glowS.scale.set(5, 5, 1); rig.orbY = 13; rig.heavy = true; rig.magma = true;
     return rig;
   }
   function buildTwin(kind) {
@@ -4583,6 +5195,8 @@ var R3 = window.THREE ? (() => {
       sun ? { set: 'hull', color: '#3a2a10', metal: 0.9, rough: 0.3, scale: 2.4, bump: 0.01, line: '#ffcf5a', lineI: 4, rim: '#ffb84a', rimI: 1.2 }
         : { set: 'hull', color: '#1a2436', metal: 0.9, rough: 0.3, scale: 2.4, bump: 0.01, line: '#9fd0ff', lineI: 4, rim: '#8fc8ff', rimI: 1.2 });
     const sk = rig.skel; if (!sk) return rig;
+    // silhouette élancée (avant les parures) : cou allongé, tête et bras affinés
+    for (const [n, k] of Object.entries({ Neck: 1.18, Head: 0.92, LeftArm: 0.94, RightArm: 0.94 })) { const bn = bone(sk, n); if (bn) bn.scale.multiplyScalar(k); }
     const halo = haloRing(rig.col, 0.22, sun ? 16 : 6, !sun); halo.position.set(0, 0.1, -0.12); attach(sk, 'Head', halo); rig.halo = halo;
     const robe = new T.Mesh(new T.ConeGeometry(1.5, 4.8, 40, 1, true), robeMat(rig.col)); robe.position.y = 2.0; rig.body.add(robe);
     const trim = glowMat(sun ? '#ffcf5a' : '#9fd0ff', 5);
@@ -4596,6 +5210,23 @@ var R3 = window.THREE ? (() => {
       const tr = new T.Mesh(new T.BoxGeometry(0.076, 0.012, 0.014), trim); tr.position.set(Math.sin(a) * 0.205, -0.4, Math.cos(a) * 0.18); tr.rotation.y = a; skirt.add(tr); }
     attach(sk, 'Hips', skirt);
     const crown = new T.Group(); for (let k = 0; k < 5; k++) { const c = new T.Mesh(new T.ConeGeometry(0.012, 0.09 + (k === 2 ? 0.05 : 0), 4), trim); c.position.set((k - 2) * 0.035, 0.2, 0.03); crown.add(c); } attach(sk, 'Head', crown);
+    // grand disque derrière la tête : soleil à rayons (Séla) ou croissant (Néria)
+    const disc = new T.Group(); disc.position.set(0, 0.12, -0.16);
+    const dm = new T.MeshBasicMaterial({ color: hdr(sun ? '#ffcf5a' : '#cfe6ff', sun ? 3 : 2.4), transparent: true, opacity: 0.85, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide });
+    if (sun) { disc.add(new T.Mesh(new T.RingGeometry(0.2, 0.235, 64), dm)); for (let k = 0; k < 24; k++) { const an = k / 24 * PI * 2, l = k % 2 ? 0.12 : 0.2; const ray = new T.Mesh(new T.PlaneGeometry(0.012, l), dm); ray.position.set(Math.cos(an) * (0.25 + l / 2), Math.sin(an) * (0.25 + l / 2), 0); ray.rotation.z = an - PI / 2; disc.add(ray); } }
+    else { const cr = new T.Mesh(new T.RingGeometry(0.2, 0.3, 64, 1, PI * 0.15, PI * 1.25), dm); cr.rotation.z = PI * 0.2; disc.add(cr); for (let k = 0; k < 5; k++) { const st = new T.Mesh(new T.CircleGeometry(0.012, 6), dm); const an = PI * 1.55 + k * 0.22; st.position.set(Math.cos(an) * 0.36, Math.sin(an) * 0.36, 0); disc.add(st); } }
+    attach(sk, 'Head', disc); rig.disc = disc;
+    // sceptre : disque solaire (Séla) ou glaive en croissant (Néria)
+    const staff = new T.Group();
+    const pole = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.9, 8), armor); pole.position.y = 0.2; staff.add(pole);
+    if (sun) { const sd = new T.Mesh(new T.CircleGeometry(0.07, 32), glowMat('#ffd27a', 6, { side: T.DoubleSide })); sd.position.y = 0.68; staff.add(sd); const sr = new T.Mesh(new T.TorusGeometry(0.085, 0.008, 6, 32), armor); sr.position.y = 0.68; staff.add(sr); }
+    else { const bl = new T.Mesh(new T.TorusGeometry(0.09, 0.012, 6, 32, PI * 1.2), glowMat('#cfe6ff', 5)); bl.position.y = 0.68; bl.rotation.z = -PI * 0.1; staff.add(bl); }
+    attach(sk, 'LeftHand', handDown(staff, false));
+    // astres en orbite autour d'elle
+    const orbit = new T.Group(); orbit.position.y = 4.2; rig.body.add(orbit); rig.shards = orbit;
+    for (let k = 0; k < 6; k++) { const an = k / 6 * PI * 2, rr = 2.6 + (k % 2) * 0.4; const o2 = new T.Mesh(sun ? new T.IcosahedronGeometry(0.16, 1) : new T.OctahedronGeometry(0.16, 0), glowMat(sun ? '#ffd27a' : '#cfe6ff', 4)); o2.position.set(Math.cos(an) * rr, Math.sin(k * 1.9) * 0.5, Math.sin(an) * rr); orbit.add(o2); }
+    // traîne d'énergie plus longue
+    const train = new T.Mesh(new T.ConeGeometry(2.0, 6.4, 40, 1, true), robeMat(rig.col)); train.position.y = 1.6; train.rotation.y = 0.7; rig.body.add(train);
     rig.floatAmp = 0.25; rig.baseY = 0.6; rig.glowS.position.set(0, 4.6, 0.5); rig.glowS.scale.set(3.5, 3.5, 1); rig.orbY = 9; rig.levit = true;
     return rig;
   }
@@ -4622,8 +5253,8 @@ var R3 = window.THREE ? (() => {
     // tentacules
     const tmat = triMat({ set: 'hull', world: false, scale: 1.2, color: '#14111c', metal: 1, rough: 0.22, bump: 0.03, line: '#9b6bff', lineI: 7, rim: '#7a5cff', rimI: 2, env: 1.2 });
     rig.tentacles = [];
-    for (let k = 0; k < 7; k++) {
-      const a = k / 7 * PI * 2 + 0.35, len = 0.75 + ((k * 37) % 10) / 22, curl = (k % 2 ? 1 : -1) * (0.5 + (k % 3) * 0.25);
+    for (let k = 0; k < 9; k++) {
+      const a = k / 9 * PI * 2 + 0.35, len = 0.75 + ((k * 37) % 10) / 22, curl = (k % 2 ? 1 : -1) * (0.5 + (k % 3) * 0.25);
       const pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12; const rr = 1.6 + t * 7 * len; const tw = a + curl * t * t * 0.9; let y = 6.0 - t * 5.6 * len + Math.sin(t * PI) * 1.8; if (t > 0.78) y += (t - 0.78) * 9 * len; pts.push(new T.Vector3(Math.cos(tw) * rr, Math.max(0.35, y), Math.sin(tw) * rr)); }
       const curve = new T.CatmullRomCurve3(pts);
       const geo = new T.TubeGeometry(curve, 48, 0.5, 12, false);
@@ -4638,6 +5269,11 @@ var R3 = window.THREE ? (() => {
     const rockM = triMat({ set: 'rock', world: false, scale: 1.5, color: '#9a8fa8', metal: 0.2, rough: 0.8, bump: 0.08, line: '#b07bff', lineI: 4 });
     const shards = new T.Group(); shards.position.y = 7; b.add(shards); rig.shards = shards;
     for (let k = 0; k < 14; k++) { const a = k / 14 * PI * 2, rr = 5 + (k % 3) * 1.4; const s = new T.Mesh(rockGeo(k, 1), rockM); s.scale.setScalar(0.25 + (k % 4) * 0.12); s.position.set(Math.cos(a) * rr, Math.sin(k * 2.3) * 1.2, Math.sin(a) * rr); s.castShadow = true; shards.add(s); }
+    // l'œil au fond de l'horizon : iris de lumière tourné vers sa proie
+    const eye = new T.Group(); eye.position.set(0, 7, 2.05); b.add(eye); rig.eye = eye;
+    eye.add(new T.Mesh(new T.RingGeometry(0.55, 0.95, 48), glowMat('#ff5ac8', 3.5, { side: T.DoubleSide })));
+    eye.add(new T.Mesh(new T.RingGeometry(0.95, 1.05, 48), glowMat('#ffd9f0', 4, { side: T.DoubleSide })));
+    const pupil = new T.Mesh(new T.CircleGeometry(0.42, 32), new T.MeshBasicMaterial({ color: 0x000000, side: T.DoubleSide })); pupil.position.z = 0.01; eye.add(pupil); rig.pupil = pupil;
     rig.glowS.position.set(0, 7, 0); rig.glowS.scale.set(16, 16, 1);
     rig.baseY = 0; rig.floatAmp = 0.35; rig.orbY = 12.5; rig.height = 9; rig.azhal = true;
     return rig;
@@ -4651,6 +5287,7 @@ var R3 = window.THREE ? (() => {
   function disposeRigs(list) { for (const r of list) { scene.remove(r.root); if (r.anim) r.anim.mixer.stopAllAction(); } }
   function showBoss(model) {
     if (S || !ready || (lab && lab.cfg.noBoss)) { if (!ready) previewModel = null; return; }
+    setArena(model); resetForge(); resetHorizon();
     if (previewModel === model && previewRigs.length) return;
     disposeRigs(previewRigs); previewRigs = []; previewModel = model;
     previewRigs = buildRigs(model); previewRigs.forEach(bossInit);
@@ -4711,6 +5348,7 @@ var R3 = window.THREE ? (() => {
   function bindFight(state) {
     clearFight(); disposeRigs(previewRigs); previewRigs = []; previewModel = null;
     S = state; me = S.me;
+    setArena(S.B.model); resetForge(); resetHorizon();
     rigs = buildRigs(S.B.model); rigs.forEach(bossInit);
     rigs.forEach((rg, k) => { const b = S.bodies[k]; rg.root.position.set(b.pos.x, 0, b.pos.z); });
     raidM = S.raiders.map(buildRaider);
@@ -4774,6 +5412,7 @@ var R3 = window.THREE ? (() => {
           break;
         }
         case 'busterHit': {
+          if (rigs[e.body] && rigs[e.body].tentacles) rigs[e.body].lash = 1;
           const p = raidPos(e.i, 1.3); if (rigs[e.body]) bossPlay(rigs[e.body], 'bSlam');
           emit(p.x, p.y, p.z, 30 + e.stacks * 14, e.stacks >= 3 ? '#ff4d4d' : '#ffb27a', { speed: 7, life: 0.6, size: 0.4 });
           burstRing(p.x, p.z, 2.5 + e.stacks, '#ff5a3c', 0.5); flash(p.x, 1.5, p.z, '#ff8a4a', 8);
@@ -4801,8 +5440,19 @@ var R3 = window.THREE ? (() => {
         case 'nanites': fx.push({ t: 0, dur: 6, upd() { for (const m of raidM) if (m.r.alive && Math.random() < 0.4) emit(m.root.position.x, 0.4, m.root.position.z, 1, '#7dff9c', { speed: 1, life: 1.2, size: 0.28, vy: 2.5, grav: 0, spread: 1.4 }); } }); break;
         case 'aurore': for (const m of raidM) if (m.r.alive) emit(m.root.position.x, 2.6, m.root.position.z, 4, '#ffe39a', { speed: 1, life: 0.9, size: 0.35, vy: -1, grav: 0 }); break;
         case 'eclipse': fx.push({ t: 0, dur: 8, upd(f, k) { eclipseLvl = k < 0.1 ? k / 0.1 : k > 0.85 ? (1 - k) / 0.15 : 1; }, done() { eclipseLvl = 0; } }); break;
+        case 'fissures': {
+          const rg = rigs[e.body] || rigs[0]; if (rg) bossPlay(rg, 'bSlam');
+          const b = S.bodies[e.body] || S.bodies[0];
+          burstRing(b.pos.x, b.pos.z, 7, '#ff7a2a', 0.6); emit(b.pos.x, 0.4, b.pos.z, 50, '#ff9a4a', { speed: 6, life: 0.8, size: 0.45, vy: 5, grav: -9 });
+          flash(b.pos.x, 1.5, b.pos.z, '#ff7a2a', 10, 0.5); cam.shake = Math.max(cam.shake, 0.55);
+          break;
+        }
+        case 'half': { const rg = rigs[e.body]; if (rg) bossPlay(rg, 'bCharge', { dur: e.warn }); break; }
+        case 'collapse': if (arenaName === 'forge') { L.collapse = { t: 0, delay: e.delay || 4 }; cam.shake = Math.max(cam.shake, 0.9); flashLvl = Math.max(flashLvl, 0.3); } break;
         case 'phase': {
           for (const rg of rigs) { rg.rise = 1; bossPlay(rg, 'bRoar'); }
+          // Vorr perd des pans d'armure
+          for (const rg of rigs) if (rg.breakable) rg.breakable.forEach(c => { if (!c.visible) return; const p = c.getWorldPosition(new T.Vector3()); emit(p.x, p.y, p.z, 26, '#5a4a44', { speed: 6, life: 1.2, size: 0.6, grav: -10 }); emit(p.x, p.y, p.z, 18, '#ff7a2a', { speed: 7, life: 0.8, size: 0.4, grav: -8 }); c.visible = false; });
           cam.shake = Math.max(cam.shake, 1); flashLvl = Math.max(flashLvl, 0.4);
           const c = rigs[0] ? rigs[0].colors[Math.min(e.p, rigs[0].colors.length - 1)] : '#ff4fc8';
           const p0 = rigs[0] ? rigs[0].root.position : new T.Vector3();
@@ -4843,7 +5493,7 @@ var R3 = window.THREE ? (() => {
     tmpC.set(rg.colors[idx]).convertSRGBToLinear(); rg.col.value.lerp(tmpC, Math.min(1, dt * 2));
     rg.glowS.material.color.copy(rg.col.value).multiplyScalar(2.2);
     if (rg.halo) rg.halo.userData.mat.color.copy(rg.col.value).multiplyScalar(5);
-    if (rg.trims) rg.trims.forEach(m => m.color.copy(rg.col.value).multiplyScalar(5));
+    if (rg.trims) rg.trims.forEach(m => m.color.copy(rg.col.value).multiplyScalar(rg.trimK || 5));
     for (const m of rg.mats) if (m.userData.u && m.userData.lineI) m.userData.u.uLine.value.copy(rg.col.value).multiplyScalar(m.userData.lineI);
     let moving = false;
     if (b) {
@@ -4869,9 +5519,17 @@ var R3 = window.THREE ? (() => {
     rg.body.rotation.x = deadK * (rg.azhal ? 0.2 : 0.55);
     if (deadK > 0 && Math.random() < 0.5) { const p = rg.root.position; emit(p.x + (Math.random() - 0.5) * 4, 1 + Math.random() * 6, p.z + (Math.random() - 0.5) * 4, 2, rg.colors[0], { speed: 1, life: 1.5, size: 0.5, vy: 2, grav: 0 }); }
     if (rg.halo) rg.halo.rotation.z += dt * 0.3;
+    if (rg.disc) rg.disc.rotation.z += dt * 0.12;
+    if (rg.gyro) rg.gyro.rotation.z += dt * 0.8;
+    if (rg.wing) rg.wing.rotation.z = Math.sin(time * 0.8) * 0.05;
     if (rg.shards) rg.shards.rotation.y += dt * (S && S.phase === S.B.phases.length - 1 ? 0.9 : 0.35);
     if (rg.disk) rg.disk.rotation.z += dt * 0.15;
-    if (rg.tentacles) rg.tentacles.forEach(t => { t.m.rotation.y = Math.sin(time * 0.7 + t.ph) * 0.12; t.m.rotation.z = Math.sin(time * 0.9 + t.ph * 1.3) * 0.05; });
+    if (rg.lash) rg.lash = Math.max(0, rg.lash - dt * 1.6);
+    if (rg.tentacles) rg.tentacles.forEach(t => { const l = (rg.lash || 0) * Math.sin(t.ph * 3.1) ; t.m.rotation.y = Math.sin(time * 0.7 + t.ph) * 0.12 + l * 0.25; t.m.rotation.z = Math.sin(time * 0.9 + t.ph * 1.3) * 0.05 - Math.abs(l) * 0.12; });
+    if (rg.pupil) { const bl = Math.sin(time * 0.45) > 0.985 ? 0.1 : 1; rg.pupil.scale.set(1, bl, 1); rg.pupil.scale.multiplyScalar(0.8 + 0.25 * Math.sin(time * 1.7)); }
+    // Vorr : fumerolles des épaules, braises du marteau
+    if (rg.vents && !rg.dead && Math.random() < dt * 7) { const v = rg.vents[Math.floor(Math.random() * rg.vents.length)]; const p = v.getWorldPosition(tmpV2); emit(p.x, p.y, p.z, 1, Math.random() < 0.65 ? '#4a3c36' : '#ff7a2a', { speed: 0.4, life: 1.8, size: 0.8, vy: 2.4, grav: 0, k: 0.7 }); }
+    if (rg.hammerHead && !rg.dead && Math.random() < dt * 9) { const p = rg.hammerHead.getWorldPosition(tmpV2); emit(p.x + (Math.random() - 0.5) * 1.6, p.y, p.z + (Math.random() - 0.5) * 1.6, 1, '#ff9a4a', { speed: 0.6, life: 0.8, size: 0.25, vy: 1.6, grav: 0 }); }
     const pulse = b && b.cast && b.cast.interruptible ? 0.6 + 0.4 * Math.sin(time * 12) : (b && b.empower ? Math.min(1, b.empower * 0.1) : 0);
     if (rg.core && rg.core.material.uniforms) rg.core.material.uniforms.uPulse.value = pulse;
     for (const m of rg.mats) if (m.userData.u) m.userData.u.uPulse.value = pulse * 0.6;
@@ -4888,10 +5546,14 @@ var R3 = window.THREE ? (() => {
     const lead = rigs[0] || previewRigs[0];
     if (lead) { phaseCol.copy(lead.col.value); U.phase.value.copy(phaseCol); L.boss.color.copy(phaseCol); }
     U.eclipse.value += (eclipseLvl - U.eclipse.value) * Math.min(1, dt * 3);
-    L.key.intensity = 2.6 * (1 - U.eclipse.value * 0.75);
+    L.key.intensity = (L.keyBase || 2.6) * (1 - U.eclipse.value * 0.75);
+    if (arenaName === 'forge') updateForge(dt);
+    if (arenaName === 'observatory') updateObservatory(dt);
+    if (arenaName === 'horizon') updateHorizon(dt);
     if (L.planet) L.planet.rotation.y += dt * 0.004;
     if (L.ast) { const m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), s3 = new T.Vector3(); L.ast.forEach(a => { a.a += a.w * dt; a.rx += dt * 0.15; a.ry += dt * 0.1; e3.set(a.rx, a.ry, 0); q4.setFromEuler(e3); s3.setScalar(a.s); m4.compose(tmpV.set(Math.cos(a.a) * a.r, a.y, Math.sin(a.a) * a.r), q4, s3); a.m.setMatrixAt(a.i, m4); }); L.astMesh.forEach(m => { m.instanceMatrix.needsUpdate = true; }); }
     if (L.crystals) L.crystals.forEach((c, k) => { c.position.y = 11 + Math.sin(time * 1.2 + k) * 0.35; c.rotation.y += dt * 0.8; });
+    if (L.gyros && L.arenaDefault.visible) L.gyros.forEach(o => { o.ring.rotation.y += o.w * dt; });
     if (L.towers) L.towers.forEach(o => { if (o.isSprite) o.material.opacity = 0.4 + 0.6 * (Math.sin(time * 2 + o.userData.ph) > 0.6 ? 1 : 0.2); });
     if (L.ships) L.ships.forEach(s => { s.userData.a += s.userData.w * dt; const a = s.userData.a; s.position.set(Math.cos(a) * s.userData.r, s.userData.y, Math.sin(a) * s.userData.r); s.rotation.y = -a + (s.userData.w > 0 ? 0 : PI); });
     if (L.core) L.core.rotation.y += dt * 0.6;
@@ -4914,6 +5576,83 @@ var R3 = window.THREE ? (() => {
     if (composer) composer.render(); else renderer.render(scene, camera);
     adaptQuality(dt);
   }
+
+  // ---------- fissures de magma ----------
+  // la ligne se dessine depuis le boss, palpite de plus en plus vite, puis entre en éruption sur toute sa largeur
+  function fissureMat() {
+    return SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide,
+      uniforms: { uTime: U.time, uGrow: { value: 0 }, uProg: { value: 0 }, uArmed: { value: 0 }, uSeed: { value: Math.random() * 10 } },
+      vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: NOISE3 + `uniform float uTime; uniform float uGrow; uniform float uProg; uniform float uArmed; uniform float uSeed; varying vec2 vUv;
+        void main(){ float x = vUv.x; if (x > uGrow) discard;
+          float off = (noise(vec3(x*12.0, uSeed, 0.0)) - 0.5)*0.5 + (noise(vec3(x*38.0, uSeed + 3.0, 0.0)) - 0.5)*0.16;
+          float y = vUv.y - 0.5 - off*0.5;
+          float core = exp(-y*y*700.0);
+          float ay = abs(vUv.y - 0.5);
+          float band = 1.0 - smoothstep(0.40, 0.5, ay);
+          float edge = 1.0 - smoothstep(0.0, 0.035, abs(ay - 0.46));
+          float warn = 0.5 + 0.5*sin(uTime*(5.0 + uProg*16.0));
+          float a = core*(0.8 + uProg*1.4) + band*0.16*(0.5 + uProg) + edge*0.9*warn;
+          if (uArmed > 0.5) { float fl = fbm3(vec3(x*9.0 - uTime*4.0, vUv.y*5.0, uTime*2.5)); a = band*(0.25 + 0.65*smoothstep(0.35, 0.8, fl)) + core*1.4; }
+          a *= smoothstep(uGrow, uGrow - 0.03, x) * smoothstep(0.0, 0.03, x);
+          vec3 c = uArmed > 0.5 ? mix(vec3(1.0,0.30,0.05), vec3(1.0,0.62,0.22), clamp(core + 0.2, 0.0, 1.0)) : mix(vec3(1.0,0.78,0.30), vec3(1.0,0.9,0.6), core);
+          gl_FragColor = vec4(c*a*1.5, a); }`,
+    });
+  }
+  function updateFissure(z, m) {
+    // le tracé s'arrête au bord de la plateforme
+    let dx = z.x2 - z.x, dz = z.z2 - z.z, len = Math.hypot(dx, dz) || 1;
+    const ux = dx / len, uz = dz / len, pb = z.x * ux + z.z * uz, edge = -pb + Math.sqrt(Math.max(0, pb * pb - (z.x * z.x + z.z * z.z - 21.5 * 21.5)));
+    if (edge > 1 && edge < len) { len = edge; dx = ux * len; dz = uz * len; }
+    if (!m) {
+      const geo = new T.PlaneGeometry(len, z.w); geo.rotateX(-PI / 2);
+      m = new T.Mesh(geo, fissureMat()); m.position.set((z.x + z.x2) / 2, 0.075, (z.z + z.z2) / 2); m.rotation.y = Math.atan2(-dz, dx); m.renderOrder = 3;
+      scene.add(m); zoneM.set(z.id, m);
+    }
+    const u = m.material.uniforms, armed = S.t >= z.armAt;
+    u.uGrow.value = Math.min(1, (S.t - z.born) / 0.35);
+    u.uProg.value = Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born));
+    u.uArmed.value = armed ? 1 : 0;
+    if (armed && !m.userData.erupted) {
+      m.userData.erupted = true;
+      for (let k = 0; k <= 9; k++) { const f = k / 9, x = z.x + dx * f, zz = z.z + dz * f; emit(x, 0.2, zz, 7, '#ffb050', { speed: 2.5, life: 0.9, size: 0.5, vy: 11, grav: -16 }); }
+      flash(z.x + dx * 0.4, 1.2, z.z + dz * 0.4, '#ff7a2a', 9, 0.5); cam.shake = Math.max(cam.shake, 0.4);
+    }
+    if (armed && Math.random() < 0.8) { const f = Math.random(); emit(z.x + dx * f, 0.2, z.z + dz * f, 1, Math.random() < 0.5 ? '#ff8a3a' : '#ffd080', { speed: 1, life: 0.6, size: 0.45, vy: 6, grav: -8 }); }
+  }
+
+  // ---------- Rayons du Noyau ----------
+  // deux secteurs au sol pendant l'alerte, puis deux murs de lumière qui tournent depuis l'œil central
+  function sweepFx(z, m) {
+    if (!m) {
+      m = new T.Group(); m.renderOrder = 3;
+      const secMat = SM({ transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time, uProg: { value: 0 }, uAlpha: { value: 1 }, uColor: { value: hdr('#c46bff', 1) } },
+        vertexShader: `varying vec2 vP; void main(){ vec4 w = modelMatrix*vec4(position,1.0); vP = w.xz; gl_Position = projectionMatrix*viewMatrix*w; }`,
+        fragmentShader: `uniform float uTime; uniform float uProg; uniform float uAlpha; uniform vec3 uColor; varying vec2 vP;
+          void main(){ float d = length(vP); float hatch = step(0.5, fract(d * 0.35 - uTime * 1.2));
+            float a = (0.22 + 0.35 * uProg + hatch * 0.12) * uAlpha;
+            gl_FragColor = vec4(uColor * a * 1.6, a); }` });
+      for (const off of [0, PI]) {
+        const a0 = z.dir > 0 ? z.a0 + off : z.a0 + off - z.span;
+        const sec = new T.Mesh(new T.RingGeometry(z.eye, 21, 48, 1, -a0 - z.span, z.span), secMat); sec.rotation.x = -PI / 2; sec.position.y = 0.06; m.add(sec);
+      }
+      m.userData.secMat = secMat;
+      const wallMat = beamMat('#d79bff', 4); m.userData.walls = [];
+      for (const off of [0, PI]) { const wl = new T.Mesh(new T.PlaneGeometry(21 - z.eye, 3.2), wallMat); wl.visible = false; m.add(wl); m.userData.walls.push({ wl, off }); }
+      const band = new T.Mesh(new T.PlaneGeometry(2 * 21, z.w), beamMat('#c46bff', 2.5)); band.rotation.x = -PI / 2; band.position.y = 0.08; band.visible = false; m.add(band); m.userData.band = band;
+      scene.add(m); zoneM.set(z.id, m);
+    }
+    const armed = S.t >= z.armAt, u = m.userData;
+    u.secMat.uniforms.uProg.value = armed ? 1 : Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born));
+    u.secMat.uniforms.uAlpha.value = armed ? 0.35 : 0.75 + 0.25 * Math.sin(time * 10);
+    const b = G_sweepAngle(z);
+    for (const w of u.walls) { w.wl.visible = armed; const a = b + w.off, rm = (z.eye + 21) / 2; w.wl.position.set(Math.cos(a) * rm, 1.6, Math.sin(a) * rm); w.wl.rotation.y = -a; }
+    u.band.visible = armed; u.band.rotation.z = -b; 
+    if (armed && Math.random() < 0.9) for (const off of [0, PI]) { const a = b + off, d = z.eye + Math.random() * (21 - z.eye); emit(Math.cos(a) * d, 0.3, Math.sin(a) * d, 1, Math.random() < 0.5 ? '#d79bff' : '#ffffff', { speed: 1.2, life: 0.5, size: 0.35, vy: 3, grav: 0 }); }
+    if (armed && !u.flashed) { u.flashed = true; flash(0, 2, 0, '#c46bff', 10, 0.6); cam.shake = Math.max(cam.shake, 0.4); }
+  }
+  function G_sweepAngle(z) { const k = Math.max(0, Math.min(1, (S.t - z.armAt) / (z.endAt - z.armAt))); return z.a0 + z.dir * z.span * k; }
 
   function updateFight(dt) {
     S.bodies.forEach((b, k) => {
@@ -4980,6 +5719,9 @@ var R3 = window.THREE ? (() => {
       if (z.type === 'beam') { beamZ = z; continue; }
       live.add(z.id);
       let m = zoneM.get(z.id);
+      if (z.type === 'fissure') { updateFissure(z, m); continue; }
+      if (z.type === 'sweep') { sweepFx(z, m); continue; }
+      if (z.type === 'hole') { holeFx(z, m); continue; }
       if (!m) {
         if (z.type === 'puits') m = decal('#ff5a2e', 1, z.r, null, 2.6);
         else if (z.type === 'pool') m = decal('#ff8a2a', 1, z.r, null, 2.2);
@@ -4995,7 +5737,7 @@ var R3 = window.THREE ? (() => {
       else if (z.type === 'core') { m.position.set(z.x, 0.07, z.z); m.material.uniforms.uAlpha.value = 1; if (Math.random() < 0.6) { const a = Math.random() * PI * 2; emit(z.x + Math.cos(a) * 14, 0.5, z.z + Math.sin(a) * 14, 1, '#b18cff', { speed: 0.1, life: 1.5, size: 0.3, grav: 0, drag: 1 }); } }
       else { m.material.uniforms.uProg.value = Math.min(1, (S.t - z.born) / (z.at - z.born)); m.material.uniforms.uAlpha.value = 1.1; }
     }
-    for (const [id, m] of zoneM) if (!live.has(id)) { scene.remove(m); m.geometry.dispose(); zoneM.delete(id); }
+    for (const [id, m] of zoneM) if (!live.has(id)) { scene.remove(m); if (m.geometry) m.geometry.dispose(); zoneM.delete(id); }
     if (beamZ && rigs.length === 2) {
       const a = rigs[0].root.position, b = rigs[1].root.position;
       const armed = S.t >= beamZ.armAt;
@@ -5260,7 +6002,7 @@ var R3 = window.THREE ? (() => {
       v: 5, lead: null, diff: 'normal', boss: 'vorr', sel: DEFAULT_SEL.slice(),
       pool: Object.fromEntries(G.POOL.map(p => [p.id, { pow: 1, parts: 0, loot: 0 }])),
       kills: Object.fromEntries(G.BOSSES.map(b => [b.id, { normal: 0, heroique: 0, mythique: 0 }])), best: {}, sound: true,
-      groups: null, place: {},
+      groups: null, place: {}, talents: {}, newTier: false,
     };
   }
   function load() {
@@ -5278,18 +6020,26 @@ var R3 = window.THREE ? (() => {
   function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { } }
   const person = id => { const p = G.POOL.find(x => x.id === id); return Object.assign({}, p, st.pool[id]); };
   function bossUnlocked(bi, d) {
+    // le Mythique s'ouvre quand tout le raid est vaincu en Héroïque (les trois paliers de talents sont alors ouverts)
+    if (d === 'mythique' && !G.BOSSES.every(b => st.kills[b.id].heroique > 0)) return { ok: false, why: 'Vaincre les 4 boss en Héroïque' };
     if (bi > 0 && !(st.kills[G.BOSSES[bi - 1].id][d] > 0)) return { ok: false, why: 'Vaincre ' + G.BOSSES[bi - 1].name + ' en ' + G.DIFFS[d].name };
     const di = DIFF_ORDER.indexOf(d);
     if (di > 0 && !(st.kills[G.BOSSES[bi].id][DIFF_ORDER[di - 1]] > 0)) return { ok: false, why: 'Vaincre ce boss en ' + G.DIFFS[DIFF_ORDER[di - 1]].name };
     return { ok: true };
   }
 
+  // ---------- talents : paliers ouverts selon les victoires ----------
+  const killCount = () => G.BOSSES.reduce((a, b) => a + DIFF_ORDER.filter(d => st.kills[b.id][d] > 0).length, 0);
+  const tiersOpen = () => DATA.TALENT_TIERS.filter(n => killCount() >= n).length;
+  const talFx = cls => DATA.talentFx(cls, st.talents[cls], tiersOpen());
+
   // ---------- navigation ----------
-  const SCREENS = ['loading', 'perso', 'hub', 'roster', 'journal', 'fight', 'report', 'loot'];
+  const SCREENS = ['loading', 'perso', 'hub', 'roster', 'talents', 'journal', 'fight', 'report', 'loot'];
   let current = 'hub';
   function show(name) {
     current = name;
     SCREENS.forEach(s => { const el = $('#' + s); if (el) el.hidden = s !== name; });
+    hideSpellTip();
     R3.setMode(name === 'fight' ? 'fight' : 'hub');
     if (name === 'hub') renderHub();
     if (name === 'fight') requestAnimationFrame(measureHud);
@@ -5328,13 +6078,41 @@ var R3 = window.THREE ? (() => {
     return { c, pow, warn, valid, spells };
   }
   function rolesHtml(c) { return `<div class="roles"><i><span class="dot tank"></span>${c.tank} tank${c.tank > 1 ? 's' : ''}</i><i><span class="dot heal"></span>${c.heal} soigneur${c.heal > 1 ? 's' : ''}</i><i><span class="dot dps"></span>${c.dps} DPS <small style="color:var(--ink-3)">(${c.melee} mêlée · ${c.ranged} distance)</small></i></div>`; }
-  function spellChips(spells) { return `<div class="kit-spells">${spells.map(s => `<span title="${esc(SP[s.id].desc)}">${svg(SP[s.id].icon)}${esc(SP[s.id].name)}${s.n > 1 ? ' ×' + s.n : ''}</span>`).join('')}</div>`; }
+  function spellChips(spells) { return `<div class="kit-spells">${spells.map(s => `<span data-sp="${s.id}" role="button" tabindex="0">${svg(SP[s.id].icon)}${esc(SP[s.id].name)}${s.n > 1 ? ' ×' + s.n : ''}</span>`).join('')}</div>`; }
+
+  // ---------- bulle d'explication d'un sort ----------
+  // Équipe et placement : un toucher. En combat : appui long (le combat continue, la bulle laisse passer les touchers).
+  let tipFor = null, tipT = 0;
+  function spellTip(id, anchor, opts = {}) {
+    const sp = SP[id], tip = $('#spellTip'), counts = opts.counts || {};
+    const cls = sp.classes.filter(c => counts[c]), n = cls.reduce((a, c) => a + counts[c], 0);
+    const who = cls.map(c => `<i style="color:${C[c].color}">${esc(C[c].name)}${counts[c] > 1 ? ' ×' + counts[c] : ''}</i>`).join(' · ');
+    // talents choisis qui modifient ce sort
+    const tals = []; const open = tiersOpen();
+    for (const c of cls) (DATA.TALENTS[c] || []).forEach((tier, k) => { const j = (st.talents[c] || [])[k]; const ta = k < open && j != null ? tier[j] : null; if (ta && ((ta.fx.cd || {})[id] != null || (ta.fx.sp || {})[id])) tals.push(ta.name); });
+    tip.innerHTML = `<div class="st-h">${svg(sp.icon)}<b>${esc(sp.name)}</b><span class="num">recharge ${sp.cd} s</span></div>`
+      + (n ? `<p class="st-who">${who} · ${n} charge${n > 1 ? 's' : ''}</p>` : '')
+      + `<p>${esc(sp.desc)}</p><p class="st-how"><b>Comment :</b> ${esc(sp.how)}</p>`
+      + (tals.length ? `<p class="st-tal"><b>Talents :</b> ${esc(tals.join(' · '))}</p>` : '');
+    tip.classList.toggle('pass', !!opts.pass);
+    tip.style.left = '0px'; tip.style.top = '0px'; tip.hidden = false;
+    // au-dessus du sort, sans dépasser le bord droit de son conteneur (zone sûre de l'iPhone)
+    const a = anchor.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, m = 8;
+    const right = opts.edge ? opts.edge.getBoundingClientRect().right : innerWidth - m;
+    const x = Math.max(m, Math.min(a.left + a.width / 2 - w / 2, right - w));
+    let y = a.top - h - 8; if (y < m) y = Math.min(a.bottom + 8, innerHeight - h - m);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    clearTimeout(tipT); tipFor = anchor;
+  }
+  function hideSpellTip() { clearTimeout(tipT); tipFor = null; const t = $('#spellTip'); if (t) t.hidden = true; }
+  document.addEventListener('pointerdown', e => { if (tipFor && !tipFor.contains(e.target) && !$('#spellTip').contains(e.target)) hideSpellTip(); }, true);
+  $('#spellTip').addEventListener('click', hideSpellTip);
 
   // ---------- HUB ----------
   function renderHub() {
     if (!st.lead) return openPerso();
     const tk = st.kills;
-    const kills = G.BOSSES.reduce((a, b) => a + DIFF_ORDER.filter(d => tk[b.id][d] > 0).length, 0);
+    const kills = killCount();
     $('#heroCard').innerHTML = `<span class="sigil" style="background:#c9a24a22;color:#f2d68c">${svg('star')}</span>
       <div class="who"><b>${esc(st.lead.name)}</b><small>Raid lead · ${kills}/12 victoires</small></div>
       <button type="button" id="btnPerso">Changer ›</button>`;
@@ -5355,6 +6133,8 @@ var R3 = window.THREE ? (() => {
     const pull = $('#btnPull');
     pull.disabled = !un.ok || !ci.valid;
     pull.textContent = !un.ok ? un.why : !ci.valid ? 'Composition incomplète' : 'Affronter ' + B.name;
+    $('#btnTalents').textContent = st.newTier ? 'Talents •' : 'Talents';
+    $('#btnTalents').classList.toggle('notify', !!st.newTier);
     $('#btnSound').textContent = 'Son : ' + (st.sound ? 'activé' : 'coupé');
     $('#btnGfx').textContent = 'Graphismes : ' + gfxLabel();
     R3.showBoss(B.model);
@@ -5363,6 +6143,30 @@ var R3 = window.THREE ? (() => {
   $('#bossList').addEventListener('click', e => { const b = e.target.closest('.bcard'); if (!b || b.disabled) return; st.boss = b.dataset.boss; save(); renderHub(); });
   $('#btnRoster').onclick = () => { renderRoster(); show('roster'); };
   $('#btnJournal').onclick = () => { jBoss = st.boss; renderJournal(); show('journal'); };
+  $('#btnTalents').onclick = () => { st.newTier = false; save(); renderTalents(); show('talents'); };
+
+  // ---------- TALENTS ----------
+  let talCls = null;
+  function renderTalents() {
+    const open = tiersOpen(), kc = killCount();
+    if (!talCls) talCls = (st.sel[0] && person(st.sel[0]).cls) || 'gardien';
+    $('#talPts').textContent = open + '/3 paliers';
+    $('#talTabs').innerHTML = G.CLASS_ORDER.map(c => `<button data-c="${c}" aria-selected="${c === talCls}"${c === talCls ? ` style="color:${C[c].color};border-bottom-color:${C[c].color}"` : ''}>${esc(C[c].name)}${open && (st.talents[c] || []).slice(0, open).some(x => x == null) && st.sel.some(id => person(id).cls === c) ? ' •' : ''}</button>`).join('');
+    const ch = st.talents[talCls] || [], cl = C[talCls];
+    const inRaid = st.sel.map(person).filter(p => p.cls === talCls).map(p => p.name);
+    let h = `<section class="jsec"><div class="prose"><p><b style="color:${cl.color}">${esc(cl.name)}</b> · ${esc(cl.race)}. Les talents valent pour tous les ${esc(cl.name)} de l’escadre${inRaid.length ? ' (dans le raid : ' + esc(inRaid.join(', ')) + ')' : ' (aucun dans le raid actuel)'}.</p><p>Un palier s’ouvre à ${DATA.TALENT_TIERS.join(', ')} victoires : tu en as <b>${kc}</b>. Tu peux changer tes choix à tout moment hors combat.</p></div></section>`;
+    DATA.TALENTS[talCls].forEach((tier, k) => {
+      const lock = k >= open;
+      h += `<section class="tier jsec"><h3>Palier ${k + 1}<small>${lock ? 'Débloqué à ' + DATA.TALENT_TIERS[k] + ' victoires' : ch[k] == null ? 'Choisis un talent' : 'Actif'}</small></h3><div class="tier-row two">${tier.map((ta, j) => `<button class="tal" data-t="${k}" data-j="${j}" aria-pressed="${!lock && ch[k] === j}" ${lock ? 'disabled' : ''}><b>${esc(ta.name)}</b><span>${esc(ta.desc)}</span></button>`).join('')}</div></section>`;
+    });
+    $('#talBody').innerHTML = h;
+  }
+  $('#talTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; talCls = b.dataset.c; renderTalents(); });
+  $('#talBody').addEventListener('click', e => {
+    const b = e.target.closest('.tal'); if (!b || b.disabled) return;
+    const k = +b.dataset.t, j = +b.dataset.j, ch = (st.talents[talCls] ||= [null, null, null]);
+    ch[k] = ch[k] === j ? null : j; save(); SND.sel(); renderTalents();
+  });
   $('#btnPull').onclick = () => { SND.unlock(); startFight(); };
   $('#btnSound').onclick = () => { st.sound = !st.sound; save(); renderHub(); if (st.sound) SND.unlock(); };
   const GFX = ['auto', 'ultra', 'haute', 'moyenne', 'basse'];
@@ -5375,7 +6179,7 @@ var R3 = window.THREE ? (() => {
   function renderRoster() {
     const sel = st.sel, ci = compInfo(sel);
     $('#rosterCount').textContent = sel.length + '/10';
-    $('#compSummary').innerHTML = rolesHtml(ci.c) + `<p class="lbl" style="margin:2px 0 0">Sorts de la barre</p>` + spellChips(ci.spells) + `<p class="comp-warn" style="color:${ci.warn.length ? 'var(--amber)' : 'var(--good)'}">${esc(ci.warn[0] || 'Composition valide.')}</p>`;
+    $('#compSummary').innerHTML = rolesHtml(ci.c) + `<p class="lbl" style="margin:2px 0 0">Sorts de la barre · touche un sort pour le détail</p>` + spellChips(ci.spells) + `<p class="comp-warn" style="color:${ci.warn.length ? 'var(--amber)' : 'var(--good)'}">${esc(ci.warn[0] || 'Composition valide.')}</p>`;
     $('#rosterOk').disabled = !ci.valid;
     $('#rosterList').innerHTML = G.POOL.map(p0 => {
       const p = person(p0.id), cl = C[p.cls], on = sel.includes(p.id);
@@ -5396,6 +6200,12 @@ var R3 = window.THREE ? (() => {
     save(); renderRoster();
   });
   $('#rosterList').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rcard')) { e.preventDefault(); e.target.click(); } });
+  $('#compSummary').addEventListener('click', e => {
+    const c = e.target.closest('[data-sp]'); if (!c) return;
+    if (tipFor === c) { hideSpellTip(); return; }
+    const counts = {}; for (const id of st.sel) { const cl = person(id).cls; counts[cl] = (counts[cl] || 0) + 1; }
+    spellTip(c.dataset.sp, c, { counts, edge: $('#compSummary') });
+  });
   $('#rosterAuto').onclick = () => { st.sel = DEFAULT_SEL.slice(); save(); renderRoster(); };
   $('#rosterOk').onclick = () => { save(); show('hub'); };
 
@@ -5416,6 +6226,10 @@ var R3 = window.THREE ? (() => {
       case 'adds': x = a.count + ' × ' + k(a.hp * (D.addMult || 1)) + ' PV'; break;
       case 'beam': x = k(a.dps * m) + '/s dans le rayon'; break;
       case 'pulse': x = 'Aspiration de ' + a.pull + ' m · cœur : ' + k(a.dps * m) + '/s'; break;
+      case 'fissures': x = a.count + ' lignes · éruption après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dedans'; break;
+      case 'half': x = 'Alerte de ' + String(a.warn).replace('.', ',') + ' s · ' + a.dur + ' s de feu ou de gel · ' + k(a.dps * m) + '/s du mauvais côté'; break;
+      case 'sweep': x = 'Alerte de ' + String(a.warn).replace('.', ',') + ' s · balayage de ' + String(a.dur).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dans un rayon'; break;
+      case 'holes': x = a.count + ' dalles · chute après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dans un trou'; break;
     }
     return t + (x ? ' · ' + x : '');
   }
@@ -5423,10 +6237,10 @@ var R3 = window.THREE ? (() => {
     $('#jBoss').innerHTML = G.BOSSES.map(b => `<button data-b="${b.id}" aria-selected="${b.id === jBoss}">${esc(b.name)}</button>`).join('') + `<button data-b="classes" aria-selected="${jBoss === 'classes'}">Classes et sorts</button>`;
     let h = '';
     if (jBoss === 'classes') {
-      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
+      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p><b>Talents</b> : chaque victoire rapproche du palier suivant (1, 4 et 8 victoires). Choisis-les dans l’écran Talents, classe par classe ; ils valent pour tous les persos de la classe. Le Mythique s’ouvre quand les 4 boss sont vaincus en Héroïque.</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
       for (const id of G.CLASS_ORDER) {
         const cl = C[id];
-        h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}</span></div>`).join('')}</div></article>`;
+        h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}<br><i>${esc(SP[s].how)}</i></span></div>`).join('')}</div></article>`;
       }
     } else {
       const B = G.resolveBoss(G.BOSSES.find(b => b.id === jBoss), st.diff);
@@ -5436,6 +6250,7 @@ var R3 = window.THREE ? (() => {
       B.phases.forEach((ph, i) => {
         const from = i === 0 ? 100 : Math.round(B.phases[i - 1].to * 100), to = Math.round(ph.to * 100);
         h += `<section class="jsec"><h3>Phase ${i + 1} · ${esc(ph.name)}<small>${from} → ${to} %${ph.invuln ? ' · invulnérable ' + ph.invuln + ' s' : ''}${ph.dmgMult ? ' · dégâts +' + Math.round((ph.dmgMult - 1) * 100) + ' %' : ''}</small></h3>`;
+        if (ph.collapse) h += `<article class="abil panel cut"><div class="abil-h"><b>Effondrement</b><span class="tag move">${esc(CALL_LABEL.move)}</span></div><p>À l’entrée en phase, le bord de l’arène s’écroule dans la lave. Il reste ${String(ph.collapse).replace('.', ',')} m autour du centre, marqués par un cercle de feu. Ramène tout le monde à l’intérieur, placement compris : au-delà, la lave brûle très fort.</p><span class="meta">${ph.collapseDelay || 4} s pour rentrer</span></article>`;
         for (const id in ph.abilities) { const a = ph.abilities[id]; h += `<article class="abil panel cut"><div class="abil-h"><b>${esc(a.name)}</b><span class="tag ${a.call}">${esc(CALL_LABEL[a.call] || a.call)}</span></div><p>${esc(a.desc)}</p>${a.kind !== 'meleeStack' ? `<span class="meta">${esc(abilMeta(a, D))}</span>` : ''}</article>`; }
         if (ph.aura) h += `<article class="abil panel cut"><div class="abil-h"><b>${B.id === 'nyxar' ? 'Effondrement du Noyau' : 'Faim d’Azhal'}</b><span class="tag cd">Course DPS</span></div><p>Dégâts continus sur tout le raid qui augmentent chaque seconde de la phase. Cri de guerre ici.</p></article>`;
         h += `</section>`;
@@ -5469,7 +6284,7 @@ var R3 = window.THREE ? (() => {
   function startFight(setup) {
     setup = setup || { bossId: st.boss, diff: st.diff, raid: st.sel.slice() };
     const ci = compInfo(setup.raid); if (!ci.valid) return;
-    const raid = setup.raid.map(id => { const p = person(id); return { id: p.id, name: p.name, cls: p.cls, pow: p.pow }; });
+    const raid = setup.raid.map(id => { const p = person(id); return { id: p.id, name: p.name, cls: p.cls, pow: p.pow, tal: talFx(p.cls) }; });
     S = G.createFight({ bossId: setup.bossId, diff: setup.diff, raid, seed: (Date.now() % 1e9) | 0 });
     // placement mémorisé pour ce boss
     const saved = st.place[setup.bossId];
@@ -5487,7 +6302,7 @@ var R3 = window.THREE ? (() => {
     if (!S || S.started || pre > 0) return;
     st.place[lastSetup.bossId] = S.raiders.map(r => ({ id: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2) }));
     save();
-    $('#prep').hidden = true; pre = 3.2;
+    $('#prep').hidden = true; pre = 3.2; hideSpellTip();
     showAlert('Pull dans 3', 'phase'); SND.alert();
   }
   $('#prepPull').onclick = () => { SND.unlock(); doPull(); };
@@ -5654,12 +6469,33 @@ var R3 = window.THREE ? (() => {
     if (res.ok) { UI.casts++; SND.cast(); const b = els.spells[id]; if (b) flashEl(b.el); } else SND.no();
   }
   function syncSpellArmed() { for (const id in els.spells) els.spells[id].el.classList.toggle('armed', UI.placing === id); }
+  // appui long sur un sort : sa bulle d'explication, sans le lancer
+  let spPress = null, spSkip = 0;   // spSkip : heure du relâché d'un appui long, dont le clic qui suit est ignoré
+  function fightTip(b) {
+    const counts = {}; for (const r of S.raiders) if (r.alive) counts[r.cls] = (counts[r.cls] || 0) + 1;
+    spellTip(b.dataset.sp, b, { counts, edge: $('#spells'), pass: true });
+  }
+  $('#spells').addEventListener('pointerdown', e => {
+    const b = e.target.closest('.sp'); if (!b || !S) return;
+    if (spPress) clearTimeout(spPress.t);
+    spPress = { b, long: false, t: setTimeout(() => { spPress.long = true; fightTip(b); SND.sel(); }, 420) };
+  });
+  const endSpPress = e => {
+    if (!spPress) return; clearTimeout(spPress.t);
+    if (spPress.long) { spSkip = Date.now(); if (S && S.started) tipT = setTimeout(hideSpellTip, 5000); }
+    spPress = null;
+  };
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('#spells').addEventListener(t, endSpPress));
+  $('#spells').addEventListener('contextmenu', e => e.preventDefault());
   $('#spells').addEventListener('click', e => {
     const b = e.target.closest('.sp'); if (!b || !S || !running || paused || S.over) return;
+    if (spSkip && Date.now() - spSkip < 500) { spSkip = 0; return; }   // l'appui long a montré la bulle : pas de lancement
+    spSkip = 0;
+    if (S.started) hideSpellTip();
     SND.unlock();
     const id = b.dataset.sp;
     if (UI.placing === id) { UI.placing = null; R3.placing(null); renderSelbar(); syncSpellArmed(); return; }
-    if (!S.started) { toast('Lance le pull d’abord', false); SND.no(); return; }
+    if (!S.started) { if (tipFor === b) hideSpellTip(); else fightTip(b); return; }
     if (SP[id].target === 'ground') {
       const it = G.spellBar(S).find(x => x.id === id);
       if (!it.alive) { toast('Aucun porteur en vie', false); SND.no(); return; }
@@ -5828,27 +6664,30 @@ var R3 = window.THREE ? (() => {
   function finishFight() {
     running = false;
     const R = S;
-    renderReport(R);
-    show('report');
     lootPlan = null;
+    let newTier = false;
     if (R.result === 'kill') {
+      const before = tiersOpen();
       st.kills[R.B.id][R.D.key] = (st.kills[R.B.id][R.D.key] || 0) + 1;
+      if (tiersOpen() > before) { st.newTier = true; newTier = true; }
       const key = R.B.id + '_' + R.D.key; if (!st.best[key] || R.endT < st.best[key]) st.best[key] = R.endT;
       save();
       const roster = lastSetup.raid.map(id => { const p = person(id); return { id, name: p.name, cls: p.cls, pow: p.pow, parts: p.parts }; });
       lootPlan = G.rollLoot(R.B.id, roster, R.D.key, G.mulberry32((Date.now() % 1e9) | 0));
       lootBoss = R.B;
     }
+    renderReport(R, newTier);
+    show('report');
   }
   function meter(rows) {
     const max = Math.max(1, ...rows.map(r => r.v));
     return `<div class="meter">${rows.map(r => `<div class="mrow"><span class="nm">${esc(r.name)}</span><span class="bar"><i style="width:${(r.v / max * 100).toFixed(1)}%;background:${r.color}"></i></span><span class="v">${r.label}</span></div>`).join('')}</div>`;
   }
-  function renderReport(R) {
+  function renderReport(R, newTier) {
     const kill = R.result === 'kill', dur = Math.max(1, R.endT), pct = Math.max(0, R.hp / R.maxHp * 100);
     const ins = G.analyze(R);
     const deaths = R.deaths.filter(d => !R.called || d.t < R.endT - 0.01);
-    let h = `<div class="verdict ${kill ? 'kill' : 'wipe'}"><p class="eyebrow">${R.D.name} · ${esc(R.B.name)}</p><h2>${kill ? 'Victoire' : 'Wipe à ' + fmtPct(pct)}</h2><p>${kill ? 'Vaincu en ' + G.fmtT(dur) + '. ' + (deaths.length ? deaths.length + ' mort' + (deaths.length > 1 ? 's' : '') + ' en route.' : 'Aucun mort, propre.') : (R.called ? 'Wipe appelé' : 'Raid anéanti') + ' en phase ' + (R.phase + 1) + ' après ' + G.fmtT(dur) + '.'}</p></div>`;
+    let h = `<div class="verdict ${kill ? 'kill' : 'wipe'}"><p class="eyebrow">${R.D.name} · ${esc(R.B.name)}</p><h2>${kill ? 'Victoire' : 'Wipe à ' + fmtPct(pct)}</h2><p>${kill ? 'Vaincu en ' + G.fmtT(dur) + '. ' + (deaths.length ? deaths.length + ' mort' + (deaths.length > 1 ? 's' : '') + ' en route.' : 'Aucun mort, propre.') : (R.called ? 'Wipe appelé' : 'Raid anéanti') + ' en phase ' + (R.phase + 1) + ' après ' + G.fmtT(dur) + '.'}</p>${newTier ? `<p class="new-tier">Nouveau palier de talents débloqué : choisis-les dans l’écran Talents.</p>` : ''}</div>`;
     const raidDps = R.raiders.reduce((a, r) => a + r.stats.dmg, 0) / dur;
     const spells = Object.values(R.spellUse).reduce((a, b) => a + b, 0);
     h += `<div class="kpis"><div class="kpi panel cut"><b>${G.fmtT(dur)}</b><span>Durée</span></div><div class="kpi panel cut"><b>${deaths.length}</b><span>Morts</span></div><div class="kpi panel cut"><b>${UI.orders}</b><span>Ordres</span></div><div class="kpi panel cut"><b>${spells}</b><span>Sorts</span></div></div>`;
