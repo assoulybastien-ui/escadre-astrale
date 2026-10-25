@@ -629,7 +629,7 @@ const DATA = (() => {
             desc: 'Gros coup sur le tank actif. Chaque cumul d’Écrasé augmente le suivant de 50 %. Provocation avec l’autre tank à 2 ou 3 cumuls, et Égide ou Carapace avant un coup chargé.' },
           frontal: { kind: 'frontal', name: 'Frappe circulaire', first: 14, every: 17, cast: 2, dmg: 30000, angle: 35, range: 14, call: 'pos',
             desc: 'Cône devant Vorr, vers son tank. Personne d’autre que les tanks devant lui.' },
-          onde: { kind: 'raidcast', name: 'Onde sismique', first: 18, every: 20, cast: 2, dmg: 12500, call: 'heal',
+          onde: { kind: 'raidcast', name: 'Onde sismique', first: 18, every: 20, cast: 2, dmg: 12500, call: 'heal', m: { dmg: 15000 },
             desc: 'Dégâts sur tout le raid. Garde tout le monde à portée des soigneurs (16 m).' },
           corrosion: { kind: 'dots', name: 'Corrosion', first: 26, every: 28, count: 2, dps: 3500, dur: 14, call: 'dispel', h: { count: 3 }, m: { count: 4, dur: 10, explode: { r: 6, dmg: 12000 } },
             desc: 'Effet néfaste qui ronge sa cible tant qu’il n’est pas purgé. Sélectionne la cible puis Purge.' },
@@ -651,7 +651,7 @@ const DATA = (() => {
         { to: 0.4, name: 'Dualité', abilities: {
           brulure: { kind: 'meleeStack', name: 'Brûlure et Givre', body: -1, every: 6, stack: 'Astre', mult: 0.12, stackDur: 30, call: 'taunt',
             desc: 'Chaque jumelle marque son tank (+12 % de dégâts subis par cumul). Vers 5 cumuls, échange avec deux Provocations.' },
-          eruption: { kind: 'raidcast', name: 'Éruption solaire', body: 0, first: 16, every: 26, cast: 3, dmg: 11000, interruptible: true, call: 'kick', m: { cast: 2.5 },
+          eruption: { kind: 'raidcast', name: 'Éruption solaire', body: 0, first: 16, every: 26, cast: 3, dmg: 11000, interruptible: true, call: 'kick',
             desc: 'Séla incante une explosion sur tout le raid. Interruption.' },
           pluie: { kind: 'zones', name: 'Pluie d’étoiles', first: 10, every: 22, count: 3, r: 3.5, arm: 3, dur: 7, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
             desc: 'Des impacts s’arment sous plusieurs persos : sors-les des cercles.' },
@@ -674,7 +674,7 @@ const DATA = (() => {
         { to: 0.6, name: 'Noyau', abilities: {
           fendoir: { kind: 'buster', name: 'Fendoir gravitique', first: 6, every: 11, cast: 1.5, dmg: 14000, stack: 'Fracture', mult: 1.5, stackDur: 25, call: 'taunt',
             desc: 'Gros coup sur le tank, cumule Fracture (+50 % au suivant). Change de tank à 2-3 cumuls.' },
-          chant: { kind: 'raidcast', name: 'Chant du Néant', first: 18, every: 30, cast: 3.5, dmg: 15000, dot: 1800, dotDur: 6, interruptible: true, call: 'kick', h: { cast: 3, every: 26 }, m: { cast: 2.5, every: 22 },
+          chant: { kind: 'raidcast', name: 'Chant du Néant', first: 18, every: 30, cast: 3.5, dmg: 15000, dot: 1800, dotDur: 6, interruptible: true, call: 'kick', h: { cast: 3, every: 26 }, m: { cast: 2.2, every: 22 },
             desc: 'Incantation interruptible. Sinon : dégâts lourds sur le raid puis un écho qui brûle 6 s.' },
           marques: { kind: 'marks', name: 'Marques néantes', first: 30, every: 38, count: 2, r: 6.5, time: 6, dmg: 17000, call: 'spread', h: { count: 3, every: 34 }, m: { count: 4, every: 32, time: 5 },
             desc: 'Des persos marqués explosent après 6 s et touchent tous les alliés à moins de 6,5 m. Écarte les marqués.' },
@@ -715,16 +715,16 @@ const DATA = (() => {
         { to: 0.4, name: 'Singularité', invuln: 4, center: true, shieldWhileAdds: 0.3, abilities: {
           gardiens: { kind: 'adds', type: 'guardian', name: 'Gardiens du Vide', first: 0, every: 999, count: 2, hp: 160000, melee: 1300, call: 'tank', m: { count: 3 },
             desc: 'Des colosses qui frappent un soigneur. Provocation ou Séisme pour les faire tanker. Tant qu’ils vivent, Azhal ne subit que 30 % des dégâts. Leur Fléau s’interrompt.' },
-          singularite: { kind: 'pulse', name: 'Singularité', first: 6, every: 13, h: { every: 12 }, m: { every: 10 }, pull: 4, r: 4.2, dps: 7000, call: 'move',
+          singularite: { kind: 'pulse', name: 'Singularité', first: 6, every: 13, h: { every: 12 }, m: { every: 12 }, pull: 4, r: 4.2, dps: 7000, call: 'move',
             desc: 'Azhal aspire le raid de 4 m vers lui. Le cœur broie : ressors les persos aspirés.' },
-          meteores: { kind: 'zones', name: 'Pluie de météores', first: 12, every: 22, count: 3, r: 3.5, arm: 3, dur: 6, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 5, arm: 2 },
+          meteores: { kind: 'zones', name: 'Pluie de météores', first: 12, every: 22, count: 3, r: 3.5, arm: 3, dur: 6, dps: 9000, call: 'move', h: { count: 4, arm: 2.5 }, m: { count: 4, arm: 2 },
             desc: 'Impacts sous plusieurs persos.' },
           eclipse: { kind: 'eclipse', name: 'Éclipse', first: 20, every: 40, dur: 8, dps: 1200, only: 'hm', call: 'cd',
             desc: 'Soins réduits de moitié pendant 8 s et dégâts continus. Nuée ou Dôme.' },
         } },
-        { to: 0, name: 'Dévoreur', invuln: 4, aura: 150, ramp: 6, abilities: {
+        { to: 0, name: 'Dévoreur', invuln: 4, aura: 150, ramp: 6, m: { ramp: 3 }, abilities: {
           griffe: { inherit: true, first: 6 },
-          convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack',
+          convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack', m: { dmg: 100000 },
             desc: 'Cercle à partager : au moins 4 persos hors tanks, idéalement plus.' },
           tenebres: { inherit: true, first: 18 },
           hurlement: { inherit: true, first: 24, every: 26 },
@@ -816,7 +816,10 @@ const GAME = (() => {
         delete fin.h; delete fin.m; delete fin.only;
         abilities[id] = fin;
       }
-      return Object.assign({}, ph, { abilities });
+      // une phase peut aussi avoir ses surcharges h / m (ex. montée de l'aura)
+      const fin = Object.assign({}, ph, (sfx && ph[sfx]) || {}, { abilities });
+      delete fin.h; delete fin.m;
+      return fin;
     });
     let link = null;
     if (B.link) link = Object.assign({}, B.link, (sfx && B.link[sfx]) || {});

@@ -56,12 +56,36 @@ function bot(S, level) {
       if (B[k].cast && B[k].cast.kind === 'buster' && n >= 1 && t.role === 'tank' && !seen.has('df' + B[k].cast.start)) { seen.add('df' + B[k].cast.start); act(() => { castS(t.cls === 'gardien' ? 'egide' : 'carapace', { sel: [t.i] }); castS('prisme', { sel: [t.i] }); }, 0.7); }
     }
     if (S.B.twins) { const n0 = Math.max(0, ...Object.values((R[B[0].target] || { stacks: {} }).stacks).map(s => s.n)); if (n0 >= 5 && !seen.has('tw' + Math.floor(S.t / 6))) { seen.add('tw' + Math.floor(S.t / 6)); act(() => { castS('provoc', { enemy: { kind: 'body', k: 1 } }); castS('provoc', { enemy: { kind: 'body', k: 0 } }); }, 0.8); } }
+    // Gardiens du Vide : le Titan va au milieu d'eux et lance Séisme (ils viennent tous sur lui, Fléau coupé),
+    // puis l'autre tank reprend le boss. Provocation seulement en secours.
+    const titan = R.find(r => r.cls === 'titan' && r.alive);
+    const gNew = S.adds.filter(a => a.alive && a.type === 'guardian' && !seen.has(a.id));
+    if (gNew.length && titan && !seen.has('gs' + gNew[0].id)) {
+      seen.add('gs' + gNew[0].id);
+      at(P.react, () => act(() => {
+        const gs = S.adds.filter(a => a.alive && a.type === 'guardian'); if (!gs.length || !titan.alive) return;
+        const c = safe({ x: gs.reduce((s, a) => s + a.pos.x, 0) / gs.length, z: gs.reduce((s, a) => s + a.pos.z, 0) / gs.length });
+        mv(titan.i, c.x, c.z); home[titan.i] = c;
+        at(1.6, () => act(() => {
+          if (!castS('seisme', { sel: [titan.i] }).ok) for (const g of S.adds.filter(a => a.alive && a.type === 'guardian' && a.target !== titan.i)) castS('provoc', { enemy: { kind: 'add', id: g.id } });
+          if (B[0].target === titan.i) castS('provoc', { enemy: { kind: 'body', k: 0 } });
+          // puis il les emmène loin du centre : l'aspiration ne le jette plus dans le cœur
+          const d = Math.hypot(c.x, c.z) || 1, p = safe({ x: c.x / d * 10.5, z: c.z / d * 10.5 });
+          at(0.6, () => act(() => { if (titan.alive) { mv(titan.i, p.x, p.z); home[titan.i] = p; } }));
+        }, 0.5));
+      }));
+    }
+    // Séisme dès qu'il est prêt : Gardien lâché par le Titan ou Fléau en cours à côté de lui
+    if (titan && titan.alive && S.adds.some(a => a.alive && a.type === 'guardian' && dist(a.pos, titan.pos) <= 8.5 && (a.target !== titan.i || a.cast)) && !queue.some(q => q.sz)) {
+      const ready = G.spellBar(S).find(b => b.id === 'seisme' && b.ready);
+      if (ready) queue.push({ sz: 1, cost: 0.4, fn: () => castS('seisme', { sel: [titan.i] }) });
+    }
     // adds
     for (const a of S.adds.filter(a => a.alive)) if (!seen.has(a.id)) {
       seen.add(a.id);
       at(P.react, () => act(() => {
         if (!a.alive) return;
-        if (a.type === 'guardian') { castS('provoc', { enemy: { kind: 'add', id: a.id } }); const g0 = S.adds.filter(q => q.alive && q.type === 'guardian')[0]; if (g0) G.order(S, { type: 'attack', idx: alive().filter(r => r.role === 'dps').map(r => r.i), target: { kind: 'add', id: g0.id } }); }
+        if (a.type === 'guardian') { if (!titan || !titan.alive) castS('provoc', { enemy: { kind: 'add', id: a.id } }); const g0 = S.adds.filter(q => q.alive && q.type === 'guardian')[0]; if (g0) G.order(S, { type: 'attack', idx: alive().filter(r => r.role === 'dps').map(r => r.i), target: { kind: 'add', id: g0.id } }); }
         else { const dps = alive().filter(r => r.role === 'dps' && (a.type === 'orb' ? r.range === 'ranged' : true)); G.order(S, { type: 'attack', idx: dps.map(r => r.i), target: { kind: 'add', id: a.id } }); castS('tir', { enemy: { kind: 'add', id: a.id } }); castS('tourelle', { ground: { x: a.pos.x * 0.7, z: a.pos.z * 0.7 } }); }
       }));
     }

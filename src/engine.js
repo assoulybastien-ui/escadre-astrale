@@ -32,7 +32,10 @@ const GAME = (() => {
         delete fin.h; delete fin.m; delete fin.only;
         abilities[id] = fin;
       }
-      return Object.assign({}, ph, { abilities });
+      // une phase peut aussi avoir ses surcharges h / m (ex. montée de l'aura)
+      const fin = Object.assign({}, ph, (sfx && ph[sfx]) || {}, { abilities });
+      delete fin.h; delete fin.m;
+      return fin;
     });
     let link = null;
     if (B.link) link = Object.assign({}, B.link, (sfx && B.link[sfx]) || {});

@@ -53,13 +53,14 @@ Projet perso de Bastien. Tout se fait **en français** (code commenté en franç
 2. Les 9 classes — **faites, validées**.
 3. Étape en cours, une sous-étape validée en images à la fois :
    1. Explications des sorts — bulle (`spellTip` dans `ui.js`, champ `how` des sorts dans `data.js`) : toucher dans l'équipe et au placement, appui long en combat (le combat continue, le sort n'est pas lancé). Test : `node test/tips.js`.
-   2. Réglage Mythique — **cible : ~3/6 victoires au bot `good`** pour chaque boss.
+   2. Réglage Mythique — **cible : ~3/6 victoires au bot `good`** pour chaque boss. Fait (en attente de validation) : surcharges `m` dans `data.js` (Vorr : Onde 15 000 ; Jumelles : Éruption à 3 s ; Nyxar : Chant à 2,2 s ; Azhal : Singularité 12 s, 4 météores, Convergence 100 000, montée de la Faim 3/s). Les phases acceptent aussi des surcharges `h` / `m` (`resolveBoss`). Le bot `good` joue maintenant le Séisme du Titan sur les Gardiens du Vide et les emmène loin du centre.
    3. **Une arène par boss.**
    4. **Boss réécrits = modèles 3D, animations et mécaniques**, beaucoup plus poussés et visuels.
    5. Talents (rien n'existe encore) : proposer le système sur papier avant de coder.
 4. Finitions + PWA (`build_pwa.py`) et mise en ligne (dépôt privé : pas de GitHub Pages gratuit, à décider).
 
-Équilibrage mesuré au bot `good` (6 essais) : Normal 6/6 partout (~2:40–3:15) ; Héroïque 6/6 sauf Azhal 4/6 ; Mythique : Vorr 6/6 sans mort (trop facile), Jumelles 2/6, Nyxar 3/6, Azhal 0/6 (wipe vers 2:45 en phase 2 : Fléau des Gardiens + orbes). Raid lead passif = défaite partout (voulu).
+Équilibrage mesuré au bot `good` (60 essais, `node test/bot5.js <diff> 60 good`) : Normal 100 % partout (~2:40–3:10) ; Héroïque 100 % partout (~4:00–4:50) ; Mythique : Vorr 29/60, Jumelles 29/60, Nyxar 31/60, Azhal 31/60 (~3/6). Bot `ok` en Mythique : 0 à 5 %. Raid lead passif = défaite partout (voulu).
+Attention : Vorr Mythique est un seuil de soins très net (Onde à 14 750 → 87 % de victoires, à 15 000 → 48 %, à 15 500 → 23 %). À revoir avec la réécriture des boss.
 
 ## Pièges techniques connus
 - Accessoires « skinnés » sur le squelette (`skinAccessories`) : en mode attaché, three recalcule `bindMatrixInverse` à chaque image ; la matrice de cuisson est `M = B⁻¹ · Bi⁻¹ · Bw⁻¹ · Ow`. (Bug v4 corrigé : équipements invisibles.)
