@@ -50,11 +50,16 @@ Projet perso de Bastien. Tout se fait **en français** (code commenté en franç
 
 ## Feuille de route
 1. Moteur et contrôles — **fait, validé**.
-2. Les 9 classes — **faites** (en attente de retours éventuels de Bastien).
-3. Boss réécrits, arènes (mix par raid), talents, réglage Mythique (Azhal Mythique : 0/6 au bot, à corriger).
-4. Finitions + PWA (`build_pwa.py`) et mise en ligne GitHub Pages.
+2. Les 9 classes — **faites, validées**.
+3. Étape en cours, une sous-étape validée en images à la fois :
+   1. Explications des sorts — bulle (`spellTip` dans `ui.js`, champ `how` des sorts dans `data.js`) : toucher dans l'équipe et au placement, appui long en combat (le combat continue, le sort n'est pas lancé). Test : `node test/tips.js`.
+   2. Réglage Mythique — **cible : ~3/6 victoires au bot `good`** pour chaque boss.
+   3. **Une arène par boss.**
+   4. **Boss réécrits = modèles 3D, animations et mécaniques**, beaucoup plus poussés et visuels.
+   5. Talents (rien n'existe encore) : proposer le système sur papier avant de coder.
+4. Finitions + PWA (`build_pwa.py`) et mise en ligne (dépôt privé : pas de GitHub Pages gratuit, à décider).
 
-Équilibrage mesuré (bot) : Normal ~2:40–3:15, tout passe ; Héroïque 4–5:30 (Azhal et Jumelles les plus durs) ; Mythique très dur ; raid lead passif = défaite partout.
+Équilibrage mesuré au bot `good` (6 essais) : Normal 6/6 partout (~2:40–3:15) ; Héroïque 6/6 sauf Azhal 4/6 ; Mythique : Vorr 6/6 sans mort (trop facile), Jumelles 2/6, Nyxar 3/6, Azhal 0/6 (wipe vers 2:45 en phase 2 : Fléau des Gardiens + orbes). Raid lead passif = défaite partout (voulu).
 
 ## Pièges techniques connus
 - Accessoires « skinnés » sur le squelette (`skinAccessories`) : en mode attaché, three recalcule `bindMatrixInverse` à chaque image ; la matrice de cuisson est `M = B⁻¹ · Bi⁻¹ · Bw⁻¹ · Ow`. (Bug v4 corrigé : équipements invisibles.)
@@ -68,4 +73,5 @@ Projet perso de Bastien. Tout se fait **en français** (code commenté en franç
 - `test/portrait.js outDir classes [w h vues]` — vues face/trois-quarts/dos/tête au banc d'essai.
 - `test/actions.js outDir '{"titan":[["tSmash",0.42]]}'` — gestes figés.
 - `test/recall.js outDir fps [segments]` — vidéo vitrine des 9 classes en combat (images → `ffmpeg -framerate 15 -i %04d.jpg -c:v libx264 -preset veryfast -crf 25 -pix_fmt yuv420p out.mp4`).
-- `tools/sheet.py out.jpg "TITRE" "sous-titre" img:légende …` — planche légendée.
+- `tools/sheet.py out.jpg "TITRE" "sous-titre" img:légende …` — planche légendée (demande Pillow et des polices DejaVu : absent sur le Mac de Bastien).
+- `test/tips.js [outDir]` — bulles d'explication des sorts (équipe, placement, appui long en combat), avec vérifications.

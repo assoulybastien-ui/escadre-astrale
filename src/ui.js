@@ -134,6 +134,7 @@
   function show(name) {
     current = name;
     SCREENS.forEach(s => { const el = $('#' + s); if (el) el.hidden = s !== name; });
+    hideSpellTip();
     R3.setMode(name === 'fight' ? 'fight' : 'hub');
     if (name === 'hub') renderHub();
     if (name === 'fight') requestAnimationFrame(measureHud);
@@ -172,7 +173,31 @@
     return { c, pow, warn, valid, spells };
   }
   function rolesHtml(c) { return `<div class="roles"><i><span class="dot tank"></span>${c.tank} tank${c.tank > 1 ? 's' : ''}</i><i><span class="dot heal"></span>${c.heal} soigneur${c.heal > 1 ? 's' : ''}</i><i><span class="dot dps"></span>${c.dps} DPS <small style="color:var(--ink-3)">(${c.melee} mêlée · ${c.ranged} distance)</small></i></div>`; }
-  function spellChips(spells) { return `<div class="kit-spells">${spells.map(s => `<span title="${esc(SP[s.id].desc)}">${svg(SP[s.id].icon)}${esc(SP[s.id].name)}${s.n > 1 ? ' ×' + s.n : ''}</span>`).join('')}</div>`; }
+  function spellChips(spells) { return `<div class="kit-spells">${spells.map(s => `<span data-sp="${s.id}" role="button" tabindex="0">${svg(SP[s.id].icon)}${esc(SP[s.id].name)}${s.n > 1 ? ' ×' + s.n : ''}</span>`).join('')}</div>`; }
+
+  // ---------- bulle d'explication d'un sort ----------
+  // Équipe et placement : un toucher. En combat : appui long (le combat continue, la bulle laisse passer les touchers).
+  let tipFor = null, tipT = 0;
+  function spellTip(id, anchor, opts = {}) {
+    const sp = SP[id], tip = $('#spellTip'), counts = opts.counts || {};
+    const cls = sp.classes.filter(c => counts[c]), n = cls.reduce((a, c) => a + counts[c], 0);
+    const who = cls.map(c => `<i style="color:${C[c].color}">${esc(C[c].name)}${counts[c] > 1 ? ' ×' + counts[c] : ''}</i>`).join(' · ');
+    tip.innerHTML = `<div class="st-h">${svg(sp.icon)}<b>${esc(sp.name)}</b><span class="num">recharge ${sp.cd} s</span></div>`
+      + (n ? `<p class="st-who">${who} · ${n} charge${n > 1 ? 's' : ''}</p>` : '')
+      + `<p>${esc(sp.desc)}</p><p class="st-how"><b>Comment :</b> ${esc(sp.how)}</p>`;
+    tip.classList.toggle('pass', !!opts.pass);
+    tip.style.left = '0px'; tip.style.top = '0px'; tip.hidden = false;
+    // au-dessus du sort, sans dépasser le bord droit de son conteneur (zone sûre de l'iPhone)
+    const a = anchor.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, m = 8;
+    const right = opts.edge ? opts.edge.getBoundingClientRect().right : innerWidth - m;
+    const x = Math.max(m, Math.min(a.left + a.width / 2 - w / 2, right - w));
+    let y = a.top - h - 8; if (y < m) y = Math.min(a.bottom + 8, innerHeight - h - m);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    clearTimeout(tipT); tipFor = anchor;
+  }
+  function hideSpellTip() { clearTimeout(tipT); tipFor = null; const t = $('#spellTip'); if (t) t.hidden = true; }
+  document.addEventListener('pointerdown', e => { if (tipFor && !tipFor.contains(e.target) && !$('#spellTip').contains(e.target)) hideSpellTip(); }, true);
+  $('#spellTip').addEventListener('click', hideSpellTip);
 
   // ---------- HUB ----------
   function renderHub() {
@@ -219,7 +244,7 @@
   function renderRoster() {
     const sel = st.sel, ci = compInfo(sel);
     $('#rosterCount').textContent = sel.length + '/10';
-    $('#compSummary').innerHTML = rolesHtml(ci.c) + `<p class="lbl" style="margin:2px 0 0">Sorts de la barre</p>` + spellChips(ci.spells) + `<p class="comp-warn" style="color:${ci.warn.length ? 'var(--amber)' : 'var(--good)'}">${esc(ci.warn[0] || 'Composition valide.')}</p>`;
+    $('#compSummary').innerHTML = rolesHtml(ci.c) + `<p class="lbl" style="margin:2px 0 0">Sorts de la barre · touche un sort pour le détail</p>` + spellChips(ci.spells) + `<p class="comp-warn" style="color:${ci.warn.length ? 'var(--amber)' : 'var(--good)'}">${esc(ci.warn[0] || 'Composition valide.')}</p>`;
     $('#rosterOk').disabled = !ci.valid;
     $('#rosterList').innerHTML = G.POOL.map(p0 => {
       const p = person(p0.id), cl = C[p.cls], on = sel.includes(p.id);
@@ -240,6 +265,12 @@
     save(); renderRoster();
   });
   $('#rosterList').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rcard')) { e.preventDefault(); e.target.click(); } });
+  $('#compSummary').addEventListener('click', e => {
+    const c = e.target.closest('[data-sp]'); if (!c) return;
+    if (tipFor === c) { hideSpellTip(); return; }
+    const counts = {}; for (const id of st.sel) { const cl = person(id).cls; counts[cl] = (counts[cl] || 0) + 1; }
+    spellTip(c.dataset.sp, c, { counts, edge: $('#compSummary') });
+  });
   $('#rosterAuto').onclick = () => { st.sel = DEFAULT_SEL.slice(); save(); renderRoster(); };
   $('#rosterOk').onclick = () => { save(); show('hub'); };
 
@@ -267,10 +298,10 @@
     $('#jBoss').innerHTML = G.BOSSES.map(b => `<button data-b="${b.id}" aria-selected="${b.id === jBoss}">${esc(b.name)}</button>`).join('') + `<button data-b="classes" aria-selected="${jBoss === 'classes'}">Classes et sorts</button>`;
     let h = '';
     if (jBoss === 'classes') {
-      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
+      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
       for (const id of G.CLASS_ORDER) {
         const cl = C[id];
-        h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}</span></div>`).join('')}</div></article>`;
+        h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}<br><i>${esc(SP[s].how)}</i></span></div>`).join('')}</div></article>`;
       }
     } else {
       const B = G.resolveBoss(G.BOSSES.find(b => b.id === jBoss), st.diff);
@@ -331,7 +362,7 @@
     if (!S || S.started || pre > 0) return;
     st.place[lastSetup.bossId] = S.raiders.map(r => ({ id: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2) }));
     save();
-    $('#prep').hidden = true; pre = 3.2;
+    $('#prep').hidden = true; pre = 3.2; hideSpellTip();
     showAlert('Pull dans 3', 'phase'); SND.alert();
   }
   $('#prepPull').onclick = () => { SND.unlock(); doPull(); };
@@ -498,12 +529,33 @@
     if (res.ok) { UI.casts++; SND.cast(); const b = els.spells[id]; if (b) flashEl(b.el); } else SND.no();
   }
   function syncSpellArmed() { for (const id in els.spells) els.spells[id].el.classList.toggle('armed', UI.placing === id); }
+  // appui long sur un sort : sa bulle d'explication, sans le lancer
+  let spPress = null, spSkip = 0;   // spSkip : heure du relâché d'un appui long, dont le clic qui suit est ignoré
+  function fightTip(b) {
+    const counts = {}; for (const r of S.raiders) if (r.alive) counts[r.cls] = (counts[r.cls] || 0) + 1;
+    spellTip(b.dataset.sp, b, { counts, edge: $('#spells'), pass: true });
+  }
+  $('#spells').addEventListener('pointerdown', e => {
+    const b = e.target.closest('.sp'); if (!b || !S) return;
+    if (spPress) clearTimeout(spPress.t);
+    spPress = { b, long: false, t: setTimeout(() => { spPress.long = true; fightTip(b); SND.sel(); }, 420) };
+  });
+  const endSpPress = e => {
+    if (!spPress) return; clearTimeout(spPress.t);
+    if (spPress.long) { spSkip = Date.now(); if (S && S.started) tipT = setTimeout(hideSpellTip, 5000); }
+    spPress = null;
+  };
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('#spells').addEventListener(t, endSpPress));
+  $('#spells').addEventListener('contextmenu', e => e.preventDefault());
   $('#spells').addEventListener('click', e => {
     const b = e.target.closest('.sp'); if (!b || !S || !running || paused || S.over) return;
+    if (spSkip && Date.now() - spSkip < 500) { spSkip = 0; return; }   // l'appui long a montré la bulle : pas de lancement
+    spSkip = 0;
+    if (S.started) hideSpellTip();
     SND.unlock();
     const id = b.dataset.sp;
     if (UI.placing === id) { UI.placing = null; R3.placing(null); renderSelbar(); syncSpellArmed(); return; }
-    if (!S.started) { toast('Lance le pull d’abord', false); SND.no(); return; }
+    if (!S.started) { if (tipFor === b) hideSpellTip(); else fightTip(b); return; }
     if (SP[id].target === 'ground') {
       const it = G.spellBar(S).find(x => x.id === id);
       if (!it.alive) { toast('Aucun porteur en vie', false); SND.no(); return; }

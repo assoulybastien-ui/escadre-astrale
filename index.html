@@ -237,6 +237,18 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 
 .alert small { display: block; font-family: var(--f-ui); font-size: 11px; letter-spacing: 0.08em; color: var(--ink); margin-top: 3px; }
 .toast { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--sb) + 58px); max-width: 46vw; text-align: center; font-size: 12px; font-weight: 600; color: var(--ink); opacity: 0; transition: opacity 0.2s; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
 .toast.show { opacity: 1; } .toast.bad { color: #ff8a98; } .toast.ok { color: var(--gold-hi); }
+/* bulle d'explication d'un sort (équipe, placement, appui long en combat) */
+.spelltip { position: fixed; z-index: 20; width: min(300px, calc(100vw - 16px)); padding: 9px 11px 10px; font-size: 12px; line-height: 1.35; color: var(--ink-2); background: linear-gradient(180deg, rgba(30,34,48,0.97), rgba(12,14,20,0.97)); box-shadow: inset 0 0 0 1px #000, inset 0 0 0 2px var(--gold-lo), 0 6px 20px rgba(0,0,0,0.7); }
+.spelltip.pass { pointer-events: none; }
+.spelltip p { margin: 5px 0 0; }
+.st-h { display: flex; align-items: center; gap: 6px; }
+.st-h svg { width: 18px; height: 18px; color: var(--gold-hi); flex: none; }
+.st-h b { flex: 1; color: var(--gold-hi); font-family: var(--f-display); font-weight: 400; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.st-h span { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+.st-who { font-size: 11px; } .st-who i { font-style: normal; font-weight: 600; }
+.st-how b { color: var(--ink); font-weight: 600; }
+.sp { -webkit-touch-callout: none; }
+.kit-spells span[data-sp] { cursor: pointer; }
 /* cadres de raid : colonne gauche */
 .raidpanel { position: absolute; left: var(--sl); top: calc(var(--st) + 4px); width: 128px; display: grid; gap: 2px; padding: 4px; background: rgba(6,8,13,0.62); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.9), inset 0 0 0 2px rgba(201,162,74,0.35); }
 .uf { position: relative; border: 0; padding: 0; height: 21px; background: #07080c; box-shadow: inset 0 0 0 1px #000; text-align: left; min-width: 0; overflow: hidden; display: block; }
@@ -468,6 +480,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 
     <button class="btn" id="prepReset">Conseillé</button><button class="btn primary" id="prepPull">Pull !</button>
   </div>
 </section>
+<div class="spelltip" id="spellTip" role="tooltip" hidden></div>
 <div class="rotate" id="rotate" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 14a9 9 0 0 0 7 7M21 10a9 9 0 0 0-7-7"/></svg><p>Tourne ton téléphone à l’horizontale pour diriger le raid.</p></div>
 
 <!-- ================= RAPPORT ================= -->
@@ -536,39 +549,56 @@ const DATA = (() => {
   // ---------- sorts de la barre ----------
   // classes : qui le porte. Chaque porteur vivant = une charge, avec sa propre recharge.
   // target : enemy | ally | dead | self | ground | none
+  // desc : ce que fait le sort ; how : comment le lancer (bulle d'explication, voir ui.js)
   const SPELLS = {
     provoc:     { name: 'Provocation', icon: 'taunt', classes: ['gardien', 'titan'], target: 'enemy', cd: 8,
-                  desc: 'Un tank prend l’ennemi ciblé (boss ou add). C’est comme ça qu’on change de tank.' },
+                  desc: 'Un tank prend l’ennemi ciblé (boss ou add). C’est comme ça qu’on change de tank.',
+                  how: 'Touche l’ennemi à prendre, puis le sort : le tank libre le plus proche le provoque. Sans cible, il reprend le boss au tank qui a le plus de cumuls. Seuls les boss et les Gardiens du Vide se provoquent.' },
     kick:       { name: 'Interruption', icon: 'kick', classes: ['gardien', 'lameombre', 'spectre'], target: 'enemy', cd: 12, range: { gardien: 9, lameombre: 9, spectre: 40 },
-                  desc: 'Coupe une incantation. Gardien et Lame-ombre doivent être au contact ; le Spectre interrompt de loin.' },
+                  desc: 'Coupe une incantation. Gardien et Lame-ombre doivent être au contact ; le Spectre interrompt de loin.',
+                  how: 'Touche le sort quand une barre d’incantation interruptible apparaît sous le boss. Il coupe l’ennemi ciblé, sinon l’incantation qui finit le plus tôt.' },
     egide:      { name: 'Égide', icon: 'shield', classes: ['gardien'], target: 'self', cd: 40, dur: 8, dr: 0.6,
-                  desc: 'Le Gardien subit 60 % de dégâts en moins pendant 8 s. À lancer avant un gros coup.' },
+                  desc: 'Le Gardien subit 60 % de dégâts en moins pendant 8 s. À lancer avant un gros coup.',
+                  how: 'Touche le sort : le Gardien sélectionné le lance, sinon celui qui tanke.' },
     carapace:   { name: 'Carapace', icon: 'wall', classes: ['titan'], target: 'self', cd: 45, dur: 10, dr: 0.45,
-                  desc: 'Le Titan subit 45 % de dégâts en moins pendant 10 s.' },
+                  desc: 'Le Titan subit 45 % de dégâts en moins pendant 10 s. À lancer avant un gros coup.',
+                  how: 'Touche le sort : le Titan sélectionné le lance, sinon celui qui tanke.' },
     seisme:     { name: 'Séisme', icon: 'quake', classes: ['titan'], target: 'self', cd: 25, r: 9, stun: 3, dmg: 15000,
-                  desc: 'Le Titan frappe le sol : les adds à 9 m sont étourdis 3 s, interrompus et viennent sur lui.' },
+                  desc: 'Le Titan frappe le sol : les adds à 9 m sont étourdis 3 s, interrompus et viennent sur lui.',
+                  how: 'Amène d’abord le Titan au milieu des adds, puis touche le sort. Il faut au moins un add à 9 m de lui.' },
     nuee:       { name: 'Nuée', icon: 'swarm', classes: ['medic'], target: 'none', cd: 90, pct: 0.045, dur: 6,
-                  desc: 'Tout le raid récupère 4,5 % de ses PV par seconde pendant 6 s.' },
+                  desc: 'Tout le raid récupère 4,5 % de ses PV par seconde pendant 6 s.',
+                  how: 'Touche le sort, sans cible : tout le raid est soigné, où qu’il soit. À garder pour un gros dégât de raid.' },
     purge:      { name: 'Purge', icon: 'purge', classes: ['medic', 'maree'], target: 'ally', cd: 8,
-                  desc: 'Retire un effet néfaste. Vise la sélection, sinon le plus ancien effet du raid.' },
+                  desc: 'Retire un effet néfaste. Vise la sélection, sinon le plus ancien effet du raid.',
+                  how: 'Sélectionne l’allié touché (pastille sur son cadre), puis le sort. Sans sélection, il retire l’effet le plus ancien du raid.' },
     prisme:     { name: 'Prisme', icon: 'prism', classes: ['seraphe'], target: 'ally', cd: 12, absorb: 0.35, dur: 10,
-                  desc: 'Bouclier de 35 % des PV max pendant 10 s. Vise la sélection, sinon le tank actif.' },
+                  desc: 'Bouclier de 35 % des PV max pendant 10 s. Vise la sélection, sinon le tank actif.',
+                  how: 'Sélectionne l’allié à protéger, puis le sort. Sans sélection, il va sur le tank qui a le boss.' },
     rez:        { name: 'Relève', icon: 'rez', classes: ['seraphe', 'maree'], target: 'dead', cd: 150, hp: 0.4,
-                  desc: 'Relève un mort à 40 % de PV, sur place. Vise le mort sélectionné, sinon tank puis soigneur.' },
+                  desc: 'Relève un mort à 40 % de PV, sur place. Vise le mort sélectionné, sinon tank puis soigneur.',
+                  how: 'Touche le cadre du mort, puis le sort. Sans sélection : un tank d’abord, puis un soigneur, puis un DPS.' },
     vague:      { name: 'Marée haute', icon: 'wave', classes: ['maree'], target: 'ground', cd: 20, r: 7, pct: 0.22, hot: 0.03, dur: 5,
-                  desc: 'Touche le sol : soigne de 22 % les alliés à 7 m, puis 3 %/s pendant 5 s.' },
+                  desc: 'Soigne de 22 % les alliés à 7 m du point choisi, puis 3 %/s pendant 5 s.',
+                  how: 'Touche le sort, puis le sol au milieu du groupe à soigner.' },
     pas:        { name: 'Pas de l’ombre', icon: 'dash', classes: ['lameombre'], target: 'enemy', cd: 20, dmg: 40000,
-                  desc: 'La Lame-ombre bondit sur l’ennemi ciblé et frappe fort. Idéal pour un add.' },
+                  desc: 'La Lame-ombre bondit sur l’ennemi ciblé et frappe fort. Idéal pour un add.',
+                  how: 'Touche l’ennemi visé, puis le sort. Sans cible, elle bondit sur le boss. Elle reste là où elle a atterri.' },
     tourbillon: { name: 'Tourbillon', icon: 'whirl', classes: ['fracasseur'], target: 'self', cd: 25, dur: 4, r: 7, dps: 7000,
-                  desc: 'Le Fracasseur tournoie 4 s et frappe tous les ennemis à 7 m.' },
+                  desc: 'Le Fracasseur tournoie 4 s et frappe tous les ennemis à 7 m.',
+                  how: 'Amène le Fracasseur au milieu des adds, puis touche le sort. C’est le Fracasseur sélectionné qui tournoie, sinon le plus proche de l’ennemi ciblé.' },
     cri:        { name: 'Cri de guerre', icon: 'shout', classes: ['fracasseur'], target: 'none', cd: 120, dur: 12, mult: 1.25,
-                  desc: '+25 % de dégâts pour tout le raid pendant 12 s. Garde-le pour une phase de course.' },
+                  desc: '+25 % de dégâts pour tout le raid pendant 12 s. Garde-le pour une phase de course.',
+                  how: 'Touche le sort, sans cible : tout le raid en profite.' },
     tir:        { name: 'Tir de précision', icon: 'snipe', classes: ['spectre'], target: 'enemy', cd: 25, dmg: 55000,
-                  desc: 'Gros tir sur l’ennemi ciblé, de n’importe où.' },
+                  desc: 'Gros tir sur l’ennemi ciblé, de n’importe où.',
+                  how: 'Touche l’ennemi visé (un orbe, un add…), puis le sort. Sans cible, il tire sur le boss.' },
     tourelle:   { name: 'Tourelle', icon: 'turret', classes: ['bricoleur'], target: 'ground', cd: 40, dur: 15, dps: 2400, range: 22,
-                  desc: 'Touche le sol : pose une tourelle 15 s qui tire sur les adds en priorité, sinon le boss.' },
+                  desc: 'Pose une tourelle 15 s qui tire sur les adds en priorité, sinon le boss.',
+                  how: 'Touche le sort, puis le sol à l’endroit voulu. Elle tire à 22 m.' },
     dome:       { name: 'Dôme', icon: 'dome', classes: ['bricoleur'], target: 'ground', cd: 90, dur: 8, r: 6.5, dr: 0.35,
-                  desc: 'Touche le sol : un dôme de 6,5 m réduit de 35 % les dégâts subis dedans pendant 8 s.' },
+                  desc: 'Un dôme de 6,5 m réduit de 35 % les dégâts subis dedans pendant 8 s.',
+                  how: 'Touche le sort, puis le sol au milieu du groupe à protéger. Il faut que les persos soient dedans.' },
   };
 
   // ---------- vivier : 2 raideurs par classe ----------
@@ -5261,6 +5291,7 @@ var R3 = window.THREE ? (() => {
   function show(name) {
     current = name;
     SCREENS.forEach(s => { const el = $('#' + s); if (el) el.hidden = s !== name; });
+    hideSpellTip();
     R3.setMode(name === 'fight' ? 'fight' : 'hub');
     if (name === 'hub') renderHub();
     if (name === 'fight') requestAnimationFrame(measureHud);
@@ -5299,7 +5330,31 @@ var R3 = window.THREE ? (() => {
     return { c, pow, warn, valid, spells };
   }
   function rolesHtml(c) { return `<div class="roles"><i><span class="dot tank"></span>${c.tank} tank${c.tank > 1 ? 's' : ''}</i><i><span class="dot heal"></span>${c.heal} soigneur${c.heal > 1 ? 's' : ''}</i><i><span class="dot dps"></span>${c.dps} DPS <small style="color:var(--ink-3)">(${c.melee} mêlée · ${c.ranged} distance)</small></i></div>`; }
-  function spellChips(spells) { return `<div class="kit-spells">${spells.map(s => `<span title="${esc(SP[s.id].desc)}">${svg(SP[s.id].icon)}${esc(SP[s.id].name)}${s.n > 1 ? ' ×' + s.n : ''}</span>`).join('')}</div>`; }
+  function spellChips(spells) { return `<div class="kit-spells">${spells.map(s => `<span data-sp="${s.id}" role="button" tabindex="0">${svg(SP[s.id].icon)}${esc(SP[s.id].name)}${s.n > 1 ? ' ×' + s.n : ''}</span>`).join('')}</div>`; }
+
+  // ---------- bulle d'explication d'un sort ----------
+  // Équipe et placement : un toucher. En combat : appui long (le combat continue, la bulle laisse passer les touchers).
+  let tipFor = null, tipT = 0;
+  function spellTip(id, anchor, opts = {}) {
+    const sp = SP[id], tip = $('#spellTip'), counts = opts.counts || {};
+    const cls = sp.classes.filter(c => counts[c]), n = cls.reduce((a, c) => a + counts[c], 0);
+    const who = cls.map(c => `<i style="color:${C[c].color}">${esc(C[c].name)}${counts[c] > 1 ? ' ×' + counts[c] : ''}</i>`).join(' · ');
+    tip.innerHTML = `<div class="st-h">${svg(sp.icon)}<b>${esc(sp.name)}</b><span class="num">recharge ${sp.cd} s</span></div>`
+      + (n ? `<p class="st-who">${who} · ${n} charge${n > 1 ? 's' : ''}</p>` : '')
+      + `<p>${esc(sp.desc)}</p><p class="st-how"><b>Comment :</b> ${esc(sp.how)}</p>`;
+    tip.classList.toggle('pass', !!opts.pass);
+    tip.style.left = '0px'; tip.style.top = '0px'; tip.hidden = false;
+    // au-dessus du sort, sans dépasser le bord droit de son conteneur (zone sûre de l'iPhone)
+    const a = anchor.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, m = 8;
+    const right = opts.edge ? opts.edge.getBoundingClientRect().right : innerWidth - m;
+    const x = Math.max(m, Math.min(a.left + a.width / 2 - w / 2, right - w));
+    let y = a.top - h - 8; if (y < m) y = Math.min(a.bottom + 8, innerHeight - h - m);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    clearTimeout(tipT); tipFor = anchor;
+  }
+  function hideSpellTip() { clearTimeout(tipT); tipFor = null; const t = $('#spellTip'); if (t) t.hidden = true; }
+  document.addEventListener('pointerdown', e => { if (tipFor && !tipFor.contains(e.target) && !$('#spellTip').contains(e.target)) hideSpellTip(); }, true);
+  $('#spellTip').addEventListener('click', hideSpellTip);
 
   // ---------- HUB ----------
   function renderHub() {
@@ -5346,7 +5401,7 @@ var R3 = window.THREE ? (() => {
   function renderRoster() {
     const sel = st.sel, ci = compInfo(sel);
     $('#rosterCount').textContent = sel.length + '/10';
-    $('#compSummary').innerHTML = rolesHtml(ci.c) + `<p class="lbl" style="margin:2px 0 0">Sorts de la barre</p>` + spellChips(ci.spells) + `<p class="comp-warn" style="color:${ci.warn.length ? 'var(--amber)' : 'var(--good)'}">${esc(ci.warn[0] || 'Composition valide.')}</p>`;
+    $('#compSummary').innerHTML = rolesHtml(ci.c) + `<p class="lbl" style="margin:2px 0 0">Sorts de la barre · touche un sort pour le détail</p>` + spellChips(ci.spells) + `<p class="comp-warn" style="color:${ci.warn.length ? 'var(--amber)' : 'var(--good)'}">${esc(ci.warn[0] || 'Composition valide.')}</p>`;
     $('#rosterOk').disabled = !ci.valid;
     $('#rosterList').innerHTML = G.POOL.map(p0 => {
       const p = person(p0.id), cl = C[p.cls], on = sel.includes(p.id);
@@ -5367,6 +5422,12 @@ var R3 = window.THREE ? (() => {
     save(); renderRoster();
   });
   $('#rosterList').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('rcard')) { e.preventDefault(); e.target.click(); } });
+  $('#compSummary').addEventListener('click', e => {
+    const c = e.target.closest('[data-sp]'); if (!c) return;
+    if (tipFor === c) { hideSpellTip(); return; }
+    const counts = {}; for (const id of st.sel) { const cl = person(id).cls; counts[cl] = (counts[cl] || 0) + 1; }
+    spellTip(c.dataset.sp, c, { counts, edge: $('#compSummary') });
+  });
   $('#rosterAuto').onclick = () => { st.sel = DEFAULT_SEL.slice(); save(); renderRoster(); };
   $('#rosterOk').onclick = () => { save(); show('hub'); };
 
@@ -5394,10 +5455,10 @@ var R3 = window.THREE ? (() => {
     $('#jBoss').innerHTML = G.BOSSES.map(b => `<button data-b="${b.id}" aria-selected="${b.id === jBoss}">${esc(b.name)}</button>`).join('') + `<button data-b="classes" aria-selected="${jBoss === 'classes'}">Classes et sorts</button>`;
     let h = '';
     if (jBoss === 'classes') {
-      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
+      h += `<section class="jsec"><h3>Comment jouer</h3><div class="prose"><p>Les persos attaquent et soignent seuls, mais <b>ne bougent que sur tes ordres</b>. Ils ne sortent jamais seuls d’une zone ; en revanche, en se recollant au boss, ils évitent d’y entrer.</p><p>Chaque sort de la barre a une <b>charge par porteur vivant</b> : deux Gardiens, deux Provocations. Le sort part du porteur le plus proche de la cible.</p><p>Pour savoir ce que fait un sort : <b>touche-le pendant le placement</b>, ou <b>appui long</b> dessus en combat (le combat continue).</p><p>Les soigneurs soignent à <b>16 m</b>. Un cadre grisé à gauche = hors de portée de tout soigneur.</p></div></section>`;
       for (const id of G.CLASS_ORDER) {
         const cl = C[id];
-        h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}</span></div>`).join('')}</div></article>`;
+        h += `<article class="abil panel cut"><div class="abil-h"><b style="color:${cl.color}">${esc(cl.name)}</b><span class="tag ${cl.role === 'tank' ? 'tank' : cl.role === 'heal' ? 'heal' : 'pos'}">${ROLE_FR[cl.role]} · ${cl.range === 'melee' ? 'mêlée' : 'distance'}</span></div><p>${esc(cl.race)}. ${esc(cl.blurb)}</p><div class="spell-list">${cl.spells.map(s => `<div>${svg(SP[s].icon)}<span><b>${esc(SP[s].name)}</b> · recharge ${SP[s].cd} s<br>${esc(SP[s].desc)}<br><i>${esc(SP[s].how)}</i></span></div>`).join('')}</div></article>`;
       }
     } else {
       const B = G.resolveBoss(G.BOSSES.find(b => b.id === jBoss), st.diff);
@@ -5458,7 +5519,7 @@ var R3 = window.THREE ? (() => {
     if (!S || S.started || pre > 0) return;
     st.place[lastSetup.bossId] = S.raiders.map(r => ({ id: r.id, x: +r.pos.x.toFixed(2), z: +r.pos.z.toFixed(2) }));
     save();
-    $('#prep').hidden = true; pre = 3.2;
+    $('#prep').hidden = true; pre = 3.2; hideSpellTip();
     showAlert('Pull dans 3', 'phase'); SND.alert();
   }
   $('#prepPull').onclick = () => { SND.unlock(); doPull(); };
@@ -5625,12 +5686,33 @@ var R3 = window.THREE ? (() => {
     if (res.ok) { UI.casts++; SND.cast(); const b = els.spells[id]; if (b) flashEl(b.el); } else SND.no();
   }
   function syncSpellArmed() { for (const id in els.spells) els.spells[id].el.classList.toggle('armed', UI.placing === id); }
+  // appui long sur un sort : sa bulle d'explication, sans le lancer
+  let spPress = null, spSkip = 0;   // spSkip : heure du relâché d'un appui long, dont le clic qui suit est ignoré
+  function fightTip(b) {
+    const counts = {}; for (const r of S.raiders) if (r.alive) counts[r.cls] = (counts[r.cls] || 0) + 1;
+    spellTip(b.dataset.sp, b, { counts, edge: $('#spells'), pass: true });
+  }
+  $('#spells').addEventListener('pointerdown', e => {
+    const b = e.target.closest('.sp'); if (!b || !S) return;
+    if (spPress) clearTimeout(spPress.t);
+    spPress = { b, long: false, t: setTimeout(() => { spPress.long = true; fightTip(b); SND.sel(); }, 420) };
+  });
+  const endSpPress = e => {
+    if (!spPress) return; clearTimeout(spPress.t);
+    if (spPress.long) { spSkip = Date.now(); if (S && S.started) tipT = setTimeout(hideSpellTip, 5000); }
+    spPress = null;
+  };
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('#spells').addEventListener(t, endSpPress));
+  $('#spells').addEventListener('contextmenu', e => e.preventDefault());
   $('#spells').addEventListener('click', e => {
     const b = e.target.closest('.sp'); if (!b || !S || !running || paused || S.over) return;
+    if (spSkip && Date.now() - spSkip < 500) { spSkip = 0; return; }   // l'appui long a montré la bulle : pas de lancement
+    spSkip = 0;
+    if (S.started) hideSpellTip();
     SND.unlock();
     const id = b.dataset.sp;
     if (UI.placing === id) { UI.placing = null; R3.placing(null); renderSelbar(); syncSpellArmed(); return; }
-    if (!S.started) { toast('Lance le pull d’abord', false); SND.no(); return; }
+    if (!S.started) { if (tipFor === b) hideSpellTip(); else fightTip(b); return; }
     if (SP[id].target === 'ground') {
       const it = G.spellBar(S).find(x => x.id === id);
       if (!it.alive) { toast('Aucun porteur en vie', false); SND.no(); return; }
