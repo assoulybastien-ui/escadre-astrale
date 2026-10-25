@@ -24,7 +24,7 @@ const wrapped = `<!doctype html><html><head><meta charset="utf-8"><meta name="vi
   await page.click('#talents [data-go="hub"]'); await page.waitForTimeout(200);
   await page.click('#btnPull'); await page.waitForTimeout(1200);
   const hp = await page.evaluate(() => { const S = window.__escadre.state(); const g = S.raiders.find(r => r.cls === 'gardien'); return g.maxHp; });
-  check(hp === Math.round(120000 * 1.15), 'Gardien : PV +15 % (' + hp + ')');
+  check(hp === Math.round(120000 * 1.1), 'Gardien : PV +10 % (' + hp + ')');
   await page.click('#spells [data-sp="egide"]'); await page.waitForTimeout(300);
   check(await page.evaluate(() => document.querySelector('#spellTip').textContent.includes('Bouclier de lumière')), 'la bulle d’Égide cite le talent');
   await page.screenshot({ path: `${out}/talents-2-bulle.png` }); console.log('shot talents-2-bulle');
