@@ -91,24 +91,26 @@ const DATA = (() => {
   const BOSSES = [
     {
       id: 'vorr', name: 'Vorr', title: 'la Sentinelle brisée', model: 'vorr', hp: 2.2e6, enrage: 300, color: '#ffb35a', rad: 3.4,
-      lore: 'Le premier gardien de la Citadelle. Son armure s’effrite, mais chaque coup qu’il porte fend la roche.',
-      focus: 'Changer de tank au bon moment, garder le raid derrière le boss, sortir Vorr de ses flaques.',
+      lore: 'Le premier gardien de la Citadelle veille sur la Forge effondrée. Son armure de basalte s’effrite sur un cœur de magma, et chaque coup de son marteau fend la roche jusqu’à la lave.',
+      focus: 'Changer de tank au bon moment, garder le raid derrière Vorr, le sortir de ses flaques, esquiver les fissures, puis tenir dans une arène qui rétrécit.',
       phases: [
-        { to: 0.3, name: 'Gardien', abilities: {
+        { to: 0.45, name: 'Gardien', abilities: {
           coup: { kind: 'buster', name: 'Coup broyeur', first: 8, every: 12, cast: 1.5, dmg: 15000, stack: 'Écrasé', mult: 1.5, stackDur: 22, call: 'taunt',
             desc: 'Gros coup sur le tank actif. Chaque cumul d’Écrasé augmente le suivant de 50 %. Provocation avec l’autre tank à 2 ou 3 cumuls, et Égide ou Carapace avant un coup chargé.' },
           frontal: { kind: 'frontal', name: 'Frappe circulaire', first: 14, every: 17, cast: 2, dmg: 30000, angle: 35, range: 14, call: 'pos',
             desc: 'Cône devant Vorr, vers son tank. Personne d’autre que les tanks devant lui.' },
-          onde: { kind: 'raidcast', name: 'Onde sismique', first: 18, every: 20, cast: 2, dmg: 12500, call: 'heal', m: { dmg: 15000 },
+          onde: { kind: 'raidcast', name: 'Onde sismique', first: 18, every: 20, cast: 2, dmg: 12500, call: 'heal', m: { dmg: 12000 },
             desc: 'Dégâts sur tout le raid. Garde tout le monde à portée des soigneurs (16 m).' },
-          corrosion: { kind: 'dots', name: 'Corrosion', first: 26, every: 28, count: 2, dps: 3500, dur: 14, call: 'dispel', h: { count: 3 }, m: { count: 4, dur: 10, explode: { r: 6, dmg: 12000 } },
+          corrosion: { kind: 'dots', name: 'Corrosion', first: 26, every: 28, count: 2, dps: 3500, dur: 14, call: 'dispel', h: { count: 3 }, m: { count: 3, dur: 10, explode: { r: 6, dmg: 12000 } },
             desc: 'Effet néfaste qui ronge sa cible tant qu’il n’est pas purgé. Sélectionne la cible puis Purge.' },
           flaque: { kind: 'pool', name: 'Flaque de scories', first: 32, every: 36, r: 4.5, dur: 30, call: 'tank',
             desc: 'Une flaque se forme sous Vorr. Tant qu’il y reste, ses dégâts grimpent de 8 % toutes les 3 s. Déplace son tank à 8-10 m.' },
+          fissures: { kind: 'fissures', name: 'Fissures de magma', first: 12, every: 24, count: 2, width: 2.8, len: 24, arm: 2.8, dur: 1.5, dps: 16000, call: 'move', h: { count: 3, arm: 2.5 }, m: { count: 3, arm: 2.2 },
+            desc: 'Vorr frappe le sol : des fissures filent vers plusieurs persos, puis entrent en éruption. Décale sur le côté ceux qui sont sur une ligne avant l’éruption.' },
         } },
-        { to: 0, name: 'Fureur', dmgMult: 1.25, abilities: {
+        { to: 0, name: 'Effondrement', dmgMult: 1.2, collapse: 13.5, abilities: {
           coup: { inherit: true }, frontal: { inherit: true }, corrosion: { inherit: true }, flaque: { inherit: true },
-          onde: { inherit: true, every: 15 },
+          onde: { inherit: true, every: 17 }, fissures: { inherit: true, first: 8, every: 18 },
         } },
       ],
     },

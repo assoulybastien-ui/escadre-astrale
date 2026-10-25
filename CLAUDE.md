@@ -54,8 +54,10 @@ Projet perso de Bastien. Tout se fait **en français** (code commenté en franç
 3. Étape en cours, une sous-étape validée en images à la fois :
    1. Explications des sorts — bulle (`spellTip` dans `ui.js`, champ `how` des sorts dans `data.js`) : toucher dans l'équipe et au placement, appui long en combat (le combat continue, le sort n'est pas lancé). Test : `node test/tips.js`.
    2. Réglage Mythique — **cible : ~3/6 victoires au bot `good`** pour chaque boss. Fait (en attente de validation) : surcharges `m` dans `data.js` (Vorr : Onde 15 000 ; Jumelles : Éruption à 3 s ; Nyxar : Chant à 2,2 s ; Azhal : Singularité 12 s, 4 météores, Convergence 100 000, montée de la Faim 3/s). Les phases acceptent aussi des surcharges `h` / `m` (`resolveBoss`). Le bot `good` joue maintenant le Séisme du Titan sur les Gardiens du Vide et les emmène loin du centre.
-   3. **Une arène par boss.**
-   4. **Boss réécrits = modèles 3D, animations et mécaniques**, beaucoup plus poussés et visuels.
+   3. **Une arène par boss** et 4. **Boss réécrits = modèles 3D, animations et mécaniques**, beaucoup plus poussés et visuels — faits ensemble, un boss à la fois (demande de Bastien).
+      - Vorr — fait (en attente de validation) : arène « Forge effondrée » (`buildForge`), modèle de golem (`buildVorr`), Fissures de magma (`kind: 'fissures'`), phase 2 Effondrement (`collapse: 13.5` : le bord tombe, la lave brûle au-delà de `S.arenaR`). Captures : `node test/vorr.js`.
+      - Arènes : `ARENA_OF` / `THEMES` / `setArena` dans `render.js` ; l'arène par défaut (plateforme du Noyau) sert à Nyxar et aux boss pas encore faits.
+      - Idées retenues pour la suite : Jumelles « Observatoire céleste » (sol soleil/lune, planétaire), Nyxar « Salle du Noyau » (machines, rayons tournants), Azhal « L'Horizon » (plateforme brisée au bord du trou noir, s'effrite en phase 3).
    5. Talents (rien n'existe encore) : proposer le système sur papier avant de coder.
 4. Finitions + PWA (`build_pwa.py`) et mise en ligne (dépôt privé : pas de GitHub Pages gratuit, à décider).
 
@@ -69,6 +71,9 @@ Attention : Vorr Mythique est un seuil de soins très net (Onde à 14 750 → 87
 - `buildAccessories` : la branche `RACE[c]` doit passer **avant** les anciennes branches (nom `medic` en commun).
 - Soleil vers +x / −z : filmer dos au soleil (sinon reflets et halo sur le sol).
 - Dans les scripts de test, ne pas tuer de processus par motif (`pkill -f`) : tuer par PID.
+- Les pistes d'échelle sont retirées de **toutes** les animations au chargement (trooper et colossus). Pour grossir un boss, mettre ses os à l'échelle **avant** d'attacher l'armure (`attach` compense l'échelle de l'os au moment de l'attache).
+- Grandes surfaces (lave, chutes) : utiliser `NOISE3` (3 octaves) plutôt que `NOISE` (6), pour l'iPhone.
+- Couleurs de danger : sur la Forge, le sol est veiné de rouge sombre ; les alertes de fissures sont jaune vif pour rester lisibles.
 
 ## Outils de rendu (validation visuelle)
 - `test/portrait.js outDir classes [w h vues]` — vues face/trois-quarts/dos/tête au banc d'essai.

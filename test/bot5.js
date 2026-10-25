@@ -18,7 +18,7 @@ function bot(S, level) {
   const mv = (idx, x, z, pack) => G.order(S, { type: 'move', idx: Array.isArray(idx) ? idx : [idx], x, z, pack });
   // point sûr le plus proche : hors des zones, du rayon, du cœur
   function safe(from, avoid = []) {
-    const bad = p => Math.hypot(p.x, p.z) > 18.5 || S.zones.some(z => (z.type === 'puits' || z.type === 'core' || z.type === 'pool') && dist(p, z) < z.r + 1) || (S.B.twins && G.segDist(p, B[0].pos, B[1].pos) < 2.5) || avoid.some(a => dist(p, a.p) < a.r);
+    const bad = p => Math.hypot(p.x, p.z) > Math.min(18.5, S.arenaR - 1) || S.zones.some(z => ((z.type === 'puits' || z.type === 'core' || z.type === 'pool') && dist(p, z) < z.r + 1) || (z.type === 'fissure' && G.segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 1)) || (S.B.twins && G.segDist(p, B[0].pos, B[1].pos) < 2.5) || avoid.some(a => dist(p, a.p) < a.r);
     if (!bad(from)) return from;
     for (let rad = 2; rad <= 12; rad += 1.5) for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; const p = { x: from.x + Math.cos(a) * rad, z: from.z + Math.sin(a) * rad }; if (!bad(p)) return p; }
     return from;
@@ -29,12 +29,35 @@ function bot(S, level) {
     for (let k = later.length - 1; k >= 0; k--) if (S.t >= later[k].t) { const f = later[k].fn; later.splice(k, 1); f(); }
     if (S.t >= busyUntil && queue.length) { const q = queue.shift(); q.fn(); busyUntil = S.t + q.cost; }
     if (level === 'passive') return;
-    if (S.phase !== lastPhase) { lastPhase = S.phase; if (S.B.phases[S.phase].center) R.forEach((r, i) => { if (r.role !== 'tank') { const d = Math.hypot(home[i].x, home[i].z) || 1; const k = Math.max(d, r.range === 'melee' ? 5.5 : 10.5) / d; home[i] = { x: home[i].x * k, z: home[i].z * k }; } }); }
+    if (S.phase !== lastPhase) {
+      lastPhase = S.phase; const ph = S.B.phases[S.phase];
+      if (ph.center) R.forEach((r, i) => { if (r.role !== 'tank') { const d = Math.hypot(home[i].x, home[i].z) || 1; const k = Math.max(d, r.range === 'melee' ? 5.5 : 10.5) / d; home[i] = { x: home[i].x * k, z: home[i].z * k }; } });
+      // Effondrement : on resserre le placement et on ramène tout le monde, en un geste (tout sélectionner, toucher près du centre)
+      if (ph.collapse) {
+        const lim = ph.collapse - 1.5;
+        R.forEach((r, i) => { const d = Math.hypot(home[i].x, home[i].z); if (d > lim) home[i] = { x: home[i].x * lim / d, z: home[i].z * lim / d }; });
+        at(P.react, () => act(() => alive().filter(r => Math.hypot(r.pos.x, r.pos.z) > lim).forEach(r => mv(r.i, home[r.i].x, home[r.i].z)), P.apm * 2));
+      }
+    }
+    // fissures : décaler sur le côté ceux qui sont sur une ligne, puis les remettre en place
+    for (const z of S.zones) if (z.type === 'fissure' && !seen.has(z.id)) {
+      seen.add(z.id);
+      at(P.react, () => act(() => {
+        const ux = z.x2 - z.x, uz = z.z2 - z.z, l = Math.hypot(ux, uz) || 1, nx = -uz / l, nz = ux / l;
+        const on = alive().filter(r => r.role !== 'tank' && G.segDist(r.pos, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 0.8);
+        for (const r of on) {
+          const side = Math.sign((r.pos.x - z.x) * nx + (r.pos.z - z.z) * nz) || 1;
+          const p = safe({ x: r.pos.x + nx * side * (z.w / 2 + 1.8), z: r.pos.z + nz * side * (z.w / 2 + 1.8) });
+          mv(r.i, p.x, p.z);
+          at(z.endAt - S.t + 0.3, () => act(() => { if (r.alive && dist(r.pos, home[r.i]) > 1.5) { const q = safe(home[r.i]); mv(r.i, q.x, q.z); } }, 0.3));
+        }
+      }, P.apm * 1.5));
+    }
     // zones sous les persos : un perso à la fois
     for (const z of S.zones) {
       if (z.type === 'puits' && !seen.has(z.id)) { seen.add(z.id); at(P.react, () => { for (const r of alive()) if (r.role !== 'tank' && dist(r.pos, z) < z.r + 0.3) act(() => { if (r.alive) { const p = safe(r.pos); mv(r.i, p.x, p.z); at(z.endAt - S.t + 0.3, () => act(() => { if (r.alive && dist(r.pos, home[r.i]) > 1.5) { const q = safe(home[r.i]); mv(r.i, q.x, q.z); } })); } }); }); }
       if (z.type === 'soak' && !seen.has(z.id)) { seen.add(z.id); at(P.react, () => act(() => { const nt = alive().filter(r => r.role !== 'tank').sort((a, b) => dist(a.pos, z) - dist(b.pos, z)).slice(0, 6); const back = nt.map(r => ({ r, p: { x: r.pos.x, z: r.pos.z } })); mv(nt.map(r => r.i), z.x, z.z, true); at(z.at - S.t + 0.5, () => act(() => back.forEach(b => b.r.alive && mv(b.r.i, b.p.x, b.p.z)), P.apm * 2)); }, P.apm * 1.6)); }
-      if (z.type === 'pool' && !seen.has(z.id)) { seen.add(z.id); at(P.react, () => act(() => { const t = R[B[0].target]; if (!t || !t.alive) return; let nx = t.pos.x + 9, nz = t.pos.z; if (Math.hypot(nx, nz) > 16) nx = t.pos.x - 9; mv(t.i, nx, nz); home[t.i] = { x: nx, z: nz }; })); }
+      if (z.type === 'pool' && !seen.has(z.id)) { seen.add(z.id); at(P.react, () => act(() => { const t = R[B[0].target]; if (!t || !t.alive) return; const lim = Math.min(16, S.arenaR - 2.5); let nx = t.pos.x + 9, nz = t.pos.z; if (Math.hypot(nx, nz) > lim) nx = t.pos.x - 9; if (Math.hypot(nx, nz) > lim) { const d = Math.hypot(nx, nz); nx *= lim / d; nz *= lim / d; } mv(t.i, nx, nz); home[t.i] = { x: nx, z: nz }; })); }
     }
     // marques : écarter les marqués
     for (const r of alive()) if (r.mark && !seen.has('m' + r.i + r.mark.at)) {

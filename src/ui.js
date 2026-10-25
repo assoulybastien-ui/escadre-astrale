@@ -291,6 +291,7 @@
       case 'adds': x = a.count + ' × ' + k(a.hp * (D.addMult || 1)) + ' PV'; break;
       case 'beam': x = k(a.dps * m) + '/s dans le rayon'; break;
       case 'pulse': x = 'Aspiration de ' + a.pull + ' m · cœur : ' + k(a.dps * m) + '/s'; break;
+      case 'fissures': x = a.count + ' lignes · éruption après ' + String(a.arm).replace('.', ',') + ' s · ' + k(a.dps * m) + '/s dedans'; break;
     }
     return t + (x ? ' · ' + x : '');
   }
@@ -311,6 +312,7 @@
       B.phases.forEach((ph, i) => {
         const from = i === 0 ? 100 : Math.round(B.phases[i - 1].to * 100), to = Math.round(ph.to * 100);
         h += `<section class="jsec"><h3>Phase ${i + 1} · ${esc(ph.name)}<small>${from} → ${to} %${ph.invuln ? ' · invulnérable ' + ph.invuln + ' s' : ''}${ph.dmgMult ? ' · dégâts +' + Math.round((ph.dmgMult - 1) * 100) + ' %' : ''}</small></h3>`;
+        if (ph.collapse) h += `<article class="abil panel cut"><div class="abil-h"><b>Effondrement</b><span class="tag move">${esc(CALL_LABEL.move)}</span></div><p>À l’entrée en phase, le bord de l’arène s’écroule dans la lave. Il reste ${String(ph.collapse).replace('.', ',')} m autour du centre, marqués par un cercle de feu. Ramène tout le monde à l’intérieur, placement compris : au-delà, la lave brûle très fort.</p><span class="meta">${ph.collapseDelay || 4} s pour rentrer</span></article>`;
         for (const id in ph.abilities) { const a = ph.abilities[id]; h += `<article class="abil panel cut"><div class="abil-h"><b>${esc(a.name)}</b><span class="tag ${a.call}">${esc(CALL_LABEL[a.call] || a.call)}</span></div><p>${esc(a.desc)}</p>${a.kind !== 'meleeStack' ? `<span class="meta">${esc(abilMeta(a, D))}</span>` : ''}</article>`; }
         if (ph.aura) h += `<article class="abil panel cut"><div class="abil-h"><b>${B.id === 'nyxar' ? 'Effondrement du Noyau' : 'Faim d’Azhal'}</b><span class="tag cd">Course DPS</span></div><p>Dégâts continus sur tout le raid qui augmentent chaque seconde de la phase. Cri de guerre ici.</p></article>`;
         h += `</section>`;

@@ -12,9 +12,10 @@ const GAME = (() => {
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const fmtT = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
   const ARENA = 19.5;
-  const inArena = p => { const d = Math.hypot(p.x, p.z); if (d > ARENA) { p.x *= ARENA / d; p.z *= ARENA / d; } return p; };
+  const inArena = (p, R = ARENA) => { const d = Math.hypot(p.x, p.z); if (d > R) { p.x *= R / d; p.z *= R / d; } return p; };
+  const LAVA_DPS = 14000;   // hors de l'arène effondrée
   const HEAL_RANGE = 16, RANGED_RANGE = 36, SPEED = 6.5, LEASH = 10;
-  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt' };
+  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move' };
 
   // ---------- résolution d'un boss pour une difficulté ----------
   function resolveBoss(B, dk) {
@@ -73,6 +74,7 @@ const GAME = (() => {
     const S = {
       D, B, rng, t: 0, started: false, phase: 0, phaseStart: 0, over: false, result: null, endT: 0, size: raiders.length,
       hp: B.hp * D.hpMult, maxHp: B.hp * D.hpMult, invulnUntil: 0, enrage: Math.round(B.enrage * D.enrageMult),
+      arenaR: ARENA, lavaAt: 0,   // rayon jouable (l'Effondrement le réduit) ; la lave brûle au-delà à partir de lavaAt
       bodies, raiders, me: -1,
       adds: [], zones: [], pending: [], turrets: [], domes: [],
       timers: {}, buffs: { criUntil: 0, eclipseUntil: 0, chantDotUntil: 0, chantDot: 0 },
@@ -144,6 +146,14 @@ const GAME = (() => {
       alert(S, 'PHASE ' + (p + 1) + ' — ' + ph.name.toUpperCase(), 'phase');
     }
     S.bodies[0].centerMove = !!ph.center;
+    if (ph.collapse) {
+      // le bord de l'arène s'écroule : quelques secondes pour rentrer, puis la lave brûle au-delà
+      const delay = ph.collapseDelay || 4;
+      S.arenaR = ph.collapse; S.lavaAt = S.t + delay;
+      S.events.push({ type: 'collapse', r: ph.collapse, delay });
+      alert(S, 'EFFONDREMENT — ramène tout le monde à moins de ' + String(ph.collapse).replace('.', ',') + ' m du centre', 'danger', 'move');
+      log(S, 'Le bord de l’arène s’effondre dans la lave.', 'bad');
+    }
     if (p > 0) {
       const echoes = S.adds.filter(a => a.alive && a.type === 'echo');
       if (echoes.length) {
@@ -295,6 +305,17 @@ const GAME = (() => {
         alert(S, 'SINGULARITÉ — ressors les persos aspirés', 'warn', 'move');
         break;
       }
+      case 'fissures': {
+        // des lignes partent du boss vers plusieurs persos, puis entrent en éruption
+        const b = mainBody(S), ts = pick(aliveNT, a.count), r0 = bodyRad(S), len = a.len || 24;
+        for (const r of ts) {
+          let dx = r.pos.x - b.pos.x, dz = r.pos.z - b.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+          S.zones.push({ type: 'fissure', id: 'f' + Math.floor(S.t * 100) + '_' + r.i, x: b.pos.x + dx * r0, z: b.pos.z + dz * r0, x2: b.pos.x + dx * (r0 + len), z2: b.pos.z + dz * (r0 + len), w: a.width, r: 0, born: S.t, armAt: S.t + a.arm, endAt: S.t + a.arm + a.dur, dps: a.dps, abId: id });
+        }
+        S.events.push({ type: 'fissures', body: 0, arm: a.arm });
+        alert(S, a.name.toUpperCase() + ' — sors des lignes', 'warn', 'move');
+        break;
+      }
       case 'eclipse': {
         S.buffs.eclipseUntil = S.t + a.dur; S.buffs.eclipseDps = a.dps;
         S.events.push({ type: 'eclipse' });
@@ -380,6 +401,7 @@ const GAME = (() => {
         const k = maxR > 4 ? 4 / maxR : 1;
         rs.forEach((r, j) => assign.set(r, inArena({ x: cmd.x + (pts[j].x - cx) * k, z: cmd.z + (pts[j].z - cz) * k })));
       }
+      for (const [r, s] of assign) inArena(s, S.arenaR - 0.4);
       for (const [r, s] of assign) {
         if (!S.started) { r.pos = { x: s.x, z: s.z }; r.anchor = { x: s.x, z: s.z }; r.orders = []; continue; }
         if (cmd.queue) r.orders.push({ x: s.x, z: s.z }); else { r.orders = [{ x: s.x, z: s.z }]; r.focus = null; }
@@ -616,8 +638,9 @@ const GAME = (() => {
       if ((z.type === 'puits' || z.type === 'core') && dist(p, z) < z.r + 0.6) return true;
       if (z.type === 'pool' && r.role !== 'tank' && dist(p, z) < z.r + 0.6) return true;
       if (z.type === 'beam' && r.role !== 'tank' && S.bodies.length > 1 && segDist(p, S.bodies[0].pos, S.bodies[1].pos) < z.width + 0.8) return true;
+      if (z.type === 'fissure' && r.role !== 'tank' && segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 0.6) return true;
     }
-    return false;
+    return S.lavaAt > 0 && Math.hypot(p.x, p.z) > S.arenaR;
   }
   // cible de combat d'un perso
   function combatTarget(S, r) {
@@ -636,7 +659,8 @@ const GAME = (() => {
   }
 
   // ---------- boucle ----------
-  function moveToward(p, q, step) { const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); if (d < 1e-3) return 0; const k = Math.min(1, step / d); p.x += dx * k; p.z += dz * k; inArena(p); return d * k; }
+  // R : rayon jouable ; un perso déjà au-delà (arène effondrée) peut rentrer mais pas s'éloigner davantage
+  function moveToward(p, q, step, R) { const dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); if (d < 1e-3) return 0; const d0 = Math.hypot(p.x, p.z); const k = Math.min(1, step / d); p.x += dx * k; p.z += dz * k; inArena(p, R ? Math.min(ARENA, Math.max(R, d0)) : ARENA); return d * k; }
   function step(S, dt) {
     if (S.over || !S.started) return;
     const D = S.D;
@@ -682,7 +706,7 @@ const GAME = (() => {
     }
     // expirations
     for (const r of S.raiders) { for (const k in r.stacks) if (t > r.stacks[k].exp) delete r.stacks[k]; if (r.mit.length) r.mit = r.mit.filter(m => t < m.until); }
-    S.zones = S.zones.filter(z => !((z.type === 'puits' || z.type === 'pool' || z.type === 'beam') && t >= z.endAt));
+    S.zones = S.zones.filter(z => !((z.type === 'puits' || z.type === 'pool' || z.type === 'beam' || z.type === 'fissure') && t >= z.endAt));
     if (!S.B.phases[S.phase].abilities.singularite) S.zones = S.zones.filter(z => z.type !== 'core');
     S.domes = S.domes.filter(d => t < d.until);
     for (const tu of S.turrets) if (t >= tu.until && !tu.gone) { tu.gone = true; S.events.push({ type: 'turretEnd', id: tu.id }); }
@@ -761,7 +785,7 @@ const GAME = (() => {
           else desired = danger(S, r.anchor, r) ? null : r.anchor;
         }
       } else if (!desired) desired = r.anchor;
-      if (desired && dist(r.pos, desired) > 0.08) { const mv = moveToward(r.pos, desired, SPEED * dt); r.moving = mv > 0.0005; r.stats.moved += mv; }
+      if (desired && dist(r.pos, desired) > 0.08) { const mv = moveToward(r.pos, desired, SPEED * dt, S.arenaR); r.moving = mv > 0.0005; r.stats.moved += mv; }
       else r.moving = false;
       if (r.role !== 'heal') r.healTarget = -1;
     }
@@ -822,7 +846,9 @@ const GAME = (() => {
         }
         if (z.type === 'pool' && r.role !== 'tank' && dist(r.pos, z) < z.r) dmg(S, r, 3000 * dt, 'Flaque de scories', { avoidable: true, mech: true });
         if (z.type === 'beam' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, S.bodies[0].pos, S.bodies[1].pos) < z.width) { const a = dmg(S, r, z.dps * dt, 'Rayon jumeau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'fissure' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, z, { x: z.x2, z: z.z2 }) < z.w / 2) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Fissure de magma', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
       }
+      if (S.lavaAt && t >= S.lavaAt && Math.hypot(r.pos.x, r.pos.z) > S.arenaR + 0.3) { const a = dmg(S, r, LAVA_DPS * dt, 'Lave', { avoidable: true, mech: true }); M(S, 'lave').dmg += a; M(S, 'lave').hits += dt; }
       for (let k = r.debuffs.length - 1; k >= 0; k--) {
         const db = r.debuffs[k];
         if (t >= db.until) {
@@ -936,6 +962,7 @@ const GAME = (() => {
         case 'pool': if ((m.hits || 0) >= 4) push(3, 'Boss laissé dans la Flaque', 'Vorr a pris ' + m.hits + ' cumuls de puissance. Déplace son tank à 8-10 m dès qu’elle apparaît.'); break;
         case 'zones': if (m.dmg > 60000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 150000)), 'Trop de temps dans ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Les persos ne bougent pas seuls : sélectionne-les et sors-les du cercle avant qu’il s’arme.'); break;
         case 'beam': if ((m.hits || 0) > 2) push(3, 'Persos pris dans le Rayon', 'Le rayon a frappé pendant ' + Math.round(m.hits) + ' s cumulées. Personne entre les Jumelles.'); break;
+        case 'fissures': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos dans les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les lignes apparaissent, sélectionne les persos dessus et décale-les sur le côté.'); break;
         case 'marks': if (m.hits >= 2) push(3 + Math.min(3, Math.floor(m.hits / 3)), a.name + ' mal gérées', m.hits + ' alliés touchés par une explosion. Sors chaque marqué à plus de 6,5 m des autres.'); break;
         case 'soak': if (m.fails) push(3 + m.fails, a.name + ' mal partagée', 'Persos dans le cercle : ' + m.extra.join(', ') + '. Il en faut au moins ' + (a.need || 4) + ', hors tanks.'); break;
         case 'adds':
@@ -946,6 +973,7 @@ const GAME = (() => {
     }
     const g = S.mech.gardiens; if (g && (g.loose || 0) > 6) push(4, 'Gardien non tanké', 'Un Gardien a frappé des non-tanks pendant ' + Math.round(g.loose) + ' s. Provocation sur le Gardien, ou Séisme avec un Titan à côté.');
     const fl = S.mech.fleau; if (fl && fl.fails) push(2 + fl.fails, 'Fléau non interrompu', fl.fails + ' Fléau(x) sont passés.');
+    const lv = S.mech.lave; if (lv && lv.hits > 2) push(4, 'Persos restés dans la lave', 'La lave a brûlé pendant ' + Math.round(lv.hits) + ' s cumulées. À l’Effondrement, ramène tout le monde vers le centre, placement compris.');
     const st = S.mech.stacks; if (st && st.max >= 4 && !S.B.twins) push(3 + st.max - 3, 'Cumuls trop hauts sur un tank', 'Le tank a atteint ' + st.max + ' cumuls. Provocation avec l’autre tank à 2-3 cumuls.');
     if (S.B.twins && st && st.max >= 8) push(3, 'Jumelles pas assez échangées', 'Un tank a atteint ' + st.max + ' cumuls d’Astre. Échange vers 5 avec deux Provocations.');
     if (S.mech.lien && S.mech.lien.dmg > 6) push(4, 'Jumelles trop proches', 'Le Lien stellaire est resté actif ' + Math.round(S.mech.lien.dmg) + ' s. Garde les deux tanks à plus de ' + S.B.link.dist + ' m l’un de l’autre.');
