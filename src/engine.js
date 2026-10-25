@@ -14,8 +14,11 @@ const GAME = (() => {
   const ARENA = 19.5;
   const inArena = (p, R = ARENA) => { const d = Math.hypot(p.x, p.z); if (d > R) { p.x *= R / d; p.z *= R / d; } return p; };
   const LAVA_DPS = 14000;   // hors de l'arène effondrée
+  // dalles hexagonales de l'Horizon (Azhal) : centres partagés avec le rendu
+  const HEX = 2.6;
+  const HEX_TILES = (() => { const out = []; for (let q = -9; q <= 9; q++) for (let r = -9; r <= 9; r++) { const x = HEX * Math.sqrt(3) * (q + r / 2), z = HEX * 1.5 * r; if (Math.hypot(x, z) <= 20.6) out.push({ x, z }); } return out; })();
   const HEAL_RANGE = 16, RANGED_RANGE = 36, SPEED = 6.5, LEASH = 10;
-  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move', half: 'move', sweep: 'move' };
+  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move', half: 'move', sweep: 'move', holes: 'move' };
 
   // ---------- résolution d'un boss pour une difficulté ----------
   function resolveBoss(B, dk) {
@@ -274,7 +277,10 @@ const GAME = (() => {
         const b = mainBody(S); const tk = S.raiders[b.target];
         let dx = 0, dz = 1;
         if (tk) { dx = b.pos.x - tk.pos.x; dz = b.pos.z - tk.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d; }
-        const c = inArena({ x: b.pos.x + dx * 7, z: b.pos.z + dz * 7 });
+        let c = inArena({ x: b.pos.x + dx * 7, z: b.pos.z + dz * 7 });
+        // jamais sur un trou de l'Horizon : on tourne autour du boss jusqu'à trouver un sol intact
+        const holed = p => S.zones.some(q => q.type === 'hole' && dist(p, q) < q.r + a.r);
+        for (let k = 1; k < 12 && holed(c); k++) { const an = Math.atan2(dx, dz) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.45; c = inArena({ x: b.pos.x + Math.sin(an) * 7, z: b.pos.z + Math.cos(an) * 7 }); }
         const z = { type: 'soak', id: 's' + Math.floor(S.t * 100), x: c.x, z: c.z, r: a.r, born: S.t, at: S.t + a.time, abId: id, dmg: a.dmg, need: a.need || 4 };
         S.zones.push(z);
         S.pending.push({ at: z.at, fn: () => resolveSoak(S, z, id) });
@@ -329,6 +335,20 @@ const GAME = (() => {
         S.zones.push({ type: 'sweep', id: 'sw' + Math.floor(S.t * 100), x: 0, z: 0, r: 0, a0, dir, span: a.span, eye: a.eye, w: a.width, born: S.t, armAt: S.t + a.warn, endAt: S.t + a.warn + a.dur, dps: a.dps, abId: id });
         S.events.push({ type: 'sweep', warn: a.warn, dur: a.dur });
         alert(S, a.name.toUpperCase() + ' — sors des secteurs allumés', 'warn', 'move');
+        break;
+      }
+      case 'holes': {
+        // des dalles se fissurent sous des persos, puis tombent : le trou reste jusqu'à la fin du combat
+        const ts = pick(aliveNT, a.count), used = new Set(S.zones.filter(q => q.type === 'hole').map(q => q.tile));
+        for (const r of ts) {
+          let best = -1, bd = 1e9;
+          HEX_TILES.forEach((h, k) => { if (used.has(k) || Math.hypot(h.x, h.z) < 4.5) return; const d = Math.hypot(h.x - r.pos.x, h.z - r.pos.z); if (d < bd) { bd = d; best = k; } });
+          if (best < 0) continue; used.add(best);
+          const h = HEX_TILES[best];
+          S.zones.push({ type: 'hole', id: 'ho' + best, tile: best, x: h.x, z: h.z, r: HEX * 0.92, born: S.t, armAt: S.t + a.arm, endAt: 1e9, dps: a.dps, abId: id });
+        }
+        S.events.push({ type: 'holes' });
+        alert(S, a.name.toUpperCase() + ' — sors-les des dalles qui se fissurent', 'warn', 'move');
         break;
       }
       case 'eclipse': {
@@ -672,6 +692,7 @@ const GAME = (() => {
       if (z.type === 'fissure' && r.role !== 'tank' && segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 0.6) return true;
       if (z.type === 'half' && r.role !== 'tank' && p.x * z.side > -0.8) return true;
       if (z.type === 'sweep' && r.role !== 'tank' && inSweepSector(z, p, 0.8)) return true;
+      if (z.type === 'hole' && dist(p, z) < z.r + 0.6) return true;
     }
     return S.lavaAt > 0 && Math.hypot(p.x, p.z) > S.arenaR;
   }
@@ -879,6 +900,7 @@ const GAME = (() => {
         }
         if (z.type === 'pool' && r.role !== 'tank' && dist(r.pos, z) < z.r) dmg(S, r, 3000 * dt, 'Flaque de scories', { avoidable: true, mech: true });
         if (z.type === 'beam' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, S.bodies[0].pos, S.bodies[1].pos) < z.width) { const a = dmg(S, r, z.dps * dt, 'Rayon jumeau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'hole' && t >= z.armAt && dist(r.pos, z) < z.r) { const a = dmg(S, r, z.dps * dt, 'Chute dans le Néant', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'sweep' && t >= z.armAt && r.role !== 'tank' && onBeam(z, r.pos, t)) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Rayons du Noyau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'half' && t >= z.armAt && r.role !== 'tank' && r.pos.x * z.side > -0.3) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Équinoxe', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'fissure' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, z, { x: z.x2, z: z.z2 }) < z.w / 2) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Fissure de magma', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
@@ -997,6 +1019,7 @@ const GAME = (() => {
         case 'pool': if ((m.hits || 0) >= 4) push(3, 'Boss laissé dans la Flaque', 'Vorr a pris ' + m.hits + ' cumuls de puissance. Déplace son tank à 8-10 m dès qu’elle apparaît.'); break;
         case 'zones': if (m.dmg > 60000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 150000)), 'Trop de temps dans ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Les persos ne bougent pas seuls : sélectionne-les et sors-les du cercle avant qu’il s’arme.'); break;
         case 'beam': if ((m.hits || 0) > 2) push(3, 'Persos pris dans le Rayon', 'Le rayon a frappé pendant ' + Math.round(m.hits) + ' s cumulées. Personne entre les Jumelles.'); break;
+        case 'holes': if (m.dmg > 40000 * S.D.dmgMult) push(3 + Math.min(3, Math.floor(m.dmg / 100000)), 'Persos tombés dans le Néant', Math.round(m.dmg / 1000) + 'k de dégâts subis. Une dalle qui se fissure tombe 3 s plus tard : sors le perso dès l’alerte, et ne repasse jamais sur un trou.'); break;
         case 'sweep': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos balayés par les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les secteurs s’allument, regroupe le raid dans un angle éteint ou tout près du centre.'); break;
         case 'half': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos du mauvais côté', Math.round(m.dmg / 1000) + 'k de dégâts subis pendant l’' + a.name + '. Dès l’alerte, sélectionne tout le monde et fais traverser la ligne du milieu.'); break;
         case 'fissures': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos dans les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les lignes apparaissent, sélectionne les persos dessus et décale-les sur le côté.'); break;
@@ -1054,6 +1077,6 @@ const GAME = (() => {
     });
   }
 
-  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, HEAL_RANGE, sweepAngle, inSweepSector, resolveBoss, createFight, defaultPlacement, pull, step, order, setHealMode, cast, spellBar, barIds, timersView, analyze, rollLoot, lootFits, fmtT, mulberry32, segDist, dist, enemyRef, isTanking, interruptibles };
+  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, HEAL_RANGE, HEX, HEX_TILES, sweepAngle, inSweepSector, resolveBoss, createFight, defaultPlacement, pull, step, order, setHealMode, cast, spellBar, barIds, timersView, analyze, rollLoot, lootFits, fmtT, mulberry32, segDist, dist, enemyRef, isTanking, interruptibles };
 })();
 if (typeof module !== 'undefined') module.exports = GAME;

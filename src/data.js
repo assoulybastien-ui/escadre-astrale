@@ -176,8 +176,8 @@ const DATA = (() => {
     },
     {
       id: 'azhal', name: 'Azhal', title: 'le Cœur du Néant', model: 'azhal', hp: 2.25e6, enrage: 390, color: '#7a5cff', rad: 3.6,
-      lore: 'Ce qui dévorait le Noyau depuis trois siècles. Une faim qui a pris forme, et qui a enfin trouvé sa proie.',
-      focus: 'Abattre les orbes, tanker les gardiens, ressortir le raid de la singularité, puis tout à la fois.',
+      lore: 'Ce qui dévorait le Noyau depuis trois siècles. Une faim qui a pris forme au bord de l’Horizon, là où la Citadelle se défait dalle par dalle dans le Néant.',
+      focus: 'Abattre les orbes, tanker les gardiens au Séisme, ressortir le raid de la singularité, puis tenir sur une plateforme qui s’effrite.',
       phases: [
         { to: 0.7, name: 'Éveil', abilities: {
           griffe: { kind: 'buster', name: 'Griffe du Néant', first: 7, every: 11, cast: 1.5, dmg: 15000, stack: 'Lacération', mult: 1.5, stackDur: 24, call: 'taunt',
@@ -203,9 +203,10 @@ const DATA = (() => {
           griffe: { inherit: true, first: 6 },
           convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack', m: { dmg: 100000 },
             desc: 'Cercle à partager : au moins 4 persos hors tanks, idéalement plus.' },
-          tenebres: { inherit: true, first: 18 },
           hurlement: { inherit: true, first: 24, every: 26 },
           orbes: { inherit: true, first: 30, every: 45, only: 'm' },
+          effritement: { kind: 'holes', name: 'Effritement', first: 8, every: 18, count: 2, arm: 4, dps: 9000, call: 'move', h: { count: 3, arm: 3.5 }, m: { count: 3, arm: 3, every: 24 },
+            desc: 'Les dalles de l’Horizon se fissurent sous plusieurs persos, puis tombent dans le Néant. Sors-les avant la chute : le trou reste jusqu’à la fin du combat, brûle ceux qui le traversent, et l’espace se réduit.' },
         } },
       ],
     },

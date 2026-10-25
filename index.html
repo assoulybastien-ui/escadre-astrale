@@ -706,8 +706,8 @@ const DATA = (() => {
     },
     {
       id: 'azhal', name: 'Azhal', title: 'le Cœur du Néant', model: 'azhal', hp: 2.25e6, enrage: 390, color: '#7a5cff', rad: 3.6,
-      lore: 'Ce qui dévorait le Noyau depuis trois siècles. Une faim qui a pris forme, et qui a enfin trouvé sa proie.',
-      focus: 'Abattre les orbes, tanker les gardiens, ressortir le raid de la singularité, puis tout à la fois.',
+      lore: 'Ce qui dévorait le Noyau depuis trois siècles. Une faim qui a pris forme au bord de l’Horizon, là où la Citadelle se défait dalle par dalle dans le Néant.',
+      focus: 'Abattre les orbes, tanker les gardiens au Séisme, ressortir le raid de la singularité, puis tenir sur une plateforme qui s’effrite.',
       phases: [
         { to: 0.7, name: 'Éveil', abilities: {
           griffe: { kind: 'buster', name: 'Griffe du Néant', first: 7, every: 11, cast: 1.5, dmg: 15000, stack: 'Lacération', mult: 1.5, stackDur: 24, call: 'taunt',
@@ -733,9 +733,10 @@ const DATA = (() => {
           griffe: { inherit: true, first: 6 },
           convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack', m: { dmg: 100000 },
             desc: 'Cercle à partager : au moins 4 persos hors tanks, idéalement plus.' },
-          tenebres: { inherit: true, first: 18 },
           hurlement: { inherit: true, first: 24, every: 26 },
           orbes: { inherit: true, first: 30, every: 45, only: 'm' },
+          effritement: { kind: 'holes', name: 'Effritement', first: 8, every: 18, count: 2, arm: 4, dps: 9000, call: 'move', h: { count: 3, arm: 3.5 }, m: { count: 3, arm: 3, every: 24 },
+            desc: 'Les dalles de l’Horizon se fissurent sous plusieurs persos, puis tombent dans le Néant. Sors-les avant la chute : le trou reste jusqu’à la fin du combat, brûle ceux qui le traversent, et l’espace se réduit.' },
         } },
       ],
     },
@@ -805,8 +806,11 @@ const GAME = (() => {
   const ARENA = 19.5;
   const inArena = (p, R = ARENA) => { const d = Math.hypot(p.x, p.z); if (d > R) { p.x *= R / d; p.z *= R / d; } return p; };
   const LAVA_DPS = 14000;   // hors de l'arène effondrée
+  // dalles hexagonales de l'Horizon (Azhal) : centres partagés avec le rendu
+  const HEX = 2.6;
+  const HEX_TILES = (() => { const out = []; for (let q = -9; q <= 9; q++) for (let r = -9; r <= 9; r++) { const x = HEX * Math.sqrt(3) * (q + r / 2), z = HEX * 1.5 * r; if (Math.hypot(x, z) <= 20.6) out.push({ x, z }); } return out; })();
   const HEAL_RANGE = 16, RANGED_RANGE = 36, SPEED = 6.5, LEASH = 10;
-  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move', half: 'move', sweep: 'move' };
+  const CALL_FOR_KIND = { buster: 'taunt', raidcast: 'heal', frontal: 'pos', dots: 'dispel', pool: 'tank', zones: 'move', beam: 'pos', marks: 'spread', soak: 'stack', adds: 'focus', pulse: 'move', eclipse: 'cd', meleeStack: 'taunt', fissures: 'move', half: 'move', sweep: 'move', holes: 'move' };
 
   // ---------- résolution d'un boss pour une difficulté ----------
   function resolveBoss(B, dk) {
@@ -1065,7 +1069,10 @@ const GAME = (() => {
         const b = mainBody(S); const tk = S.raiders[b.target];
         let dx = 0, dz = 1;
         if (tk) { dx = b.pos.x - tk.pos.x; dz = b.pos.z - tk.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d; }
-        const c = inArena({ x: b.pos.x + dx * 7, z: b.pos.z + dz * 7 });
+        let c = inArena({ x: b.pos.x + dx * 7, z: b.pos.z + dz * 7 });
+        // jamais sur un trou de l'Horizon : on tourne autour du boss jusqu'à trouver un sol intact
+        const holed = p => S.zones.some(q => q.type === 'hole' && dist(p, q) < q.r + a.r);
+        for (let k = 1; k < 12 && holed(c); k++) { const an = Math.atan2(dx, dz) + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 0.45; c = inArena({ x: b.pos.x + Math.sin(an) * 7, z: b.pos.z + Math.cos(an) * 7 }); }
         const z = { type: 'soak', id: 's' + Math.floor(S.t * 100), x: c.x, z: c.z, r: a.r, born: S.t, at: S.t + a.time, abId: id, dmg: a.dmg, need: a.need || 4 };
         S.zones.push(z);
         S.pending.push({ at: z.at, fn: () => resolveSoak(S, z, id) });
@@ -1120,6 +1127,20 @@ const GAME = (() => {
         S.zones.push({ type: 'sweep', id: 'sw' + Math.floor(S.t * 100), x: 0, z: 0, r: 0, a0, dir, span: a.span, eye: a.eye, w: a.width, born: S.t, armAt: S.t + a.warn, endAt: S.t + a.warn + a.dur, dps: a.dps, abId: id });
         S.events.push({ type: 'sweep', warn: a.warn, dur: a.dur });
         alert(S, a.name.toUpperCase() + ' — sors des secteurs allumés', 'warn', 'move');
+        break;
+      }
+      case 'holes': {
+        // des dalles se fissurent sous des persos, puis tombent : le trou reste jusqu'à la fin du combat
+        const ts = pick(aliveNT, a.count), used = new Set(S.zones.filter(q => q.type === 'hole').map(q => q.tile));
+        for (const r of ts) {
+          let best = -1, bd = 1e9;
+          HEX_TILES.forEach((h, k) => { if (used.has(k) || Math.hypot(h.x, h.z) < 4.5) return; const d = Math.hypot(h.x - r.pos.x, h.z - r.pos.z); if (d < bd) { bd = d; best = k; } });
+          if (best < 0) continue; used.add(best);
+          const h = HEX_TILES[best];
+          S.zones.push({ type: 'hole', id: 'ho' + best, tile: best, x: h.x, z: h.z, r: HEX * 0.92, born: S.t, armAt: S.t + a.arm, endAt: 1e9, dps: a.dps, abId: id });
+        }
+        S.events.push({ type: 'holes' });
+        alert(S, a.name.toUpperCase() + ' — sors-les des dalles qui se fissurent', 'warn', 'move');
         break;
       }
       case 'eclipse': {
@@ -1463,6 +1484,7 @@ const GAME = (() => {
       if (z.type === 'fissure' && r.role !== 'tank' && segDist(p, z, { x: z.x2, z: z.z2 }) < z.w / 2 + 0.6) return true;
       if (z.type === 'half' && r.role !== 'tank' && p.x * z.side > -0.8) return true;
       if (z.type === 'sweep' && r.role !== 'tank' && inSweepSector(z, p, 0.8)) return true;
+      if (z.type === 'hole' && dist(p, z) < z.r + 0.6) return true;
     }
     return S.lavaAt > 0 && Math.hypot(p.x, p.z) > S.arenaR;
   }
@@ -1670,6 +1692,7 @@ const GAME = (() => {
         }
         if (z.type === 'pool' && r.role !== 'tank' && dist(r.pos, z) < z.r) dmg(S, r, 3000 * dt, 'Flaque de scories', { avoidable: true, mech: true });
         if (z.type === 'beam' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, S.bodies[0].pos, S.bodies[1].pos) < z.width) { const a = dmg(S, r, z.dps * dt, 'Rayon jumeau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
+        if (z.type === 'hole' && t >= z.armAt && dist(r.pos, z) < z.r) { const a = dmg(S, r, z.dps * dt, 'Chute dans le Néant', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'sweep' && t >= z.armAt && r.role !== 'tank' && onBeam(z, r.pos, t)) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Rayons du Noyau', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'half' && t >= z.armAt && r.role !== 'tank' && r.pos.x * z.side > -0.3) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Équinoxe', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
         if (z.type === 'fissure' && t >= z.armAt && r.role !== 'tank' && segDist(r.pos, z, { x: z.x2, z: z.z2 }) < z.w / 2) { const a = dmg(S, r, z.dps * dt, ab(S, z.abId) ? ab(S, z.abId).name : 'Fissure de magma', { avoidable: true, mech: true }); M(S, z.abId).dmg += a; M(S, z.abId).hits += dt; }
@@ -1788,6 +1811,7 @@ const GAME = (() => {
         case 'pool': if ((m.hits || 0) >= 4) push(3, 'Boss laissé dans la Flaque', 'Vorr a pris ' + m.hits + ' cumuls de puissance. Déplace son tank à 8-10 m dès qu’elle apparaît.'); break;
         case 'zones': if (m.dmg > 60000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 150000)), 'Trop de temps dans ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Les persos ne bougent pas seuls : sélectionne-les et sors-les du cercle avant qu’il s’arme.'); break;
         case 'beam': if ((m.hits || 0) > 2) push(3, 'Persos pris dans le Rayon', 'Le rayon a frappé pendant ' + Math.round(m.hits) + ' s cumulées. Personne entre les Jumelles.'); break;
+        case 'holes': if (m.dmg > 40000 * S.D.dmgMult) push(3 + Math.min(3, Math.floor(m.dmg / 100000)), 'Persos tombés dans le Néant', Math.round(m.dmg / 1000) + 'k de dégâts subis. Une dalle qui se fissure tombe 3 s plus tard : sors le perso dès l’alerte, et ne repasse jamais sur un trou.'); break;
         case 'sweep': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos balayés par les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les secteurs s’allument, regroupe le raid dans un angle éteint ou tout près du centre.'); break;
         case 'half': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos du mauvais côté', Math.round(m.dmg / 1000) + 'k de dégâts subis pendant l’' + a.name + '. Dès l’alerte, sélectionne tout le monde et fais traverser la ligne du milieu.'); break;
         case 'fissures': if (m.dmg > 50000 * S.D.dmgMult) push(2 + Math.min(3, Math.floor(m.dmg / 120000)), 'Persos dans les ' + a.name, Math.round(m.dmg / 1000) + 'k de dégâts subis. Dès que les lignes apparaissent, sélectionne les persos dessus et décale-les sur le côté.'); break;
@@ -1845,7 +1869,7 @@ const GAME = (() => {
     });
   }
 
-  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, HEAL_RANGE, sweepAngle, inSweepSector, resolveBoss, createFight, defaultPlacement, pull, step, order, setHealMode, cast, spellBar, barIds, timersView, analyze, rollLoot, lootFits, fmtT, mulberry32, segDist, dist, enemyRef, isTanking, interruptibles };
+  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, HEAL_RANGE, HEX, HEX_TILES, sweepAngle, inSweepSector, resolveBoss, createFight, defaultPlacement, pull, step, order, setHealMode, cast, spellBar, barIds, timersView, analyze, rollLoot, lootFits, fmtT, mulberry32, segDist, dist, enemyRef, isTanking, interruptibles };
 })();
 
 
@@ -2306,21 +2330,22 @@ var R3 = window.THREE ? (() => {
 
   // ---------- arènes par boss ----------
   // default : plateforme du Noyau (Nyxar, et les boss qui n'ont pas encore la leur) ; forge : Vorr
-  const ARENA_OF = { vorr: 'forge', twins: 'observatory' };
+  const ARENA_OF = { vorr: 'forge', twins: 'observatory', azhal: 'horizon' };
   const THEMES = {
     default: { fog: 0x0a0b16, fogD: 0.0032, hemiS: 0x5a6aa8, hemiG: 0x0a0a12, hemiI: 0.35, key: 0xffd9b4, keyI: 2.6, rim: 0x6fa8ff, rimI: 1.6, fill: 0xa47bff, fillI: 0.6, fillPos: [-60, 10, -40], dust: '#b9c8ff' },
     forge: { fog: 0x1a0905, fogD: 0.0042, hemiS: 0x6a5048, hemiG: 0xff4a10, hemiI: 0.55, key: 0xffc896, keyI: 2.3, rim: 0xff7a3a, rimI: 1.4, fill: 0xff5a1a, fillI: 1.2, fillPos: [10, -40, 20], dust: '#ff8a3a' },
+    horizon: { fog: 0x07041a, fogD: 0.003, hemiS: 0x6a4ad0, hemiG: 0x100818, hemiI: 0.45, key: 0xd8c0ff, keyI: 1.9, rim: 0xff5ac8, rimI: 1.5, fill: 0x7a5cff, fillI: 1.0, fillPos: [0, -50, 10], dust: '#b18cff' },
     observatory: { fog: 0x0c0a1c, fogD: 0.0035, hemiS: 0x8a80d8, hemiG: 0x2a2030, hemiI: 0.5, key: 0xffe2b0, keyI: 2.4, rim: 0x9fc8ff, rimI: 1.9, fill: 0xffb860, fillI: 0.8, fillPos: [-60, 10, 0], dust: '#ffe8b0' },
   };
-  const ARENA_BUILD = { forge: () => buildForge(), observatory: () => buildObservatory() };
-  const arenaGroup = n => n === 'default' ? L.arenaDefault : n === 'forge' ? L.arenaForge : n === 'observatory' ? L.arenaObs : null;
+  const ARENA_BUILD = { forge: () => buildForge(), observatory: () => buildObservatory(), horizon: () => buildHorizon() };
+  const arenaGroup = n => ({ default: L.arenaDefault, forge: L.arenaForge, observatory: L.arenaObs, horizon: L.arenaHor })[n] || null;
   let arenaName = null;
   function setArena(model) {
     const name = ARENA_OF[model] || 'default';
     if (!ready || name === arenaName) return;
     arenaName = name;
     if (!arenaGroup(name) && ARENA_BUILD[name]) ARENA_BUILD[name]();
-    for (const n of ['default', 'forge', 'observatory']) { const g = arenaGroup(n); if (g) g.visible = n === name; }
+    for (const n of ['default', 'forge', 'observatory', 'horizon']) { const g = arenaGroup(n); if (g) g.visible = n === name; }
     const th = THEMES[name];
     scene.fog.color.setHex(th.fog); scene.fog.density = th.fogD;
     L.hemi.color.setHex(th.hemiS); L.hemi.groundColor.setHex(th.hemiG); L.hemi.intensity = th.hemiI;
@@ -2525,6 +2550,80 @@ var R3 = window.THREE ? (() => {
     if (armed) {
       if (!z.fxDone) { z.fxDone = true; const rg = rigs[z.side < 0 ? 0 : 1]; if (rg) bossPlay(rg, 'bRelease'); cam.shake = Math.max(cam.shake, 0.5); flashLvl = Math.max(flashLvl, 0.2); }
       for (let k = 0; k < 4; k++) { const x = z.side * (0.6 + Math.random() * 19), zz = (Math.random() - 0.5) * 2 * Math.sqrt(Math.max(0, 400 - x * x)); if (z.side < 0) emit(x, 0.2, zz, 1, Math.random() < 0.5 ? '#ff8a3a' : '#ffd27a', { speed: 0.6, life: 0.9, size: 0.55, vy: 5, grav: 0 }); else emit(x, 2.5 + Math.random() * 3, zz, 1, '#d8f0ff', { speed: 0.4, life: 1.2, size: 0.3, vy: -1.5, grav: -1 }); }
+    }
+  }
+  // ---------- L'Horizon (Azhal) ----------
+  // dalles hexagonales d'obsidienne au-dessus d'un trou noir ; les dalles de l'Effritement tombent dans le Néant
+  function buildHorizon() {
+    const g = new T.Group(); scene.add(g); L.arenaHor = g;
+    const tiles = GAME.HEX_TILES, H = GAME.HEX;
+    const obs = triMat({ set: 'hull', world: true, scale: 0.12, color: '#221a30', metal: 0.85, rough: 0.22, bump: 0.02, line: '#9b6bff', lineI: 1.2, env: 1.1 });
+    const tg = new T.CylinderGeometry(H * 0.96, H * 0.8, 2.4, 6); tg.translate(0, -1.2, 0);
+    const im = new T.InstancedMesh(tg, obs, tiles.length); im.receiveShadow = true; im.castShadow = true; g.add(im);
+    const rg = new T.RingGeometry(H * 0.89, H * 0.95, 6, 1); rg.rotateX(-PI / 2); rg.rotateY(PI / 2); rg.translate(0, 0.02, 0);
+    const rim = new T.InstancedMesh(rg, glowMat('#9b6bff', 1.1, { side: T.DoubleSide }), tiles.length); g.add(rim);
+    L.horTiles = tiles.map((t, k) => ({ x: t.x, z: t.z, fall: -1, spin: (k % 2 ? 1 : -1) * (0.4 + (k % 3) * 0.2) }));
+    L.horIM = [im, rim];
+    // le trou noir sous la plateforme : horizon sombre, anneau de photons, disque d'accrétion
+    const bh = new T.Group(); bh.position.set(0, -420, -60); bh.rotation.x = 0.18; g.add(bh);
+    bh.add(new T.Mesh(new T.SphereGeometry(230, 48, 24), new T.MeshBasicMaterial({ color: 0x000000, fog: false })));
+    const disk = new T.Mesh(new T.RingGeometry(260, 1100, 160, 4), SM({
+      transparent: true, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide, uniforms: { uTime: U.time },
+      vertexShader: `varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+      fragmentShader: NOISE3 + `uniform float uTime; varying vec2 vP;
+        void main(){ float r = length(vP); float a = atan(vP.y, vP.x); float t = (r - 260.0) / 840.0;
+          float sw = fbm3(vec3(cos(a - uTime*0.05*300.0/r)*r*0.006, sin(a - uTime*0.05*300.0/r)*r*0.006, t*3.0));
+          float bands = 0.5 + 0.5*sin(r*0.05 - uTime*0.6 + sw*5.0);
+          vec3 hot = mix(vec3(1.0,0.9,0.8), vec3(1.0,0.45,0.75), smoothstep(0.0,0.3,t));
+          vec3 c = mix(hot, vec3(0.45,0.25,1.0), smoothstep(0.2,0.9,t));
+          float al = pow(1.0 - t, 1.4) * smoothstep(0.0, 0.03, t) * (0.35 + 0.65*sw) * (0.55 + 0.45*bands);
+          gl_FragColor = vec4(c*al*1.6, al); }`,
+    })); disk.rotation.x = -PI / 2; bh.add(disk); L.horDisk = disk;
+    const ring = new T.Mesh(new T.TorusGeometry(238, 4, 8, 160), glowMat('#ffd9f0', 3, { fog: false })); ring.rotation.x = PI / 2; bh.add(ring);
+    // débris en orbite et aspirés
+    L.horRocks = [];
+    const rm = triMat({ set: 'rock', world: false, scale: 0.6, color: '#3a3048', metal: 0.2, rough: 0.8, bump: 0.08, line: '#b07bff', lineI: 3, env: 0.4, flat: true });
+    for (let k = 0; k < 16; k++) { const m = new T.Mesh(shardGeo(k + 3), rm); const s2 = 0.8 + (k % 5) * 0.7; m.scale.setScalar(s2); m.userData = { a: k / 16 * PI * 2, r: 26 + (k % 4) * 9, y: -6 + (k % 6) * 3, w: 0.02 + (k % 3) * 0.01, ph: k }; g.add(m); L.horRocks.push(m); }
+    setHorTiles(); g.visible = false;
+  }
+  function resetHorizon() {
+    if (!L.horTiles) return;
+    for (const t of L.horTiles) t.fall = -1;
+    setHorTiles();
+  }
+  const _hm = new T.Matrix4(), _hq = new T.Quaternion(), _he = new T.Euler(), _hs = new T.Vector3(1, 1, 1), _hp = new T.Vector3();
+  function setHorTiles() {
+    L.horTiles.forEach((t, k) => {
+      const f = t.fall < 0 ? 0 : t.fall, y = -0.5 * 14 * f * f;
+      _he.set(f * t.spin * 0.6, 0, f * t.spin * 0.4); _hq.setFromEuler(_he); _hs.setScalar(y < -40 ? 0.0001 : 1);
+      _hm.compose(_hp.set(t.x, y, t.z), _hq, _hs);
+      for (const im of L.horIM) im.setMatrixAt(k, _hm);
+    });
+    for (const im of L.horIM) im.instanceMatrix.needsUpdate = true;
+  }
+  function updateHorizon(dt) {
+    if (L.horRocks) L.horRocks.forEach(m => { const u = m.userData; u.a += u.w * dt; m.position.set(Math.cos(u.a) * u.r, u.y + Math.sin(time * 0.5 + u.ph) * 0.6, Math.sin(u.a) * u.r); m.rotation.x += dt * 0.2; m.rotation.y += dt * 0.15; });
+    if (L.horDisk) L.horDisk.rotation.z += dt * 0.01;
+    // poussière aspirée vers le centre, en spirale
+    if (Math.random() < 0.7) { const a = Math.random() * PI * 2, r = 24 + Math.random() * 10; emit(Math.cos(a) * r, -1 + Math.random() * 6, Math.sin(a) * r, 1, Math.random() < 0.5 ? '#b18cff' : '#ff8ad8', { speed: 0.2, life: 2.2, size: 0.18, vy: -0.5, grav: 0 }); }
+    let moved = false;
+    for (const t of L.horTiles) if (t.fall >= 0 && t.fall < 3) { t.fall += dt; moved = true; }
+    if (moved) setHorTiles();
+  }
+  // dalle fissurée : hexagone qui palpite, puis la dalle tombe
+  function holeFx(z, m) {
+    if (!m) {
+      m = new T.Mesh(new T.CircleGeometry(z.r, 6), decalMat('#ff5ac8', 1, 3)); m.rotation.x = -PI / 2; m.rotation.z = PI / 2; m.position.set(z.x, 0.09, z.z); m.renderOrder = 3;
+      scene.add(m); zoneM.set(z.id, m);
+      emit(z.x, 0.3, z.z, 12, '#ff8ad8', { speed: 2, life: 0.6, size: 0.3, vy: 2, grav: -4 });
+    }
+    const armed = S.t >= z.armAt;
+    if (!armed) { m.material.uniforms.uProg.value = Math.min(1, (S.t - z.born) / Math.max(0.1, z.armAt - z.born)); m.material.uniforms.uAlpha.value = 0.8 + 0.4 * Math.sin(time * 14); return; }
+    if (!m.userData.fell) {
+      m.userData.fell = true; m.visible = false;
+      const t = L.horTiles && arenaName === 'horizon' ? L.horTiles[z.tile] : null; if (t && t.fall < 0) t.fall = 0;
+      emit(z.x, 0.2, z.z, 40, '#5a4a70', { speed: 3, life: 1.2, size: 0.55, vy: 2, grav: -8 }); emit(z.x, 0.2, z.z, 25, '#ff8ad8', { speed: 4, life: 0.7, size: 0.35, vy: 3, grav: -6 });
+      cam.shake = Math.max(cam.shake, 0.3);
     }
   }
   // remet la Forge intacte (nouveau combat, aperçu du hub)
@@ -5043,8 +5142,8 @@ var R3 = window.THREE ? (() => {
     // tentacules
     const tmat = triMat({ set: 'hull', world: false, scale: 1.2, color: '#14111c', metal: 1, rough: 0.22, bump: 0.03, line: '#9b6bff', lineI: 7, rim: '#7a5cff', rimI: 2, env: 1.2 });
     rig.tentacles = [];
-    for (let k = 0; k < 7; k++) {
-      const a = k / 7 * PI * 2 + 0.35, len = 0.75 + ((k * 37) % 10) / 22, curl = (k % 2 ? 1 : -1) * (0.5 + (k % 3) * 0.25);
+    for (let k = 0; k < 9; k++) {
+      const a = k / 9 * PI * 2 + 0.35, len = 0.75 + ((k * 37) % 10) / 22, curl = (k % 2 ? 1 : -1) * (0.5 + (k % 3) * 0.25);
       const pts = []; for (let i = 0; i <= 12; i++) { const t = i / 12; const rr = 1.6 + t * 7 * len; const tw = a + curl * t * t * 0.9; let y = 6.0 - t * 5.6 * len + Math.sin(t * PI) * 1.8; if (t > 0.78) y += (t - 0.78) * 9 * len; pts.push(new T.Vector3(Math.cos(tw) * rr, Math.max(0.35, y), Math.sin(tw) * rr)); }
       const curve = new T.CatmullRomCurve3(pts);
       const geo = new T.TubeGeometry(curve, 48, 0.5, 12, false);
@@ -5059,6 +5158,11 @@ var R3 = window.THREE ? (() => {
     const rockM = triMat({ set: 'rock', world: false, scale: 1.5, color: '#9a8fa8', metal: 0.2, rough: 0.8, bump: 0.08, line: '#b07bff', lineI: 4 });
     const shards = new T.Group(); shards.position.y = 7; b.add(shards); rig.shards = shards;
     for (let k = 0; k < 14; k++) { const a = k / 14 * PI * 2, rr = 5 + (k % 3) * 1.4; const s = new T.Mesh(rockGeo(k, 1), rockM); s.scale.setScalar(0.25 + (k % 4) * 0.12); s.position.set(Math.cos(a) * rr, Math.sin(k * 2.3) * 1.2, Math.sin(a) * rr); s.castShadow = true; shards.add(s); }
+    // l'œil au fond de l'horizon : iris de lumière tourné vers sa proie
+    const eye = new T.Group(); eye.position.set(0, 7, 2.05); b.add(eye); rig.eye = eye;
+    eye.add(new T.Mesh(new T.RingGeometry(0.55, 0.95, 48), glowMat('#ff5ac8', 3.5, { side: T.DoubleSide })));
+    eye.add(new T.Mesh(new T.RingGeometry(0.95, 1.05, 48), glowMat('#ffd9f0', 4, { side: T.DoubleSide })));
+    const pupil = new T.Mesh(new T.CircleGeometry(0.42, 32), new T.MeshBasicMaterial({ color: 0x000000, side: T.DoubleSide })); pupil.position.z = 0.01; eye.add(pupil); rig.pupil = pupil;
     rig.glowS.position.set(0, 7, 0); rig.glowS.scale.set(16, 16, 1);
     rig.baseY = 0; rig.floatAmp = 0.35; rig.orbY = 12.5; rig.height = 9; rig.azhal = true;
     return rig;
@@ -5072,7 +5176,7 @@ var R3 = window.THREE ? (() => {
   function disposeRigs(list) { for (const r of list) { scene.remove(r.root); if (r.anim) r.anim.mixer.stopAllAction(); } }
   function showBoss(model) {
     if (S || !ready || (lab && lab.cfg.noBoss)) { if (!ready) previewModel = null; return; }
-    setArena(model); resetForge();
+    setArena(model); resetForge(); resetHorizon();
     if (previewModel === model && previewRigs.length) return;
     disposeRigs(previewRigs); previewRigs = []; previewModel = model;
     previewRigs = buildRigs(model); previewRigs.forEach(bossInit);
@@ -5133,7 +5237,7 @@ var R3 = window.THREE ? (() => {
   function bindFight(state) {
     clearFight(); disposeRigs(previewRigs); previewRigs = []; previewModel = null;
     S = state; me = S.me;
-    setArena(S.B.model); resetForge();
+    setArena(S.B.model); resetForge(); resetHorizon();
     rigs = buildRigs(S.B.model); rigs.forEach(bossInit);
     rigs.forEach((rg, k) => { const b = S.bodies[k]; rg.root.position.set(b.pos.x, 0, b.pos.z); });
     raidM = S.raiders.map(buildRaider);
@@ -5197,6 +5301,7 @@ var R3 = window.THREE ? (() => {
           break;
         }
         case 'busterHit': {
+          if (rigs[e.body] && rigs[e.body].tentacles) rigs[e.body].lash = 1;
           const p = raidPos(e.i, 1.3); if (rigs[e.body]) bossPlay(rigs[e.body], 'bSlam');
           emit(p.x, p.y, p.z, 30 + e.stacks * 14, e.stacks >= 3 ? '#ff4d4d' : '#ffb27a', { speed: 7, life: 0.6, size: 0.4 });
           burstRing(p.x, p.z, 2.5 + e.stacks, '#ff5a3c', 0.5); flash(p.x, 1.5, p.z, '#ff8a4a', 8);
@@ -5308,7 +5413,9 @@ var R3 = window.THREE ? (() => {
     if (rg.wing) rg.wing.rotation.z = Math.sin(time * 0.8) * 0.05;
     if (rg.shards) rg.shards.rotation.y += dt * (S && S.phase === S.B.phases.length - 1 ? 0.9 : 0.35);
     if (rg.disk) rg.disk.rotation.z += dt * 0.15;
-    if (rg.tentacles) rg.tentacles.forEach(t => { t.m.rotation.y = Math.sin(time * 0.7 + t.ph) * 0.12; t.m.rotation.z = Math.sin(time * 0.9 + t.ph * 1.3) * 0.05; });
+    if (rg.lash) rg.lash = Math.max(0, rg.lash - dt * 1.6);
+    if (rg.tentacles) rg.tentacles.forEach(t => { const l = (rg.lash || 0) * Math.sin(t.ph * 3.1) ; t.m.rotation.y = Math.sin(time * 0.7 + t.ph) * 0.12 + l * 0.25; t.m.rotation.z = Math.sin(time * 0.9 + t.ph * 1.3) * 0.05 - Math.abs(l) * 0.12; });
+    if (rg.pupil) { const bl = Math.sin(time * 0.45) > 0.985 ? 0.1 : 1; rg.pupil.scale.set(1, bl, 1); rg.pupil.scale.multiplyScalar(0.8 + 0.25 * Math.sin(time * 1.7)); }
     // Vorr : fumerolles des épaules, braises du marteau
     if (rg.vents && !rg.dead && Math.random() < dt * 7) { const v = rg.vents[Math.floor(Math.random() * rg.vents.length)]; const p = v.getWorldPosition(tmpV2); emit(p.x, p.y, p.z, 1, Math.random() < 0.65 ? '#4a3c36' : '#ff7a2a', { speed: 0.4, life: 1.8, size: 0.8, vy: 2.4, grav: 0, k: 0.7 }); }
     if (rg.hammerHead && !rg.dead && Math.random() < dt * 9) { const p = rg.hammerHead.getWorldPosition(tmpV2); emit(p.x + (Math.random() - 0.5) * 1.6, p.y, p.z + (Math.random() - 0.5) * 1.6, 1, '#ff9a4a', { speed: 0.6, life: 0.8, size: 0.25, vy: 1.6, grav: 0 }); }
@@ -5331,6 +5438,7 @@ var R3 = window.THREE ? (() => {
     L.key.intensity = (L.keyBase || 2.6) * (1 - U.eclipse.value * 0.75);
     if (arenaName === 'forge') updateForge(dt);
     if (arenaName === 'observatory') updateObservatory(dt);
+    if (arenaName === 'horizon') updateHorizon(dt);
     if (L.planet) L.planet.rotation.y += dt * 0.004;
     if (L.ast) { const m4 = new T.Matrix4(), q4 = new T.Quaternion(), e3 = new T.Euler(), s3 = new T.Vector3(); L.ast.forEach(a => { a.a += a.w * dt; a.rx += dt * 0.15; a.ry += dt * 0.1; e3.set(a.rx, a.ry, 0); q4.setFromEuler(e3); s3.setScalar(a.s); m4.compose(tmpV.set(Math.cos(a.a) * a.r, a.y, Math.sin(a.a) * a.r), q4, s3); a.m.setMatrixAt(a.i, m4); }); L.astMesh.forEach(m => { m.instanceMatrix.needsUpdate = true; }); }
     if (L.crystals) L.crystals.forEach((c, k) => { c.position.y = 11 + Math.sin(time * 1.2 + k) * 0.35; c.rotation.y += dt * 0.8; });
@@ -5502,6 +5610,7 @@ var R3 = window.THREE ? (() => {
       let m = zoneM.get(z.id);
       if (z.type === 'fissure') { updateFissure(z, m); continue; }
       if (z.type === 'sweep') { sweepFx(z, m); continue; }
+      if (z.type === 'hole') { holeFx(z, m); continue; }
       if (!m) {
         if (z.type === 'puits') m = decal('#ff5a2e', 1, z.r, null, 2.6);
         else if (z.type === 'pool') m = decal('#ff8a2a', 1, z.r, null, 2.2);
