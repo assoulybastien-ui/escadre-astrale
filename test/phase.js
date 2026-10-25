@@ -1,0 +1,21 @@
+const { open } = require('./serve.js');
+const fs = require('fs'), path = require('path');
+const page0 = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const wrapped = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}[hidden]{display:none!important}</style></head><body>${page0}</body></html>`;
+(async () => {
+  const [boss = 'azhal', hpFrac = '0.69', ff = '8', name = 'phase', hideUi = '0'] = process.argv.slice(2);
+  const { browser, page, errs } = await open({ html: wrapped, width: 393, height: 852 });
+  await page.waitForFunction(() => !document.querySelector('#perso').hidden || !document.querySelector('#hub').hidden, null, { timeout: 120000 });
+  await page.fill('#heroName', 'Bastien'); await page.click('#persoOk'); await page.waitForTimeout(300);
+  await page.evaluate((boss) => { const s = JSON.parse(localStorage.getItem('escadre-astrale-v2')); for (const b in s.kills) s.kills[b] = { normal: 1, heroique: 1, mythique: 0 }; s.boss = boss; localStorage.setItem('escadre-astrale-v2', JSON.stringify(s)); }, boss);
+  await page.reload(); await page.waitForFunction(() => !document.querySelector('#hub').hidden, null, { timeout: 120000 });
+  await page.click('#btnPull'); await page.waitForTimeout(400);
+  await page.evaluate(([hp, ff]) => { const S = window.__escadre.state(); window.__escadre.ff(3); S.hp = S.maxHp * hp; window.__escadre.ff(ff); }, [+hpFrac, +ff]);
+  if (hideUi === '1') await page.evaluate(() => document.querySelectorAll('.hud').forEach(e => e.style.visibility = 'hidden'));
+  await page.waitForTimeout(3500);
+  await page.screenshot({ path: path.join(__dirname, 'shots', name + '.png') });
+  const info = await page.evaluate(() => { const d = R3._dbg(); const r = d.renderer; r.info.autoReset = false; r.info.reset(); d.composer.render(); const o = { calls: r.info.render.calls, tris: r.info.render.triangles, prog: r.info.programs.length, geo: r.info.memory.geometries, tex: r.info.memory.textures }; r.info.autoReset = true; return o; });
+  console.log(JSON.stringify(info));
+  console.log(errs.filter(e => !e.includes('ERR_FAILED') && !e.includes('GPU stall')).slice(0, 8).join('\n') || 'ok');
+  await browser.close();
+})();

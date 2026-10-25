@@ -1,0 +1,34 @@
+{
+  "id": "./",
+  "name": "Escadre Astrale",
+  "short_name": "Escadre",
+  "lang": "fr",
+  "description": "Jeu de raid en 3D : soigne ou tanke, et dirige ton raid face aux gardiens de la Citadelle de Vael-Kor.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#04050b",
+  "theme_color": "#04050b",
+  "categories": [
+    "games"
+  ],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

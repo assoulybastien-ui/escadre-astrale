@@ -1,0 +1,135 @@
+<canvas id="gl" aria-label="Arène de combat en 3D"></canvas>
+<div id="fade"></div>
+
+<!-- ================= CHARGEMENT ================= -->
+<section id="loading" class="screen loading">
+  <div class="load-box">
+    <p class="eyebrow">Citadelle de Vael-Kor</p>
+    <h1 class="logo">Escadre<br><span>Astrale</span></h1>
+    <div class="load-bar"><i id="loadFill"></i></div>
+    <p class="load-txt" id="loadTxt">Chargement des modèles et des textures… 0 %</p>
+    <button class="btn" id="loadRetry" hidden>Réessayer</button>
+  </div>
+</section>
+
+<!-- ================= RAID LEAD ================= -->
+<section id="perso" class="screen page" hidden>
+  <header class="page-head">
+    <button class="back" id="persoBack">‹ Retour</button>
+    <h2>Raid lead</h2>
+  </header>
+  <div class="page-scroll"><div class="wrap">
+    <div class="prose">
+      <p>Tu ne joues aucun perso : <b>tu diriges les dix</b>. Ils attaquent et soignent seuls, mais ne bougent que sur tes ordres. Si tu ne les sors pas d’une zone, ils y restent.</p>
+      <ul>
+        <li><b>Touche des persos</b> pour les sélectionner (ou leurs cadres à gauche), <b>touche le sol</b> pour les y envoyer.</li>
+        <li><b>Touche un ennemi</b> avec des persos sélectionnés : ils l’attaquent.</li>
+        <li><b>Les sorts</b> en bas à droite viennent des classes de ta compo. Ils partent du porteur le plus proche, sur ta sélection ou l’ennemi ciblé.</li>
+        <li><b>Les groupes</b> en bas à gauche rappellent une sélection en 1 tap ; appui long pour y ranger la sélection actuelle.</li>
+      </ul>
+    </div>
+    <label class="field"><span>Nom du raid lead</span><input id="heroName" type="text" maxlength="14" autocomplete="off" spellcheck="false"></label>
+  </div></div>
+  <footer class="page-foot"><button class="btn primary" id="persoOk">Rejoindre la Citadelle</button></footer>
+</section>
+
+<!-- ================= HUB ================= -->
+<section id="hub" class="screen hub" hidden>
+  <header class="hub-head">
+    <p class="eyebrow">Citadelle de Vael-Kor</p>
+    <h1 class="logo">Escadre<br><span>Astrale</span></h1>
+  </header>
+  <div class="hub-body">
+    <div class="hero panel cut" id="heroCard"></div>
+    <div class="diff-pick" role="radiogroup" aria-label="Difficulté" id="diffPick">
+      <button role="radio" data-diff="normal" aria-checked="true">Normal<small>~3 min</small></button>
+      <button role="radio" data-diff="heroique" aria-checked="false">Héroïque<small>~4 min</small></button>
+      <button role="radio" data-diff="mythique" aria-checked="false">Mythique<small>~5 min</small></button>
+    </div>
+    <div class="bosses" id="bossList"></div>
+    <div class="raid-sum panel cut" id="raidSum"></div>
+    <div class="hub-actions">
+      <button class="btn primary" id="btnPull">Lancer le combat</button>
+      <div class="row">
+        <button class="btn" id="btnRoster">Composer</button>
+        <button class="btn" id="btnJournal">Journal</button>
+      </div>
+    </div>
+    <div class="hub-foot"><button id="btnSound" type="button">Son : activé</button><button id="btnGfx" type="button">Graphismes : Auto</button><button id="btnReset" type="button">Réinitialiser</button></div>
+  </div>
+</section>
+
+<!-- ================= ROSTER ================= -->
+<section id="roster" class="screen page" hidden>
+  <header class="page-head"><button class="back" data-go="hub">‹ Retour</button><h2>Composer le raid</h2><span class="num" id="rosterCount"></span></header>
+  <div class="comp" id="compSummary"></div>
+  <div class="page-scroll"><div class="roster-list" id="rosterList"></div></div>
+  <footer class="page-foot"><button class="btn" id="rosterAuto">Compo conseillée</button><button class="btn primary" id="rosterOk">Valider</button></footer>
+</section>
+
+<!-- ================= JOURNAL ================= -->
+<section id="journal" class="screen page" hidden>
+  <header class="page-head"><button class="back" data-go="hub">‹ Retour</button><h2>Journal du raid</h2></header>
+  <nav class="tabs" id="jBoss"></nav>
+  <div class="page-scroll"><div class="wrap" id="jBody"></div></div>
+</section>
+
+<!-- ================= COMBAT ================= -->
+<section id="fight" class="hud" hidden>
+  <div class="plates" id="plates" aria-hidden="true"></div>
+  <div class="hud-top" id="hudTop">
+    <div class="clock"><span class="t num" id="fClock">0:00</span><span class="p" id="fPhase">Phase 1</span></div>
+    <div class="bossframe">
+      <div class="bf-bar" id="bBar"><i id="bHp"></i><span class="shield" id="bShield" hidden></span><span id="bTicks"></span><span class="bf-name"><span id="bName">Boss</span><span class="num" id="bPct">100 %</span></span></div>
+      <div class="casts" id="casts"></div>
+      <div class="adds" id="adds"></div>
+    </div>
+    <button class="pausebtn" id="btnPause" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  </div>
+  <div class="timers" id="timers" aria-label="Prochaines capacités"></div>
+  <div class="alert" id="alert" role="status" aria-live="assertive"></div>
+  <div class="raidpanel" id="frames"></div>
+  <div class="groups" id="groups"></div>
+  <div class="selbar" id="selbar"></div>
+  <div class="spellbar" id="spells"></div>
+  <div class="toast" id="toast" aria-live="polite"></div>
+  <div class="prep" id="prep" hidden>
+    <p><b>Placement</b>Persos, puis le sol</p>
+    <button class="btn" id="prepReset">Conseillé</button><button class="btn primary" id="prepPull">Pull !</button>
+  </div>
+</section>
+<div class="rotate" id="rotate" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 14a9 9 0 0 0 7 7M21 10a9 9 0 0 0-7-7"/></svg><p>Tourne ton téléphone à l’horizontale pour diriger le raid.</p></div>
+
+<!-- ================= RAPPORT ================= -->
+<section id="report" class="screen page" hidden>
+  <header class="page-head"><h2>Rapport de combat</h2></header>
+  <div class="page-scroll"><div class="wrap" id="repBody"></div></div>
+  <footer class="page-foot" id="repFoot"></footer>
+</section>
+
+<!-- ================= BUTIN ================= -->
+<section id="loot" class="screen page" hidden>
+  <header class="page-head"><h2 id="lootTitle">Butin</h2></header>
+  <div class="page-scroll"><div class="wrap" id="lootBody"></div></div>
+  <footer class="page-foot"><button class="btn primary" id="lootOk">Valider la distribution</button></footer>
+</section>
+
+<!-- ================= MENU ================= -->
+<div class="modal" id="pause" hidden>
+  <div class="box panel cut" role="dialog" aria-label="Menu">
+    <h3>Menu</h3>
+    <button class="btn primary" id="pResume">Reprendre</button>
+    <button class="btn" id="pSound">Son : activé</button>
+    <button class="btn" id="pGfx">Graphismes : Auto</button>
+    <button class="btn danger" id="pWipe">Appeler le wipe</button>
+    <button class="btn ghost" id="pQuit">Quitter vers la Citadelle</button>
+  </div>
+</div>
+<div class="modal" id="confirm" hidden>
+  <div class="box panel cut" role="dialog" aria-label="Confirmation">
+    <h3 id="cfTitle">Confirmer</h3>
+    <p class="prose" id="cfText" style="margin:0"></p>
+    <button class="btn danger" id="cfYes">Confirmer</button>
+    <button class="btn ghost" id="cfNo">Annuler</button>
+  </div>
+</div>

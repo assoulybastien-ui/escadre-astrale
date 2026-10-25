@@ -1,0 +1,13 @@
+{
+  "name": "escadre-astrale",
+  "private": true,
+  "description": "Jeu de raid lead en 3D (three.js r128), web app pour iPhone",
+  "scripts": {
+    "build": "python3 build.py",
+    "pwa": "python3 build_pwa.py",
+    "test": "node test/v5.js"
+  },
+  "devDependencies": {
+    "playwright": "1.56.0"
+  }
+}

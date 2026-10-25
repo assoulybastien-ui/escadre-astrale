@@ -1,0 +1,44 @@
+const { open } = require('./serve.js');
+const fs = require('fs'), path = require('path');
+const page0 = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const wrapped = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}</style></head><body>${page0}</body></html>`;
+(async () => {
+  const { browser, page, errs } = await open({ html: wrapped, width: 600, height: 400 });
+  await page.waitForFunction(() => !document.querySelector('#perso').hidden || !document.querySelector('#hub').hidden, null, { timeout: 120000 });
+  await page.fill('#heroName', 'B'); await page.click('#persoOk'); await page.waitForTimeout(300);
+  await page.click('#btnPull'); await page.waitForTimeout(800);
+  const info = await page.evaluate(() => {
+    const R = R3._dbg().raidM[0]; let body = null, acc = [];
+    R.model.traverse(o => { if (o.isSkinnedMesh && o.name === 'vanguard_Mesh') body = o; else if (o.isSkinnedMesh && !o.name) acc.push(o); });
+    const sk = body.skeleton;
+    const bk = Object.entries(R.bones).map(([k, b]) => [k, !!b, b ? sk.bones.indexOf(b) : -2]);
+    const allBones = []; R.model.traverse(o => { if (o.isBone) allBones.push(o.name); });
+    return { bk: bk.slice(0, 8), nAllBones: allBones.length, dup: allBones.length - new Set(allBones).size, acc: acc.map(m => ({ same: m.skeleton === sk, vis: m.visible, mat: m.material.type, skinning: m.material.skinning, parent: m.parent && m.parent.name, bs: m.geometry.boundingSphere })), bodyParent: body.parent.name, wObj: !!R.wObj, stance: R.stanceName, act: !!R.act, ov: !!R.ov };
+  });
+  console.log(JSON.stringify(info));
+  const r2 = await page.evaluate(() => { const E = window.__escadre; E.manual(true); const d = R3._dbg(); const R = d.raidM[0];
+    const q0 = R.bones.rarm.quaternion.toArray().map(v => +v.toFixed(3)); E.advance(0.05); const q1 = R.bones.rarm.quaternion.toArray().map(v => +v.toFixed(3));
+    const st = R.stV ? Array.from(R.stV.slice(0, 12)).map(v => +v.toFixed(2)) : null;
+    R3._setCam([R.r.pos.x + 2.5, 2.4, R.r.pos.z + 3], [R.r.pos.x, 1.5, R.r.pos.z]);
+    let body = null; R.model.traverse(o => { if (o.isSkinnedMesh && o.name === 'vanguard_Mesh') body = o; }); body.visible = false;
+    E.advance(0.05);
+    const accs = []; R.model.traverse(o => { if (o.isSkinnedMesh && !o.name) accs.push(o); });
+    const T = THREE, v = new T.Vector3(), samples = accs.map(m => { const n = m.geometry.attributes.position.count; const out = []; for (const i of [0, Math.floor(n / 3), Math.floor(n / 2), n - 1]) { m.boneTransform(i, v); v.applyMatrix4(m.matrixWorld); out.push(v.toArray().map(x => +x.toFixed(2))); } return out; });
+    const rp = R.root.position.toArray().map(x => +x.toFixed(2));
+    let bodyM = null; R.model.traverse(o => { if (o.isSkinnedMesh && o.name === 'vanguard_Mesh') bodyM = o; });
+    const bsamp = [0, 1000, 3000].map(i => { bodyM.boneTransform(i, v); v.applyMatrix4(bodyM.matrixWorld); return v.toArray().map(x => +x.toFixed(2)); });
+    const mw = bodyM.matrixWorld.elements.map(x => +x.toFixed(3)), bm = bodyM.bindMatrix.elements.map(x => +x.toFixed(3));
+    const hipW = new T.Vector3().setFromMatrixPosition(R.bones.hips.matrixWorld).toArray().map(x => +x.toFixed(2));
+    const g = bodyM.geometry, si = g.attributes.skinIndex, sw = g.attributes.skinWeight, P = g.attributes.position, sk = bodyM.skeleton;
+    let vi = -1; for (let i = 0; i < P.count; i++) { if (si.getX(i) === 0 && sw.getX(i) > 200) { vi = i; break; } }
+    const pp = new T.Vector3(P.getX(vi), P.getY(vi), P.getZ(vi));
+    const m = new T.Matrix4().multiplyMatrices(sk.bones[0].matrixWorld, sk.boneInverses[0]);
+    const w1 = pp.clone().applyMatrix4(bodyM.bindMatrix).applyMatrix4(m).applyMatrix4(bodyM.bindMatrixInverse).applyMatrix4(bodyM.matrixWorld);
+    const w2 = pp.clone().applyMatrix4(bodyM.bindMatrix).applyMatrix4(m).applyMatrix4(bodyM.bindMatrixInverse);
+    window.__dbgB = { vi, raw: pp.toArray().map(x => +x.toFixed(2)), w1: w1.toArray().map(x => +x.toFixed(2)), w2: w2.toArray().map(x => +x.toFixed(2)), hipW, bi0: sk.boneInverses[0].elements.map(x => +x.toFixed(3)), b0w: sk.bones[0].matrixWorld.elements.map(x => +x.toFixed(3)) };
+    return { B: window.__dbgB, rp, samples, q0, q1, st, calls: d.renderer.info.render.calls, ml: R.model.position.toArray(), mrot: R.model.rotation.toArray() }; });
+  console.log(JSON.stringify(r2));
+  await page.screenshot({ path: path.join(__dirname, 'shots', 'dbg3.png') });
+  console.log(errs.join('\n'));
+  await browser.close();
+})();

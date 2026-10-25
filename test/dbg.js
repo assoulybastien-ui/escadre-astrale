@@ -1,0 +1,33 @@
+const { open } = require('./serve.js');
+const fs = require('fs'), path = require('path');
+const page0 = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+const wrapped = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}[hidden]{display:none!important}</style></head><body>${page0}</body></html>`;
+(async () => {
+  const { browser, page, errs } = await open({ html: wrapped, width: 393, height: 852 });
+  await page.waitForFunction(() => !document.querySelector('#perso').hidden || !document.querySelector('#hub').hidden, null, { timeout: 120000 });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => {
+    const d = R3._dbg(); const gl = d.renderer.getContext();
+    const rd = (x, y) => { const px = new Uint8Array(4); gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); return Array.from(px).slice(0, 3).join(','); };
+    const out = {};
+    d.renderer.setRenderTarget(null);
+    d.composer.render(); out.comp = [rd(196, 700), rd(196, 400), rd(50, 800)];
+    d.renderer.toneMapping = THREE.ACESFilmicToneMapping; d.renderer.outputEncoding = THREE.sRGBEncoding;
+    d.renderer.setRenderTarget(null); d.renderer.render(d.scene, d.camera); out.direct = [rd(196, 700), rd(196, 400), rd(50, 800)];
+    const vis = []; d.scene.children.forEach(c => { vis.push(c.visible); });
+    d.scene.children.forEach((c, i) => { c.visible = c.material && c.material.uniforms && c.material.uniforms.uEnv !== undefined; });
+    d.renderer.render(d.scene, d.camera); out.skyOnly = [rd(196, 700), rd(196, 400)];
+    d.scene.children.forEach((c, i) => { c.visible = vis[i]; });
+    const env = d.scene.environment; d.scene.environment = null; d.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+    d.renderer.render(d.scene, d.camera); out.noEnv = [rd(196, 700), rd(196, 400), rd(196, 300)];
+    d.scene.environment = env; d.renderer.shadowMap.enabled = false; d.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+    d.renderer.render(d.scene, d.camera); out.noShadow = [rd(196, 700), rd(196, 400), rd(196, 300)];
+    d.renderer.shadowMap.enabled = true; d.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; });
+    out.list = d.scene.children.map(c => (c.type) + (c.geometry ? ':' + c.geometry.type : '') + (c.material && c.material.type ? ':' + c.material.type : '')).join(' | ').slice(0, 1500);
+    out.look = d.cam.look.toArray().map(v => +v.toFixed(1)); out.pos = d.camera.position.toArray().map(v => +v.toFixed(1)); out.near = d.camera.near; out.far = d.camera.far; out.view = d.camera.view;
+    return out;
+  });
+  console.log(JSON.stringify(r, null, 1));
+  console.log(errs.filter(e => !e.includes('ERR_FAILED') && !e.includes('GPU stall')).slice(0, 10).join('\n').slice(0, 2000));
+  await browser.close();
+})();
