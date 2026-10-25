@@ -52,6 +52,7 @@
       <button class="btn primary" id="btnPull">Lancer le combat</button>
       <div class="row">
         <button class="btn" id="btnRoster">Composer</button>
+        <button class="btn" id="btnTalents">Talents</button>
         <button class="btn" id="btnJournal">Journal</button>
       </div>
     </div>
@@ -65,6 +66,13 @@
   <div class="comp" id="compSummary"></div>
   <div class="page-scroll"><div class="roster-list" id="rosterList"></div></div>
   <footer class="page-foot"><button class="btn" id="rosterAuto">Compo conseillée</button><button class="btn primary" id="rosterOk">Valider</button></footer>
+</section>
+
+<!-- ================= TALENTS ================= -->
+<section id="talents" class="screen page" hidden>
+  <header class="page-head"><button class="back" data-go="hub">‹ Retour</button><h2>Talents</h2><span class="num" id="talPts"></span></header>
+  <nav class="tabs" id="talTabs"></nav>
+  <div class="page-scroll"><div class="wrap" id="talBody"></div></div>
 </section>
 
 <!-- ================= JOURNAL ================= -->

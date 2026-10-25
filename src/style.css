@@ -143,6 +143,11 @@ button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2
 .tal[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--amber); background: rgba(255,191,90,0.1); }
 .tal[aria-pressed="true"] b { color: var(--amber); }
 .tal[disabled] { opacity: 0.4; }
+.tier-row.two { grid-template-columns: repeat(2, 1fr); }
+.tier-row.two .tal { min-height: 64px; }
+.tier.jsec { margin-bottom: 14px; }
+.btn.notify { box-shadow: inset 0 0 0 1px var(--amber), 0 0 12px rgba(255,191,90,0.35); color: var(--amber); }
+.new-tier { color: var(--amber); font-weight: 600; margin-top: 6px; }
 .spell-list { display: grid; gap: 6px; }
 .spell-list div { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; font-size: 13px; color: var(--ink-2); }
 .spell-list svg { width: 22px; height: 22px; color: var(--amber); }
@@ -240,6 +245,7 @@ table.tbl { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 
 .st-h span { font-size: 11px; color: var(--ink-3); white-space: nowrap; }
 .st-who { font-size: 11px; } .st-who i { font-style: normal; font-weight: 600; }
 .st-how b { color: var(--ink); font-weight: 600; }
+.st-tal { color: var(--gold-hi); font-size: 11px; } .st-tal b { font-weight: 600; }
 .sp { -webkit-touch-callout: none; }
 .kit-spells span[data-sp] { cursor: pointer; }
 /* cadres de raid : colonne gauche */

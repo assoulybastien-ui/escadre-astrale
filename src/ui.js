@@ -104,7 +104,7 @@
       v: 5, lead: null, diff: 'normal', boss: 'vorr', sel: DEFAULT_SEL.slice(),
       pool: Object.fromEntries(G.POOL.map(p => [p.id, { pow: 1, parts: 0, loot: 0 }])),
       kills: Object.fromEntries(G.BOSSES.map(b => [b.id, { normal: 0, heroique: 0, mythique: 0 }])), best: {}, sound: true,
-      groups: null, place: {},
+      groups: null, place: {}, talents: {}, newTier: false,
     };
   }
   function load() {
@@ -122,14 +122,21 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { } }
   const person = id => { const p = G.POOL.find(x => x.id === id); return Object.assign({}, p, st.pool[id]); };
   function bossUnlocked(bi, d) {
+    // le Mythique s'ouvre quand tout le raid est vaincu en Héroïque (les trois paliers de talents sont alors ouverts)
+    if (d === 'mythique' && !G.BOSSES.every(b => st.kills[b.id].heroique > 0)) return { ok: false, why: 'Vaincre les 4 boss en Héroïque' };
     if (bi > 0 && !(st.kills[G.BOSSES[bi - 1].id][d] > 0)) return { ok: false, why: 'Vaincre ' + G.BOSSES[bi - 1].name + ' en ' + G.DIFFS[d].name };
     const di = DIFF_ORDER.indexOf(d);
     if (di > 0 && !(st.kills[G.BOSSES[bi].id][DIFF_ORDER[di - 1]] > 0)) return { ok: false, why: 'Vaincre ce boss en ' + G.DIFFS[DIFF_ORDER[di - 1]].name };
     return { ok: true };
   }
 
+  // ---------- talents : paliers ouverts selon les victoires ----------
+  const killCount = () => G.BOSSES.reduce((a, b) => a + DIFF_ORDER.filter(d => st.kills[b.id][d] > 0).length, 0);
+  const tiersOpen = () => DATA.TALENT_TIERS.filter(n => killCount() >= n).length;
+  const talFx = cls => DATA.talentFx(cls, st.talents[cls], tiersOpen());
+
   // ---------- navigation ----------
-  const SCREENS = ['loading', 'perso', 'hub', 'roster', 'journal', 'fight', 'report', 'loot'];
+  const SCREENS = ['loading', 'perso', 'hub', 'roster', 'talents', 'journal', 'fight', 'report', 'loot'];
   let current = 'hub';
   function show(name) {
     current = name;
@@ -182,9 +189,13 @@
     const sp = SP[id], tip = $('#spellTip'), counts = opts.counts || {};
     const cls = sp.classes.filter(c => counts[c]), n = cls.reduce((a, c) => a + counts[c], 0);
     const who = cls.map(c => `<i style="color:${C[c].color}">${esc(C[c].name)}${counts[c] > 1 ? ' ×' + counts[c] : ''}</i>`).join(' · ');
+    // talents choisis qui modifient ce sort
+    const tals = []; const open = tiersOpen();
+    for (const c of cls) (DATA.TALENTS[c] || []).forEach((tier, k) => { const j = (st.talents[c] || [])[k]; const ta = k < open && j != null ? tier[j] : null; if (ta && ((ta.fx.cd || {})[id] != null || (ta.fx.sp || {})[id])) tals.push(ta.name); });
     tip.innerHTML = `<div class="st-h">${svg(sp.icon)}<b>${esc(sp.name)}</b><span class="num">recharge ${sp.cd} s</span></div>`
       + (n ? `<p class="st-who">${who} · ${n} charge${n > 1 ? 's' : ''}</p>` : '')
-      + `<p>${esc(sp.desc)}</p><p class="st-how"><b>Comment :</b> ${esc(sp.how)}</p>`;
+      + `<p>${esc(sp.desc)}</p><p class="st-how"><b>Comment :</b> ${esc(sp.how)}</p>`
+      + (tals.length ? `<p class="st-tal"><b>Talents :</b> ${esc(tals.join(' · '))}</p>` : '');
     tip.classList.toggle('pass', !!opts.pass);
     tip.style.left = '0px'; tip.style.top = '0px'; tip.hidden = false;
     // au-dessus du sort, sans dépasser le bord droit de son conteneur (zone sûre de l'iPhone)
@@ -203,7 +214,7 @@
   function renderHub() {
     if (!st.lead) return openPerso();
     const tk = st.kills;
-    const kills = G.BOSSES.reduce((a, b) => a + DIFF_ORDER.filter(d => tk[b.id][d] > 0).length, 0);
+    const kills = killCount();
     $('#heroCard').innerHTML = `<span class="sigil" style="background:#c9a24a22;color:#f2d68c">${svg('star')}</span>
       <div class="who"><b>${esc(st.lead.name)}</b><small>Raid lead · ${kills}/12 victoires</small></div>
       <button type="button" id="btnPerso">Changer ›</button>`;
@@ -224,6 +235,8 @@
     const pull = $('#btnPull');
     pull.disabled = !un.ok || !ci.valid;
     pull.textContent = !un.ok ? un.why : !ci.valid ? 'Composition incomplète' : 'Affronter ' + B.name;
+    $('#btnTalents').textContent = st.newTier ? 'Talents •' : 'Talents';
+    $('#btnTalents').classList.toggle('notify', !!st.newTier);
     $('#btnSound').textContent = 'Son : ' + (st.sound ? 'activé' : 'coupé');
     $('#btnGfx').textContent = 'Graphismes : ' + gfxLabel();
     R3.showBoss(B.model);
@@ -232,6 +245,30 @@
   $('#bossList').addEventListener('click', e => { const b = e.target.closest('.bcard'); if (!b || b.disabled) return; st.boss = b.dataset.boss; save(); renderHub(); });
   $('#btnRoster').onclick = () => { renderRoster(); show('roster'); };
   $('#btnJournal').onclick = () => { jBoss = st.boss; renderJournal(); show('journal'); };
+  $('#btnTalents').onclick = () => { st.newTier = false; save(); renderTalents(); show('talents'); };
+
+  // ---------- TALENTS ----------
+  let talCls = null;
+  function renderTalents() {
+    const open = tiersOpen(), kc = killCount();
+    if (!talCls) talCls = (st.sel[0] && person(st.sel[0]).cls) || 'gardien';
+    $('#talPts').textContent = open + '/3 paliers';
+    $('#talTabs').innerHTML = G.CLASS_ORDER.map(c => `<button data-c="${c}" aria-selected="${c === talCls}"${c === talCls ? ` style="color:${C[c].color};border-bottom-color:${C[c].color}"` : ''}>${esc(C[c].name)}${open && (st.talents[c] || []).slice(0, open).some(x => x == null) && st.sel.some(id => person(id).cls === c) ? ' •' : ''}</button>`).join('');
+    const ch = st.talents[talCls] || [], cl = C[talCls];
+    const inRaid = st.sel.map(person).filter(p => p.cls === talCls).map(p => p.name);
+    let h = `<section class="jsec"><div class="prose"><p><b style="color:${cl.color}">${esc(cl.name)}</b> · ${esc(cl.race)}. Les talents valent pour tous les ${esc(cl.name)} de l’escadre${inRaid.length ? ' (dans le raid : ' + esc(inRaid.join(', ')) + ')' : ' (aucun dans le raid actuel)'}.</p><p>Un palier s’ouvre à ${DATA.TALENT_TIERS.join(', ')} victoires : tu en as <b>${kc}</b>. Tu peux changer tes choix à tout moment hors combat.</p></div></section>`;
+    DATA.TALENTS[talCls].forEach((tier, k) => {
+      const lock = k >= open;
+      h += `<section class="tier jsec"><h3>Palier ${k + 1}<small>${lock ? 'Débloqué à ' + DATA.TALENT_TIERS[k] + ' victoires' : ch[k] == null ? 'Choisis un talent' : 'Actif'}</small></h3><div class="tier-row two">${tier.map((ta, j) => `<button class="tal" data-t="${k}" data-j="${j}" aria-pressed="${!lock && ch[k] === j}" ${lock ? 'disabled' : ''}><b>${esc(ta.name)}</b><span>${esc(ta.desc)}</span></button>`).join('')}</div></section>`;
+    });
+    $('#talBody').innerHTML = h;
+  }
+  $('#talTabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; talCls = b.dataset.c; renderTalents(); });
+  $('#talBody').addEventListener('click', e => {
+    const b = e.target.closest('.tal'); if (!b || b.disabled) return;
+    const k = +b.dataset.t, j = +b.dataset.j, ch = (st.talents[talCls] ||= [null, null, null]);
+    ch[k] = ch[k] === j ? null : j; save(); SND.sel(); renderTalents();
+  });
   $('#btnPull').onclick = () => { SND.unlock(); startFight(); };
   $('#btnSound').onclick = () => { st.sound = !st.sound; save(); renderHub(); if (st.sound) SND.unlock(); };
   const GFX = ['auto', 'ultra', 'haute', 'moyenne', 'basse'];
@@ -346,7 +383,7 @@
   function startFight(setup) {
     setup = setup || { bossId: st.boss, diff: st.diff, raid: st.sel.slice() };
     const ci = compInfo(setup.raid); if (!ci.valid) return;
-    const raid = setup.raid.map(id => { const p = person(id); return { id: p.id, name: p.name, cls: p.cls, pow: p.pow }; });
+    const raid = setup.raid.map(id => { const p = person(id); return { id: p.id, name: p.name, cls: p.cls, pow: p.pow, tal: talFx(p.cls) }; });
     S = G.createFight({ bossId: setup.bossId, diff: setup.diff, raid, seed: (Date.now() % 1e9) | 0 });
     // placement mémorisé pour ce boss
     const saved = st.place[setup.bossId];
@@ -726,27 +763,30 @@
   function finishFight() {
     running = false;
     const R = S;
-    renderReport(R);
-    show('report');
     lootPlan = null;
+    let newTier = false;
     if (R.result === 'kill') {
+      const before = tiersOpen();
       st.kills[R.B.id][R.D.key] = (st.kills[R.B.id][R.D.key] || 0) + 1;
+      if (tiersOpen() > before) { st.newTier = true; newTier = true; }
       const key = R.B.id + '_' + R.D.key; if (!st.best[key] || R.endT < st.best[key]) st.best[key] = R.endT;
       save();
       const roster = lastSetup.raid.map(id => { const p = person(id); return { id, name: p.name, cls: p.cls, pow: p.pow, parts: p.parts }; });
       lootPlan = G.rollLoot(R.B.id, roster, R.D.key, G.mulberry32((Date.now() % 1e9) | 0));
       lootBoss = R.B;
     }
+    renderReport(R, newTier);
+    show('report');
   }
   function meter(rows) {
     const max = Math.max(1, ...rows.map(r => r.v));
     return `<div class="meter">${rows.map(r => `<div class="mrow"><span class="nm">${esc(r.name)}</span><span class="bar"><i style="width:${(r.v / max * 100).toFixed(1)}%;background:${r.color}"></i></span><span class="v">${r.label}</span></div>`).join('')}</div>`;
   }
-  function renderReport(R) {
+  function renderReport(R, newTier) {
     const kill = R.result === 'kill', dur = Math.max(1, R.endT), pct = Math.max(0, R.hp / R.maxHp * 100);
     const ins = G.analyze(R);
     const deaths = R.deaths.filter(d => !R.called || d.t < R.endT - 0.01);
-    let h = `<div class="verdict ${kill ? 'kill' : 'wipe'}"><p class="eyebrow">${R.D.name} · ${esc(R.B.name)}</p><h2>${kill ? 'Victoire' : 'Wipe à ' + fmtPct(pct)}</h2><p>${kill ? 'Vaincu en ' + G.fmtT(dur) + '. ' + (deaths.length ? deaths.length + ' mort' + (deaths.length > 1 ? 's' : '') + ' en route.' : 'Aucun mort, propre.') : (R.called ? 'Wipe appelé' : 'Raid anéanti') + ' en phase ' + (R.phase + 1) + ' après ' + G.fmtT(dur) + '.'}</p></div>`;
+    let h = `<div class="verdict ${kill ? 'kill' : 'wipe'}"><p class="eyebrow">${R.D.name} · ${esc(R.B.name)}</p><h2>${kill ? 'Victoire' : 'Wipe à ' + fmtPct(pct)}</h2><p>${kill ? 'Vaincu en ' + G.fmtT(dur) + '. ' + (deaths.length ? deaths.length + ' mort' + (deaths.length > 1 ? 's' : '') + ' en route.' : 'Aucun mort, propre.') : (R.called ? 'Wipe appelé' : 'Raid anéanti') + ' en phase ' + (R.phase + 1) + ' après ' + G.fmtT(dur) + '.'}</p>${newTier ? `<p class="new-tier">Nouveau palier de talents débloqué : choisis-les dans l’écran Talents.</p>` : ''}</div>`;
     const raidDps = R.raiders.reduce((a, r) => a + r.stats.dmg, 0) / dur;
     const spells = Object.values(R.spellUse).reduce((a, b) => a + b, 0);
     h += `<div class="kpis"><div class="kpi panel cut"><b>${G.fmtT(dur)}</b><span>Durée</span></div><div class="kpi panel cut"><b>${deaths.length}</b><span>Morts</span></div><div class="kpi panel cut"><b>${UI.orders}</b><span>Ordres</span></div><div class="kpi panel cut"><b>${spells}</b><span>Sorts</span></div></div>`;

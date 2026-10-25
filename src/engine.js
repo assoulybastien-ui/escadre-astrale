@@ -14,6 +14,9 @@ const GAME = (() => {
   const ARENA = 19.5;
   const inArena = (p, R = ARENA) => { const d = Math.hypot(p.x, p.z); if (d > R) { p.x *= R / d; p.z *= R / d; } return p; };
   const LAVA_DPS = 14000;   // hors de l'arène effondrée
+  // valeur d'un champ de sort pour un lanceur, talents compris ; recharge idem
+  const spv = (by, id, k) => (SPELLS[id][k] || 0) + (((((by && by.tal) || {}).sp || {})[id] || {})[k] || 0);
+  const spcd = (by, id) => Math.max(1, SPELLS[id].cd + ((((by && by.tal) || {}).cd || {})[id] || 0));
   // dalles hexagonales de l'Horizon (Azhal) : centres partagés avec le rendu
   const HEX = 2.6;
   const HEX_TILES = (() => { const out = []; for (let q = -9; q <= 9; q++) for (let r = -9; r <= 9; r++) { const x = HEX * Math.sqrt(3) * (q + r / 2), z = HEX * 1.5 * r; if (Math.hypot(x, z) <= 20.6) out.push({ x, z }); } return out; })();
@@ -56,9 +59,10 @@ const GAME = (() => {
     const defs = opts.raid.slice().sort((a, b) => roleOrder[CLASSES[a.cls].role] - roleOrder[CLASSES[b.cls].role] || CLASS_ORDER.indexOf(a.cls) - CLASS_ORDER.indexOf(b.cls));
     const raiders = defs.map((d, i) => {
       const C = CLASSES[d.cls];
-      const maxHp = Math.round(C.hp * (d.pow || 1));
+      const tal = d.tal || null;
+      const maxHp = Math.round(C.hp * (d.pow || 1) * (tal ? tal.hp || 1 : 1));
       return {
-        i, id: d.id, name: d.name, cls: d.cls, role: C.role, range: C.range, pow: d.pow || 1, maxHp, hp: maxHp, alive: true,
+        i, id: d.id, name: d.name, cls: d.cls, role: C.role, range: C.range, pow: d.pow || 1, tal, maxHp, hp: maxHp, alive: true,
         vcls: C.look.style, vspec: C.look.spec, isMe: false,
         pos: { x: 0, z: 9 }, anchor: { x: 0, z: 9 }, orders: [], focus: null, moving: false, inReach: false,
         healMode: 'raid', healFix: -1, healTarget: -1, atkTarget: 'boss',
@@ -216,7 +220,7 @@ const GAME = (() => {
     if (ex) { ex.until = S.t + dur; ex.hps = Math.max(ex.hps, hps); ex.src = src.i; return; }
     t.hots.push({ src: src.i, hps, until: S.t + dur, kind });
   }
-  function dmgMultRaid(S) { return S.t < S.buffs.criUntil ? SPELLS.cri.mult : 1; }
+  function dmgMultRaid(S) { return S.t < S.buffs.criUntil ? (S.buffs.criMult || SPELLS.cri.mult) : 1; }
 
   // ---------- capacités du boss ----------
   function bodyFor(S, a) { return S.bodies[a.body > 0 ? a.body : 0] || S.bodies[0]; }
@@ -525,7 +529,7 @@ const GAME = (() => {
     const selAlive = sel.filter(r => r.alive);
     let by = null, tgtR = null, E = null, gp = null;
     const done = (extra) => {
-      by.cds[id] = S.t + sp.cd;
+      by.cds[id] = S.t + spcd(by, id);
       S.spellUse[id] = (S.spellUse[id] || 0) + 1;
       S.events.push(Object.assign({ type: 'spell', id, by: by.i, target: tgtR ? tgtR.i : -1, x: gp ? gp.x : E ? E.pos.x : tgtR ? tgtR.pos.x : by.pos.x, z: gp ? gp.z : E ? E.pos.z : tgtR ? tgtR.pos.z : by.pos.z }, extra || {}));
       return MSG(true, by.name + ' : ' + sp.name + (tgtR && tgtR !== by ? ' → ' + tgtR.name : E ? ' → ' + E.name : ''));
@@ -563,26 +567,26 @@ const GAME = (() => {
       }
       case 'egide': case 'carapace': {
         by = ready.find(r => sel.includes(r)) || ready.find(r => isTanking(S, r)) || ready[0];
-        by.mit.push({ until: S.t + sp.dur, dr: sp.dr, src: id });
+        by.mit.push({ until: S.t + spv(by, id, 'dur'), dr: Math.min(0.9, spv(by, id, 'dr')), src: id });
         tgtR = by;
-        return done({ dur: sp.dur });
+        return done({ dur: spv(by, id, 'dur') });
       }
       case 'seisme': {
-        const withAdds = ready.map(r => ({ r, n: S.adds.filter(a => a.alive && a.type !== 'orb' && dist(a.pos, r.pos) <= sp.r).length + S.adds.filter(a => a.alive && a.type === 'orb' && dist(a.pos, r.pos) <= sp.r).length }));
+        const withAdds = ready.map(r => ({ r, n: S.adds.filter(a => a.alive && dist(a.pos, r.pos) <= spv(r, id, 'r')).length }));
         const pickR = withAdds.find(x => sel.includes(x.r) && x.n) || withAdds.sort((a, b) => b.n - a.n)[0];
         if (!pickR.n) return MSG(false, 'Aucun add à 9 m d’un Titan');
         by = pickR.r;
-        for (const a of S.adds) if (a.alive && dist(a.pos, by.pos) <= sp.r) {
-          a.stunUntil = S.t + sp.stun; if (a.cast) { if (a.cast.interruptible) M(S, a.cast.id).ok++; a.cast = null; }
+        for (const a of S.adds) if (a.alive && dist(a.pos, by.pos) <= spv(by, id, 'r')) {
+          a.stunUntil = S.t + spv(by, id, 'stun'); if (a.cast) { if (a.cast.interruptible) M(S, a.cast.id).ok++; a.cast = null; }
           if (a.type === 'guardian') { a.target = by.i; a.tanked = true; }
           dealAdd(S, by, a, sp.dmg * by.pow);
         }
-        return done({ r: sp.r });
+        return done({ r: spv(by, id, 'r') });
       }
       case 'nuee': {
         by = ready[0];
-        for (const r of S.raiders) if (r.alive) addHot(S, by, r, r.maxHp * sp.pct, sp.dur, 'nuee');
-        return done({ dur: sp.dur });
+        for (const r of S.raiders) if (r.alive) addHot(S, by, r, r.maxHp * spv(by, id, 'pct'), spv(by, id, 'dur'), 'nuee');
+        return done({ dur: spv(by, id, 'dur') });
       }
       case 'purge': {
         const has = r => r.alive && r.debuffs.some(d => d.dispel);
@@ -599,7 +603,7 @@ const GAME = (() => {
         if (!tgtR || !tgtR.alive) tgtR = alive(S).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
         if (!tgtR) return MSG(false, '');
         by = near(ready, tgtR.pos);
-        tgtR.absorb = Math.max(tgtR.absorb > 0 && S.t < tgtR.absorbUntil ? tgtR.absorb : 0, tgtR.maxHp * sp.absorb * by.pow); tgtR.absorbUntil = S.t + sp.dur; tgtR.absorbSrc = by.i;
+        tgtR.absorb = Math.max(tgtR.absorb > 0 && S.t < tgtR.absorbUntil ? tgtR.absorb : 0, tgtR.maxHp * spv(by, id, 'absorb') * by.pow); tgtR.absorbUntil = S.t + spv(by, id, 'dur'); tgtR.absorbSrc = by.i;
         return done();
       }
       case 'rez': {
@@ -608,7 +612,7 @@ const GAME = (() => {
         tgtR = dead[0] || S.raiders.filter(r => !r.alive).sort((a, b) => order[a.role] - order[b.role] || b.stats.deaths - a.stats.deaths)[0];
         if (!tgtR) return MSG(false, 'Personne à relever');
         by = near(ready, tgtR.pos);
-        tgtR.alive = true; tgtR.hp = tgtR.maxHp * sp.hp; tgtR.anchor = { x: tgtR.pos.x, z: tgtR.pos.z }; tgtR.orders = []; tgtR.focus = null;
+        tgtR.alive = true; tgtR.hp = tgtR.maxHp * Math.min(1, spv(by, id, 'hp')); tgtR.anchor = { x: tgtR.pos.x, z: tgtR.pos.z }; tgtR.orders = []; tgtR.focus = null;
         S.events.push({ type: 'rez', i: tgtR.i });
         log(S, tgtR.name + ' est relevé par ' + by.name + '.', 'good');
         return done();
@@ -617,8 +621,8 @@ const GAME = (() => {
         if (!ctx.ground) return MSG(false, 'Touche le sol pour placer ' + sp.name, 'ground');
         gp = inArena({ x: ctx.ground.x, z: ctx.ground.z });
         by = near(ready, gp);
-        for (const r of S.raiders) if (r.alive && dist(r.pos, gp) <= sp.r) { heal(S, by, r, r.maxHp * sp.pct * by.pow * healMult(S)); addHot(S, by, r, r.maxHp * sp.hot * by.pow, sp.dur, 'vague'); }
-        return done({ r: sp.r });
+        for (const r of S.raiders) if (r.alive && dist(r.pos, gp) <= spv(by, id, 'r')) { heal(S, by, r, r.maxHp * spv(by, id, 'pct') * by.pow * healMult(S)); addHot(S, by, r, r.maxHp * sp.hot * by.pow, sp.dur, 'vague'); }
+        return done({ r: spv(by, id, 'r') });
       }
       case 'pas': {
         E = enemyRef(S, ctx.enemy) || enemyRef(S, { kind: 'body', k: S.bodies.indexOf(nearestBody(S, raidCenter(S))) });
@@ -627,38 +631,38 @@ const GAME = (() => {
         let dx = by.pos.x - E.pos.x, dz = by.pos.z - E.pos.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
         const to = inArena({ x: E.pos.x + dx * (E.rad + 1.2), z: E.pos.z + dz * (E.rad + 1.2) });
         by.pos = { x: to.x, z: to.z }; by.anchor = { x: to.x, z: to.z }; by.orders = [];
-        if (E.add) { by.focus = { kind: 'add', id: E.add.id }; dealAdd(S, by, E.add, sp.dmg * by.pow * dmgMultRaid(S)); }
-        else bossDamage(S, by, sp.dmg * by.pow * dmgMultRaid(S));
+        if (E.add) { by.focus = { kind: 'add', id: E.add.id }; dealAdd(S, by, E.add, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S)); }
+        else bossDamage(S, by, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S));
         return done({ fx: from.x, fz: from.z });
       }
       case 'tir': {
         E = enemyRef(S, ctx.enemy) || enemyRef(S, { kind: 'body', k: 0 });
         by = near(ready, E.pos);
-        if (E.add) dealAdd(S, by, E.add, sp.dmg * by.pow * dmgMultRaid(S)); else bossDamage(S, by, sp.dmg * by.pow * dmgMultRaid(S));
+        if (E.add) dealAdd(S, by, E.add, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S)); else bossDamage(S, by, spv(by, id, 'dmg') * by.pow * dmgMultRaid(S));
         return done();
       }
       case 'tourbillon': {
         const enemyP = enemyRef(S, ctx.enemy);
         by = ready.find(r => sel.includes(r)) || near(ready, enemyP ? enemyP.pos : nearestBody(S, raidCenter(S)).pos);
-        by.whirlUntil = S.t + sp.dur;
+        by.whirlUntil = S.t + spv(by, id, 'dur');
         tgtR = by;
-        return done({ dur: sp.dur, r: sp.r });
+        return done({ dur: spv(by, id, 'dur'), r: spv(by, id, 'r') });
       }
-      case 'cri': { by = ready[0]; S.buffs.criUntil = S.t + sp.dur; log(S, by.name + ' pousse un Cri de guerre.', 'cd'); return done({ dur: sp.dur }); }
+      case 'cri': { by = ready[0]; S.buffs.criUntil = S.t + spv(by, id, 'dur'); S.buffs.criMult = spv(by, id, 'mult'); log(S, by.name + ' pousse un Cri de guerre.', 'cd'); return done({ dur: spv(by, id, 'dur') }); }
       case 'tourelle': {
         if (!ctx.ground) return MSG(false, 'Touche le sol pour poser la Tourelle', 'ground');
         gp = inArena({ x: ctx.ground.x, z: ctx.ground.z });
         by = near(ready, gp);
-        const tu = { id: 'tu' + Math.floor(S.t * 100), x: gp.x, z: gp.z, until: S.t + sp.dur, by: by.i, pow: by.pow, shotT: 0 };
+        const tu = { id: 'tu' + Math.floor(S.t * 100), x: gp.x, z: gp.z, until: S.t + spv(by, id, 'dur'), by: by.i, pow: by.pow, dps: spv(by, id, 'dps'), shotT: 0 };
         S.turrets.push(tu);
-        return done({ tid: tu.id, dur: sp.dur });
+        return done({ tid: tu.id, dur: spv(by, id, 'dur') });
       }
       case 'dome': {
         if (!ctx.ground) return MSG(false, 'Touche le sol pour poser le Dôme', 'ground');
         gp = inArena({ x: ctx.ground.x, z: ctx.ground.z });
         by = near(ready, gp);
-        S.domes.push({ x: gp.x, z: gp.z, r: sp.r, dr: sp.dr, until: S.t + sp.dur });
-        return done({ r: sp.r, dur: sp.dur });
+        S.domes.push({ x: gp.x, z: gp.z, r: spv(by, id, 'r'), dr: Math.min(0.9, spv(by, id, 'dr')), until: S.t + spv(by, id, 'dur') });
+        return done({ r: spv(by, id, 'r'), dur: spv(by, id, 'dur') });
       }
     }
     return MSG(false, '');
@@ -850,15 +854,15 @@ const GAME = (() => {
       if (!r.alive) continue;
       const C = CLASSES[r.cls];
       const E = combatTarget(S, r); if (!E) continue;
-      let m = C.dps * r.pow * raidMult;
+      let m = C.dps * r.pow * raidMult * (r.tal ? r.tal.dps || 1 : 1);
       if (r.moving) m *= r.range === 'melee' ? 0.8 : 0.5;
       if (!r.inReach) m = 0;
       const amount = m * dt;
       if (amount > 0) { if (E.add) dealAdd(S, r, E.add, amount); else bossDamage(S, r, amount); }
       if (t < r.whirlUntil) {
-        const w = SPELLS.tourbillon, wd = w.dps * r.pow * raidMult * dt;
-        for (const a of S.adds) if (a.alive && dist(a.pos, r.pos) <= w.r + a.rad) dealAdd(S, r, a, wd);
-        for (const b of S.bodies) if (dist(b.pos, r.pos) <= w.r + rad) { bossDamage(S, r, wd); break; }
+        const w = SPELLS.tourbillon, wd = w.dps * r.pow * raidMult * dt, wr = spv(r, 'tourbillon', 'r');
+        for (const a of S.adds) if (a.alive && dist(a.pos, r.pos) <= wr + a.rad) dealAdd(S, r, a, wd);
+        for (const b of S.bodies) if (dist(b.pos, r.pos) <= wr + rad) { bossDamage(S, r, wd); break; }
       }
     }
     // tourelles
@@ -867,7 +871,7 @@ const GAME = (() => {
       let tgt = pool.length ? near(pool, tp) : null, body = null;
       if (!tgt) { const b = nearestBody(S, tp); if (dist(b.pos, tp) <= SPELLS.tourelle.range + rad) body = b; }
       const src = S.raiders[tu.by] || S.raiders[0];
-      const amount = SPELLS.tourelle.dps * tu.pow * raidMult * dt;
+      const amount = (tu.dps || SPELLS.tourelle.dps) * tu.pow * raidMult * dt;
       if (tgt) dealAdd(S, src, tgt, amount); else if (body) bossDamage(S, src, amount);
       tu.shotT -= dt;
       if (tu.shotT <= 0 && (tgt || body)) { tu.shotT = 0.45; const p = tgt ? tgt.pos : body.pos; S.events.push({ type: 'turretShot', id: tu.id, x: tu.x, z: tu.z, tx: p.x, tz: p.z, add: !!tgt }); }
@@ -932,7 +936,7 @@ const GAME = (() => {
     for (const r of al) if (!healers.some(h => dist(h.pos, r.pos) <= HEAL_RANGE)) r.stats.oor += dt;
     for (const h of healers) {
       const C = CLASSES[h.cls];
-      const budget = C.hps * h.pow * hm * dt * (h.moving ? 0.75 : 1);
+      const budget = C.hps * h.pow * (h.tal ? h.tal.hps || 1 : 1) * hm * dt * (h.moving ? 0.75 : 1);
       const inR = al.filter(x => dist(x.pos, h.pos) <= HEAL_RANGE && x.hp < x.maxHp);
       if (!inR.length) { h.healTarget = -1; continue; }
       const byPct = inR.slice().sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);

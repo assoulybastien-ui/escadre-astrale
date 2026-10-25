@@ -72,6 +72,70 @@ const DATA = (() => {
                   how: 'Touche le sort, puis le sol au milieu du groupe à protéger. Il faut que les persos soient dedans.' },
   };
 
+  // ---------- talents : 3 paliers par classe, 2 choix par palier ----------
+  // fx : hp / dps / hps = multiplicateurs ; cd = { sort: secondes en plus ou en moins } ; sp = { sort: { champ: valeur ajoutée } }
+  const TALENT_TIERS = [1, 4, 8];   // victoires nécessaires pour chaque palier
+  const t = (name, desc, fx) => ({ name, desc, fx });
+  const TALENTS = {
+    gardien: [
+      [t('Bouclier de lumière', 'Égide dure 12 s au lieu de 8.', { sp: { egide: { dur: 4 } } }), t('Vigilance', 'Interruption : recharge réduite de 4 s.', { cd: { kick: -4 } })],
+      [t('Rempart', '+10 % de PV.', { hp: 1.1 }), t('Riposte', '+12 % de dégâts.', { dps: 1.12 })],
+      [t('Inébranlable', 'Égide réduit les dégâts de 75 % au lieu de 60 %.', { sp: { egide: { dr: 0.15 } } }), t('Défi', 'Provocation : recharge réduite de 3 s.', { cd: { provoc: -3 } })],
+    ],
+    titan: [
+      [t('Carapace épaisse', 'Carapace réduit les dégâts de 60 % au lieu de 45 %.', { sp: { carapace: { dr: 0.15 } } }), t('Long souffle', 'Carapace dure 14 s au lieu de 10.', { sp: { carapace: { dur: 4 } } })],
+      [t('Masse', '+10 % de PV.', { hp: 1.1 }), t('Onde de choc', 'Séisme touche les adds à 12 m au lieu de 9.', { sp: { seisme: { r: 3 } } })],
+      [t('Secousse', 'Séisme étourdit 5 s au lieu de 3.', { sp: { seisme: { stun: 2 } } }), t('Martèlement', 'Séisme : recharge réduite de 8 s.', { cd: { seisme: -8 } })],
+    ],
+    medic: [
+      [t('Nanites denses', 'Nuée rend 6 % des PV par seconde au lieu de 4,5 %.', { sp: { nuee: { pct: 0.015 } } }), t('Essaim long', 'Nuée dure 9 s au lieu de 6.', { sp: { nuee: { dur: 3 } } })],
+      [t('Surcadençage', '+8 % de soins.', { hps: 1.08 }), t('Blindage', '+10 % de PV.', { hp: 1.1 })],
+      [t('Protocole rapide', 'Purge : recharge réduite de 4 s.', { cd: { purge: -4 } }), t('Réplication', 'Nuée : recharge réduite de 30 s.', { cd: { nuee: -30 } })],
+    ],
+    seraphe: [
+      [t('Prisme ardent', 'Prisme absorbe 50 % des PV max au lieu de 35 %.', { sp: { prisme: { absorb: 0.15 } } }), t('Lumière vive', 'Prisme : recharge réduite de 4 s.', { cd: { prisme: -4 } })],
+      [t('Grâce', '+8 % de soins.', { hps: 1.08 }), t('Ailes de verre', '+10 % de PV.', { hp: 1.1 })],
+      [t('Seconde aube', 'Relève ramène à 80 % des PV au lieu de 40 %.', { sp: { rez: { hp: 0.4 } } }), t('Retour rapide', 'Relève : recharge réduite de 60 s.', { cd: { rez: -60 } })],
+    ],
+    maree: [
+      [t('Grande marée', 'Marée haute soigne à 9 m au lieu de 7.', { sp: { vague: { r: 2 } } }), t('Ressac', 'Marée haute soigne 32 % au lieu de 22 %.', { sp: { vague: { pct: 0.1 } } })],
+      [t('Courant', '+8 % de soins.', { hps: 1.08 }), t('Écailles', '+10 % de PV.', { hp: 1.1 })],
+      [t('Flux', 'Marée haute : recharge réduite de 6 s.', { cd: { vague: -6 } }), t('Eaux vives', 'Relève : recharge réduite de 60 s.', { cd: { rez: -60 } })],
+    ],
+    lameombre: [
+      [t('Ombre fulgurante', 'Pas de l’ombre inflige 70 000 au lieu de 40 000.', { sp: { pas: { dmg: 30000 } } }), t('Pas léger', 'Pas de l’ombre : recharge réduite de 8 s.', { cd: { pas: -8 } })],
+      [t('Venin', '+10 % de dégâts.', { dps: 1.1 }), t('Écailles noires', '+10 % de PV.', { hp: 1.1 })],
+      [t('Coupe-souffle', 'Interruption : recharge réduite de 4 s.', { cd: { kick: -4 } }), t('Danse des lames', '+5 % de dégâts et Pas de l’ombre : recharge réduite de 4 s.', { dps: 1.05, cd: { pas: -4 } })],
+    ],
+    fracasseur: [
+      [t('Cyclone', 'Tourbillon frappe à 10 m au lieu de 7.', { sp: { tourbillon: { r: 3 } } }), t('Ouragan', 'Tourbillon dure 6 s au lieu de 4.', { sp: { tourbillon: { dur: 2 } } })],
+      [t('Rage', '+10 % de dégâts.', { dps: 1.1 }), t('Fourrure épaisse', '+10 % de PV.', { hp: 1.1 })],
+      [t('Cri prolongé', 'Cri de guerre dure 18 s au lieu de 12.', { sp: { cri: { dur: 6 } } }), t('Hurlement', 'Cri de guerre donne +35 % de dégâts au lieu de +25 %.', { sp: { cri: { mult: 0.1 } } })],
+    ],
+    spectre: [
+      [t('Calibre lourd', 'Tir de précision inflige 85 000 au lieu de 55 000.', { sp: { tir: { dmg: 30000 } } }), t('Visée rapide', 'Tir de précision : recharge réduite de 8 s.', { cd: { tir: -8 } })],
+      [t('Optique', '+10 % de dégâts.', { dps: 1.1 }), t('Blindage', '+10 % de PV.', { hp: 1.1 })],
+      [t('Coup d’arrêt', 'Interruption : recharge réduite de 4 s.', { cd: { kick: -4 } }), t('Œil froid', '+5 % de dégâts et Tir de précision : recharge réduite de 4 s.', { dps: 1.05, cd: { tir: -4 } })],
+    ],
+    bricoleur: [
+      [t('Tourelle lourde', 'La Tourelle fait 50 % de dégâts en plus.', { sp: { tourelle: { dps: 1200 } } }), t('Tourelle durable', 'La Tourelle tient 25 s au lieu de 15.', { sp: { tourelle: { dur: 10 } } })],
+      [t('Surcharge', '+10 % de dégâts.', { dps: 1.1 }), t('Plastron', '+10 % de PV.', { hp: 1.1 })],
+      [t('Dôme renforcé', 'Le Dôme réduit les dégâts de 50 % au lieu de 35 %.', { sp: { dome: { dr: 0.15 } } }), t('Grand dôme', 'Le Dôme fait 8,5 m et tient 11 s.', { sp: { dome: { r: 2, dur: 3 } } })],
+    ],
+  };
+  // effets cumulés des talents choisis d'une classe (choix : [index ou null] par palier, unlocked : nombre de paliers ouverts)
+  function talentFx(cls, choice, unlocked) {
+    const fx = { hp: 1, dps: 1, hps: 1, cd: {}, sp: {} };
+    (TALENTS[cls] || []).forEach((tier, k) => {
+      const c = choice && choice[k]; if (k >= unlocked || c == null || !tier[c]) return;
+      const f = tier[c].fx;
+      for (const m of ['hp', 'dps', 'hps']) if (f[m]) fx[m] *= f[m];
+      for (const id in f.cd || {}) fx.cd[id] = (fx.cd[id] || 0) + f.cd[id];
+      for (const id in f.sp || {}) { fx.sp[id] ||= {}; for (const key in f.sp[id]) fx.sp[id][key] = (fx.sp[id][key] || 0) + f.sp[id][key]; }
+    });
+    return fx;
+  }
+
   // ---------- vivier : 2 raideurs par classe ----------
   const POOL = [
     ['kaelith', 'Kaelith', 'gardien'], ['ferro', 'Ferro', 'gardien'],
@@ -105,7 +169,7 @@ const DATA = (() => {
             desc: 'Effet néfaste qui ronge sa cible tant qu’il n’est pas purgé. Sélectionne la cible puis Purge.' },
           flaque: { kind: 'pool', name: 'Flaque de scories', first: 32, every: 36, r: 4.5, dur: 30, call: 'tank',
             desc: 'Une flaque se forme sous Vorr. Tant qu’il y reste, ses dégâts grimpent de 8 % toutes les 3 s. Déplace son tank à 8-10 m.' },
-          fissures: { kind: 'fissures', name: 'Fissures de magma', first: 12, every: 24, count: 2, width: 2.8, len: 24, arm: 2.8, dur: 1.5, dps: 16000, call: 'move', h: { count: 3, arm: 2.5 }, m: { count: 3, arm: 2.2 },
+          fissures: { kind: 'fissures', name: 'Fissures de magma', first: 12, every: 24, count: 2, width: 2.8, len: 24, arm: 2.8, dur: 1.5, dps: 16000, call: 'move', h: { count: 3, arm: 2.5 }, m: { count: 4, arm: 2.2 },
             desc: 'Vorr frappe le sol : des fissures filent vers plusieurs persos, puis entrent en éruption. Décale sur le côté ceux qui sont sur une ligne avant l’éruption.' },
         } },
         { to: 0, name: 'Effondrement', dmgMult: 1.2, collapse: 13.5, abilities: {
@@ -199,13 +263,13 @@ const DATA = (() => {
           eclipse: { kind: 'eclipse', name: 'Éclipse', first: 20, every: 40, dur: 8, dps: 1200, only: 'hm', call: 'cd',
             desc: 'Soins réduits de moitié pendant 8 s et dégâts continus. Nuée ou Dôme.' },
         } },
-        { to: 0, name: 'Dévoreur', invuln: 4, aura: 150, ramp: 6, m: { ramp: 3 }, abilities: {
+        { to: 0, name: 'Dévoreur', invuln: 4, aura: 150, ramp: 6, m: { ramp: 5 }, abilities: {
           griffe: { inherit: true, first: 6 },
           convergence: { kind: 'soak', name: 'Convergence du Néant', first: 12, every: 26, dmg: 110000, r: 4.5, time: 7, need: 4, call: 'stack', m: { dmg: 100000 },
             desc: 'Cercle à partager : au moins 4 persos hors tanks, idéalement plus.' },
           hurlement: { inherit: true, first: 24, every: 26 },
           orbes: { inherit: true, first: 30, every: 45, only: 'm' },
-          effritement: { kind: 'holes', name: 'Effritement', first: 8, every: 18, count: 2, arm: 4, dps: 9000, call: 'move', h: { count: 3, arm: 3.5 }, m: { count: 3, arm: 3, every: 24 },
+          effritement: { kind: 'holes', name: 'Effritement', first: 8, every: 18, count: 2, arm: 4, dps: 9000, call: 'move', h: { count: 3, arm: 3.5 }, m: { count: 4, arm: 3, every: 24 },
             desc: 'Les dalles de l’Horizon se fissurent sous plusieurs persos, puis tombent dans le Néant. Sors-les avant la chute : le trou reste jusqu’à la fin du combat, brûle ceux qui le traversent, et l’espace se réduit.' },
         } },
       ],
@@ -216,7 +280,7 @@ const DATA = (() => {
   const DIFFS = {
     normal:   { key: 'normal',   name: 'Normal',   size: 10, hpMult: 0.62, dmgMult: 0.9,  enrageMult: 1.0,  addMult: 0.7,  loot: 3, lootPow: 0.05, hints: true },
     heroique: { key: 'heroique', name: 'Héroïque', size: 10, hpMult: 0.95, dmgMult: 1.1,  enrageMult: 1.35, addMult: 0.95, loot: 4, lootPow: 0.08, hints: false },
-    mythique: { key: 'mythique', name: 'Mythique', size: 10, hpMult: 1.2,  dmgMult: 1.2,  enrageMult: 1.6,  addMult: 1.1,  loot: 5, lootPow: 0.1,  hints: false },
+    mythique: { key: 'mythique', name: 'Mythique', size: 10, hpMult: 1.3,  dmgMult: 1.3,  enrageMult: 1.6,  addMult: 1.1,  loot: 5, lootPow: 0.1,  hints: false },
   };
 
   const LOOT = {
@@ -256,6 +320,6 @@ const DATA = (() => {
     ombre: { cls: 'lame', role: 'dps', range: 'melee' }, duel: { cls: 'lame', role: 'dps', range: 'melee' },
   };
 
-  return { CLASSES, CLASS_ORDER, SPELLS, POOL, BOSSES, DIFFS, LOOT, VSPECS };
+  return { CLASSES, CLASS_ORDER, SPELLS, TALENTS, TALENT_TIERS, talentFx, POOL, BOSSES, DIFFS, LOOT, VSPECS };
 })();
 if (typeof module !== 'undefined') module.exports = DATA;
