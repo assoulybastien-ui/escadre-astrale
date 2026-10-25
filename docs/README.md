@@ -1,6 +1,6 @@
 # Escadre Astrale
 
-Jeu de raid en 3D (univers galactique) : tu joues soigneur ou tank et tu diriges ton raid de 10 à 20 contre les quatre gardiens de la Citadelle de Vael-Kor.
+Jeu de raid lead en 3D (univers galactique) : tu diriges dix héros, sans en incarner aucun, contre les quatre gardiens de la Citadelle de Vael-Kor. Version 1.0.
 
 **Jouer :** https://assoulybastien-ui.github.io/escadre-astrale/
 

@@ -133,7 +133,7 @@ html = head + body + '\n' + '\n'.join(f'<script src="{u}"></script>' for u in li
 
 manifest = {
     'id': './', 'name': 'Escadre Astrale', 'short_name': 'Escadre', 'lang': 'fr',
-    'description': 'Jeu de raid en 3D : soigne ou tanke, et dirige ton raid face aux gardiens de la Citadelle de Vael-Kor.',
+    'description': 'Jeu de raid lead en 3D : dirige dix héros face aux quatre gardiens de la Citadelle de Vael-Kor.',
     'start_url': './', 'scope': './', 'display': 'standalone', 'orientation': 'any',
     'background_color': '#04050b', 'theme_color': '#04050b', 'categories': ['games'],
     'icons': [{'src': 'icons/icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
@@ -177,7 +177,7 @@ self.addEventListener('fetch', e => {{
 
 readme = '''# Escadre Astrale
 
-Jeu de raid en 3D (univers galactique) : tu joues soigneur ou tank et tu diriges ton raid de 10 à 20 contre les quatre gardiens de la Citadelle de Vael-Kor.
+Jeu de raid lead en 3D (univers galactique) : tu diriges dix héros, sans en incarner aucun, contre les quatre gardiens de la Citadelle de Vael-Kor. Version 1.0.
 
 **Jouer :** https://assoulybastien-ui.github.io/escadre-astrale/
 

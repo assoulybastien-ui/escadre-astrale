@@ -1,5 +1,5 @@
-// Escadre Astrale — service worker (version 18610ffd5c)
-const CACHE = 'escadre-18610ffd5c';
+// Escadre Astrale — service worker (version d5b37d0b9f)
+const CACHE = 'escadre-d5b37d0b9f';
 const FILES = ["./", "index.html", "manifest.webmanifest", "vendor/three/three.min.js", "vendor/three/shaders/CopyShader.js", "vendor/three/shaders/LuminosityHighPassShader.js", "vendor/three/postprocessing/EffectComposer.js", "vendor/three/postprocessing/RenderPass.js", "vendor/three/postprocessing/ShaderPass.js", "vendor/three/postprocessing/UnrealBloomPass.js", "vendor/three/loaders/GLTFLoader.js", "vendor/three/utils/SkeletonUtils.js", "fonts/chakra-petch-latin-400-normal.woff2", "fonts/chakra-petch-latin-500-normal.woff2", "fonts/chakra-petch-latin-600-normal.woff2", "fonts/chakra-petch-latin-700-normal.woff2", "fonts/michroma-latin-400-normal.woff2", "fonts/share-tech-mono-latin-400-normal.woff2", "assets/colossus.json", "assets/floor_albedo.jpg", "assets/floor_emissive.jpg", "assets/floor_normal.jpg", "assets/floor_orm.jpg", "assets/hull_albedo.jpg", "assets/hull_emissive.jpg", "assets/hull_height.jpg", "assets/hull_normal.jpg", "assets/hull_orm.jpg", "assets/rock_albedo.jpg", "assets/rock_emissive.jpg", "assets/rock_height.jpg", "assets/rock_normal.jpg", "assets/rock_orm.jpg", "assets/trooper.json", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 const FRESH = new Set(['./', 'index.html', 'manifest.webmanifest']);
 self.addEventListener('install', e => {
