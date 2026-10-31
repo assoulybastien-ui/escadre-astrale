@@ -558,7 +558,11 @@ const R3D = (() => {
     const ground = p.mode === 'ski' || p.mode === 'landing' || p.mode === 'stopped';
     const kneel = ground ? 0.18 + Math.min(0.25, p.V / 60) : 0.08;
     for (const l of pilot.legs) { l.hip.rotation.x = -kneel; l.ski.rotation.x = kneel; }
-    pilot.body.position.y = ground ? -kneel * 0.4 : 0;
+    // le pilote se balance sous la voile : rotation autour des mousquetons (écart entre voile et pilote)
+    const sw = p.mode === 'air' ? clamp(p.bank - p.swing, -0.7, 0.7) : 0, P = G.carab;
+    pilot.body.rotation.z = sw;
+    pilot.body.position.set(P * Math.sin(sw), P - P * Math.cos(sw) + (ground ? -kneel * 0.4 : 0), 0);
+    pilot.body.updateMatrix();
     // suspentes de frein : de chaque main aux points du bord de fuite de son côté
     const show = !crash && p.inflate > 0.8;
     pilot.brakes.visible = show;
@@ -566,9 +570,10 @@ const R3D = (() => {
       pilot.wingPivot.updateMatrix();
       const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te;
       for (let k = 0; k < te.length; k++) {
-        const q = te[k], side = q.t > 0 ? 1 : 0, hand = pilot.arms[side].hand.position, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+        const q = te[k], side = q.t > 0 ? 1 : 0, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+        const hand = _y.copy(pilot.arms[side].hand.position).applyMatrix4(pilot.body.matrix);
         _x.set(q.ex * (G.lineLen - b), q.ey * (G.lineLen - b), q.z - b * 0.25).applyMatrix4(pilot.wingPivot.matrix);
-        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y + pilot.body.position.y; arr[k * 6 + 2] = hand.z;
+        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y; arr[k * 6 + 2] = hand.z;
         arr[k * 6 + 3] = _x.x; arr[k * 6 + 4] = _x.y; arr[k * 6 + 5] = _x.z;
       }
       pilot.brakes.geometry.attributes.position.needsUpdate = true;
@@ -583,11 +588,13 @@ const R3D = (() => {
     const low = p.mode === 'air' ? 0 : 1 - clamp(p.inflate * 1.15, 0, 1);
     const V = p.V, back = 10.5 + clamp((V - 14) * 0.1, 0, 2.2) + low * 1.5, up = 2.9 + low * 4.2;
     const cg = Math.cos(gam), sg = Math.sin(gam);
-    _v.set(p.pos.x - hx * cg * back, p.pos.y - sg * back + up, p.pos.z - hz * cg * back);
+    // la caméra suit plutôt la voile : en virage, on voit le pilote partir sous elle et revenir
+    const air = p.mode === 'air' ? 1 : 0, ox = p.up.x * 4 * air, oz = p.up.z * 4 * air;
+    _v.set(p.pos.x - hx * cg * back + ox, p.pos.y - sg * back + up, p.pos.z - hz * cg * back + oz);
     const k = snap ? 1 : 1 - Math.exp(-dt * 4.5);
     cam.pos.lerp(_v, k);
     const hg = W.heightAt(cam.pos.x, cam.pos.z) + 1.6; if (cam.pos.y < hg) cam.pos.y = hg;
-    _v.set(p.pos.x + hx * cg * 16, p.pos.y + sg * 16 + 2.2, p.pos.z + hz * cg * 16);
+    _v.set(p.pos.x + hx * cg * 16 + ox * 0.6, p.pos.y + sg * 16 + 2.2, p.pos.z + hz * cg * 16 + oz * 0.6);
     cam.look.lerp(_v, snap ? 1 : 1 - Math.exp(-dt * 7));
     camera.position.copy(cam.pos);
     // vibrations à grande vitesse près du sol
@@ -596,7 +603,7 @@ const R3D = (() => {
     if (amp > 0) camera.position.add(_v.set(Math.sin(time * 37.1) * amp, Math.sin(time * 41.7 + 1) * amp, Math.sin(time * 33.3 + 2) * amp));
     // roulis léger dans les virages
     _z.copy(cam.look).sub(camera.position).normalize();
-    camera.up.set(0, 1, 0).applyAxisAngle(_z, -p.bank * 0.22);
+    camera.up.set(0, 1, 0).applyAxisAngle(_z, -(p.swing * 0.42 + p.bank * 0.12) * (p.mode === 'air' ? 1 : 0.3));
     camera.lookAt(cam.look);
     const f = 58 + 16 * clamp((V - 12) / 16, 0, 1);
     cam.fov += (f - cam.fov) * (1 - Math.exp(-dt * 2.5));

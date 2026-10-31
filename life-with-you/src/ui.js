@@ -102,10 +102,10 @@ const UI = (() => {
   }
   function keysFrame(dt) {
     // rampe douce pour le clavier (sinon la poignée est tout ou rien)
-    const k = 1 - Math.exp(-dt * 6);
+    const k = 1 - Math.exp(-dt * 6), ol = kb.vl, or = kb.vr;
     kb.vl += (Math.max(kb.l, kb.both) - kb.vl) * k; kb.vr += (Math.max(kb.r, kb.both) - kb.vr) * k;
     if (kb.vl < 0.01 && !kb.l && !kb.both) kb.vl = 0; if (kb.vr < 0.01 && !kb.r && !kb.both) kb.vr = 0;
-    apply();
+    if (kb.vl !== ol || kb.vr !== or) apply(); // seulement si le clavier bouge (n'écrase pas les poignées tactiles)
   }
 
   function pause(b) {
@@ -179,17 +179,19 @@ const UI = (() => {
   // ---------- conseils (premières descentes) ----------
   function hintFor(r) {
     const p = r.p;
-    if (p.mode === 'ready') return 'Pose tes deux pouces sur l’écran, à gauche et à droite, pour t’élancer';
-    if (p.mode === 'ski' && !p.launched) return p.V > 8.5 ? 'Descends les deux pouces : tu tires les deux poignées et tu décolles' : 'Élan aux bâtons…';
+    if (p.mode === 'ready') return 'Pose tes deux pouces sur l’écran, à gauche et à droite : tu t’élances et tu sautes de la falaise';
+    if (p.mode === 'ski' && !p.launched) return 'Élan… la voile se gonfle, la falaise arrive';
     if (p.stall) return 'Décrochage ! Relâche les deux poignées';
     if ((S.save.runs || 0) > 3) return '';
-    if (p.mode === 'air' && p.airT < 5 && r.gate === 0) return 'Pouce droit vers le bas : tourne à droite · pouce gauche : à gauche · les deux : freine et remonte';
-    if (r.gate === 0) return 'Passe entre les piquets orange, sous la banderole';
+    if (p.mode === 'air' && p.airT < 4 && r.gate === 0) return 'Pouce droit vers le bas : tu vires à droite et tu te balances. Pouce gauche : à gauche';
+    const agl = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
+    if (p.mode === 'air' && agl > 22 && r.gate <= 2) return 'Trop haut ? Enchaîne les virages, gauche puis droite : la voile plonge vers la neige';
+    if (r.gate === 0) return 'Passe entre les piquets orange';
     const toCable = -p.pos.z - W.CABLE.s;
-    if (!r.cable && toCable > -130 && toCable < -15) return 'Télésiège devant : câble à 18 m, passe dessous en rasant la neige';
+    if (!r.cable && toCable > -150 && toCable < -15) return 'Télésiège devant : câble à 22 m. Descends en virant et passe dessous';
     if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
-    if (r.gate === 1 && r.gateOk === 1) return 'Mains hautes = pleine vitesse. Rase la neige : plus tu frôles vite, plus le combo grimpe';
-    if (r.gate === 2) return 'Un frein tenu à fond : la voile part en spirale et plonge. Pratique pour perdre de la hauteur';
+    if (r.gate === 1 && r.gateOk === 1) return 'Rase la neige : plus tu frôles vite, plus le combo grimpe';
+    if (r.gate === 3) return 'Alterne les freins au rythme du balancement : la voile s’incline de plus en plus (wingover)';
     return '';
   }
 

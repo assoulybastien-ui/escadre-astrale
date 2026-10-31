@@ -41,3 +41,21 @@ WORLD.heightAt = hgt; WORLD.windAt = wind;
 }
 { const C = WORLD.CABLE, x = WORLD.xc(C.s); console.log('câble : hauteur au centre', (WORLD.cableYAt(x) - WORLD.heightAt(x, C.z)).toFixed(1), 'm au-dessus du sol'); }
 console.log('portes (hauteur sol):', WORLD.GATES.map(g => g.s + 'm').join(' '));
+// pendule : un coup de frein droit puis relâché ; puis freins alternés au rythme du balancement (wingovers)
+{
+  WORLD.heightAt = () => -1e6; WORLD.windAt = () => ({ x: 0, y: 0, z: 0 });
+  const mk = () => { const p = F.create(); p.mode = 'air'; p.inflate = 1; p.launched = true; p.pos.y = 5000; p.vel = { x: 0, y: -5, z: -18 }; return p; };
+  const ev = [];
+  let p = mk(); for (let i = 0; i < 240; i++) F.step(p, { l: 0, r: 0 }, 1 / 120, ev);
+  let trace = [];
+  for (let i = 0; i < 120 * 5; i++) { F.step(p, i < 120 ? { l: 0, r: 0.7 } : { l: 0, r: 0 }, 1 / 120, ev); if (i % 30 === 0) trace.push((p.bank * 57.3).toFixed(0)); }
+  console.log('coup de frein droit 1 s puis relâché, inclinaison toutes les 0,25 s :', trace.join(' '));
+  p = mk(); for (let i = 0; i < 240; i++) F.step(p, { l: 0, r: 0 }, 1 / 120, ev);
+  let mx = 0; trace = [];
+  for (let i = 0; i < 120 * 8; i++) { const ph = Math.floor(i / 132) % 2; F.step(p, ph ? { l: 0.9, r: 0 } : { l: 0, r: 0.9 }, 1 / 120, ev); mx = Math.max(mx, Math.abs(p.bank)); if (i % 60 === 0) trace.push((p.bank * 57.3).toFixed(0)); }
+  console.log('freins alternés toutes les 1,1 s : inclinaison', trace.join(' '), '→ max', (mx * 57.3).toFixed(0), '°');
+  p = mk(); for (let i = 0; i < 240; i++) F.step(p, { l: 0, r: 0 }, 1 / 120, ev);
+  trace = [];
+  for (let i = 0; i < 120 * 4; i++) { F.step(p, i < 180 ? { l: 1, r: 1 } : { l: 0, r: 0 }, 1 / 120, ev); if (i % 30 === 0) trace.push((p.vel.y).toFixed(1)); }
+  console.log('les deux freins 1,5 s puis relâchés : vitesse verticale (m/s)', trace.join(' '));
+}

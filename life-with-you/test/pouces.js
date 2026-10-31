@@ -34,7 +34,9 @@ const fs = require('fs'), path = require('path');
   // vol : on laisse le bot décoller puis on reprend la main avec un virage à droite
   await page.evaluate(() => { window.__lwy.bot({}); for (let i = 0; i < 2000; i++) { window.__lwy.advance(1 / 30, 1, false); const p = window.__lwy.state().run.p; if (p.mode === 'air' && p.airT > 1.2 && -p.pos.z > 150) break; } window.__lwy.bot(null); });
   await touch('touchMove', [[150, 220, 1], [700, 230, 2]]);           // repères à neutre
-  await touch('touchMove', [[150, 220, 1], [700, 300, 2]]);           // frein droit ~70 %
+  await touch('touchMove', [[150, 220, 1], [700, 200, 2]]);           // pouce droit remonté : mains hautes
+  await page.evaluate(() => window.__lwy.advance(1 / 30, 45, false)); // la voile revient à plat
+  await touch('touchMove', [[150, 220, 1], [700, 270, 2]]);           // frein droit ~70 %
   await page.evaluate(() => window.__lwy.advance(1 / 30, 24, true));
   const st = await page.evaluate(() => { const p = window.__lwy.state().run.p; return { bank: p.bank * 57.3, mode: p.mode, bl: p.bl, br: p.br }; });
   console.log('virage :', JSON.stringify(st)); check(st.mode === 'air' && st.bank > 15, 'en vol, frein droit = la voile s\'incline à droite');

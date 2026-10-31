@@ -1,7 +1,7 @@
 // Déroulé d'une descente : élan, vol, score (proximité, portes, touch & go, frôlés, câble), crash, atterrissage noté.
 const GAME = (() => {
   const DT = 1 / 120, KEY = 'life-with-you-v2'; // v2 : commandes à deux poignées (anciens records effacés)
-  const MEDALS = [{ id: 'or', nom: 'Or', min: 20000 }, { id: 'argent', nom: 'Argent', min: 14000 }, { id: 'bronze', nom: 'Bronze', min: 8000 }];
+  const MEDALS = [{ id: 'or', nom: 'Or', min: 13000 }, { id: 'argent', nom: 'Argent', min: 8000 }, { id: 'bronze', nom: 'Bronze', min: 4000 }];
   const S = { screen: 'title', run: null, acc: 0, input: { l: 0, r: 0, go: false }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
 
   function load() {

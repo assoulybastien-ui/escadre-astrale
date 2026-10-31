@@ -188,7 +188,7 @@ body {
 
 <section id="scrTitle" class="screen">
   <div class="panel title-panel">
-    <p class="eyebrow">Speed riding · prototype 0.2</p>
+    <p class="eyebrow">Speed riding · prototype 0.3</p>
     <h1 class="logo">Life With You</h1>
     <div class="course">
       <div class="course-name" id="tCourse">Couloir des Aiguilles</div>
@@ -301,15 +301,16 @@ const WORLD = (() => {
   const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   // ---------- Profil de la ligne de pente : tangente de la pente selon s ----------
-  // départ à skis (~17°), face (~29°), barre rocheuse (~12 m, contournable à droite), replat, couloir (~20°), ressaut, bosses, forêt, prairie.
-  // La voile plane à ~20° mains hautes : on rase en vol droit, on coupe les passages plus raides en virant.
-  const SLOPE = [[-700, 0.05], [-140, 0.03], [-78, 0.06], [-64, 0.30], [0, 0.32], [25, 0.55], [140, 0.55],
-    [146, 0.26], [250, 0.26], [270, 0.37], [385, 0.37], [400, 0.58], [425, 0.58], [440, 0.34], [510, 0.34], [650, 0.28], [710, 0.12],
-    [770, 0.04], [990, 0.025], [1120, 0], [3400, 0]];
+  // départ : on s'élance sur un replat et on saute d'une falaise de ~28 m ; face (~27°), barre rocheuse (10 m,
+  // contournable à droite), tablier (~23°), couloir (~20°), ressaut, grande pente (~24°), forêt, prairie d'atterrissage.
+  // La voile plane à ~20° mains hautes : en vol droit on s'écarte de la pente ; pour la frôler, on enchaîne les virages.
+  const SLOPE = [[-700, 0.05], [-140, 0.03], [-60, 0.06], [-40, 0.12], [-1, 0.12], [0, 5.0], [5, 5.0], [6, 0.52], [150, 0.5],
+    [160, 0.44], [240, 0.42], [255, 0.37], [395, 0.37], [405, 0.65], [428, 0.65], [440, 0.45], [560, 0.45], [600, 0.38], [660, 0.22],
+    [700, 0.1], [740, 0.045], [900, 0.02], [1000, 0], [3400, 0]];
   // Couloir de la descente : [s, demi-largeur ouverte, hauteur des parois, largeur des parois, pente des flancs]
-  const CORR = [[-700, 90, 0, 30, 0.22], [-70, 80, 0, 30, 0.25], [0, 130, 0, 30, 0.3], [205, 140, 0, 30, 0.3], [245, 44, 40, 22, 0.35],
-    [275, 30, 58, 16, 0.42], [385, 30, 58, 16, 0.42], [435, 85, 8, 30, 0.3], [560, 92, 0, 30, 0.28], [600, 72, 0, 30, 0.24],
-    [740, 72, 0, 30, 0.2], [800, 190, 0, 40, 0.12], [1090, 230, 0, 40, 0.08], [1240, 700, 0, 40, 0.04], [3400, 700, 0, 40, 0.04]];
+  const CORR = [[-700, 90, 0, 30, 0.22], [-45, 60, 0, 30, 0.25], [12, 150, 0, 30, 0.3], [210, 150, 0, 30, 0.3], [238, 54, 34, 22, 0.35],
+    [262, 44, 46, 16, 0.42], [392, 44, 46, 16, 0.42], [440, 110, 6, 30, 0.3], [560, 110, 0, 30, 0.28], [595, 75, 0, 30, 0.24],
+    [690, 75, 0, 30, 0.2], [745, 200, 0, 40, 0.12], [1000, 230, 0, 40, 0.08], [1150, 700, 0, 40, 0.04], [3400, 700, 0, 40, 0.04]];
 
   function lin(pts, s, k) {
     if (s <= pts[0][0]) return pts[0][k];
@@ -329,16 +330,16 @@ const WORLD = (() => {
   (() => {
     let h = 0;
     for (let i = 0; i < prof.length; i++) { prof[i] = h; h -= lin(SLOPE, S0 + i + 0.5, 1); }
-    const ref = prof[1120 - S0];
+    const ref = prof[1000 - S0];
     for (let i = 0; i < prof.length; i++) prof[i] -= ref;
   })();
   function P(s) { const f = clamp(s - S0, 0, prof.length - 1.0001), i = f | 0; return prof[i] + (prof[i + 1] - prof[i]) * (f - i); }
   // Ligne médiane de la descente (légers méandres)
   function xc(s) {
-    const m = sstep(-260, -120, s) * (1 - sstep(690, 830, s));
+    const m = sstep(-260, -120, s) * (1 - sstep(640, 780, s));
     return m * (26 * Math.sin(s / 185 + 0.3) + 9 * Math.sin(s / 79 + 1.1));
   }
-  const LAND = { s: 735, x: xc(735), z: -735, r: 90 };
+  const LAND = { s: 750, x: xc(750), z: -750, r: 90 };
 
   // ---------- Relief analytique ----------
   function hRaw(x, z) {
@@ -349,23 +350,23 @@ const WORLD = (() => {
     // parois rocheuses du couloir
     if (wallH > 0.5) { const k = sstep(0, wallW, e); h += k * (wallH * (1 + 0.22 * ridged(nB, x / 24, s / 24, 3)) + 5 * (ridged(nE, x / 10, s / 10, 2) - 0.45)); }
     // massifs latéraux
-    const sm = sstep(240, 760, a) * (1 - sstep(940, 1290, s));
+    const sm = sstep(240, 760, a) * (1 - sstep(880, 1200, s));
     if (sm > 0) h += sm * (360 + 720 * ridged(nB, x / 640, s / 640, 4));
     // sommet derrière le départ
     const bk = sstep(130, 560, -s);
     if (bk > 0) h += bk * (320 + 560 * ridged(nC, x / 520, s / 520, 4));
     // massif d'en face, de l'autre côté de la vallée
-    const op = sstep(1540, 2890, s);
+    const op = sstep(1450, 2800, s);
     if (op > 0) h += op * (1150 + 950 * ridged(nD, x / 820, s / 820, 5));
     // ondulations (gommées autour de la cible)
     const dT = Math.hypot(x - LAND.x, s - LAND.s), m = sstep(75, 150, dT);
     h += m * ((4.5 + 2.5 * sstep(w * 0.6, w + 20, a)) * fbm(nA, x / 150, s / 150, 3) + 1.4 * fbm(nC, x / 34, s / 34, 2));
     // bosses (rouleaux) au milieu de la descente
-    const rw = sstep(410, 470, s) * (1 - sstep(530, 590, s)) * (1 - sstep(w * 0.7, w + 10, a));
+    const rw = sstep(440, 480, s) * (1 - sstep(540, 580, s)) * (1 - sstep(w * 0.7, w + 10, a));
     if (rw > 0) h += rw * 3.3 * Math.sin(s * 0.131 + 0.9 * Math.sin(x / 40));
-    // barre rocheuse de 12 m à gauche et au centre ; à droite, une rampe de neige plus raide
+    // barre rocheuse de 10 m à gauche et au centre ; à droite, une rampe de neige plus raide
     const mk = 1 - sstep(8, 42, u);
-    h -= 12 * (mk * sstep(131, 135, s) + (1 - mk) * sstep(105, 170, s));
+    h -= 10 * (mk * sstep(160, 164, s) + (1 - mk) * sstep(135, 200, s));
     // pointements rocheux dans la face
     const fw = sstep(15, 60, s) * (1 - sstep(215, 255, s)) * sstep(55, 90, a);
     if (fw > 0) h += fw * 11 * Math.max(0, ridged(nD, x / 55, s / 55, 3) - 0.6);
@@ -398,7 +399,7 @@ const WORLD = (() => {
 
   // ---------- Départ ----------
   const START = (() => {
-    const s = -50, x = xc(s), z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
+    const s = -25, x = xc(s), z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
     return { s, x, z, y: heightAt(x, z), dx: d / l, dz: -1 / l };
   })();
 
@@ -417,14 +418,14 @@ const WORLD = (() => {
   function nearChalet(x, z, m) { for (const c of CHALETS) if (Math.hypot(x - c.x, z - c.z) < Math.max(c.w, c.d) / 2 + m) return true; return false; }
 
   // ---------- Télésiège qui traverse la descente ----------
-  const CABLE = { s: 485, z: -485, pylons: [], segs: [], chairs: [], lines: [] };
+  const CABLE = { s: 505, z: -505, pylons: [], segs: [], chairs: [], lines: [] };
   (() => {
     const PU = [-230, -48, 48, 230];
     const gc = heightAt(xc(CABLE.s), CABLE.z), sagIn = 0.032 * (PU[2] - PU[1]);
     for (const pu of PU) {
       const x = xc(CABLE.s) + pu, y = heightAt(x, CABLE.z) - 0.5;
-      // pylônes du milieu : le câble passe à ~18 m au-dessus du fond de la combe
-      const h = Math.abs(pu) < 100 ? clamp(gc + 18 + sagIn - y, 8, 26) : 15;
+      // pylônes du milieu : le câble passe à ~22 m au-dessus du fond de la combe
+      const h = Math.abs(pu) < 100 ? clamp(gc + 22 + sagIn - y, 8, 30) : 15;
       CABLE.pylons.push({ x, y, z: CABLE.z, h });
     }
     for (const off of [-2.2, 2.2]) {
@@ -459,10 +460,10 @@ const WORLD = (() => {
   }
 
   // ---------- Portes (piquets orange) ----------
-  const GATES = [[40, -18], [112, 52], [290, -8], [360, 10], [445, -32], [525, -26], [590, 20], [655, 2]].map(([s, du]) => {
+  const GATES = [[65, -22], [150, 28], [232, -10], [320, 8], [460, 30], [545, -20], [625, 18], [695, 2]].map(([s, du]) => {
     const x = xc(s) + du, z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
     const nx = d / l, nz = -1 / l;
-    return { s, x, z, y: heightAt(x, z), nx, nz, tx: -nz, tz: nx, hw: 8, h: 14 };
+    return { s, x, z, y: heightAt(x, z), nx, nz, tx: -nz, tz: nx, hw: 10, h: 30 };
   });
 
   LAND.from = GATES[GATES.length - 1].s + 3; // un contact au-delà compte comme atterrissage
@@ -478,15 +479,15 @@ const WORLD = (() => {
     if (nearChalet(px, pz, 9)) continue;
     const g = grad(px, pz);
     if (Math.hypot(g[0], g[1]) > 0.78) continue;
-    let dens = 0.22 + 0.78 * sstep(300, 520, ps);
+    let dens = 0.22 + 0.78 * sstep(380, 580, ps);
     dens *= sstep(-0.45, 0.2, fbm(nA, px / 110, ps / 110, 2));
-    dens *= 1 - 0.6 * sstep(1090, 1210, ps);
+    dens *= 1 - 0.6 * sstep(1000, 1120, ps);
     if (rnd() > dens * 0.8) continue;
     const h = 8 + rnd() * 10;
     TX.push(px); TZ.push(pz); TY.push(heightAt(px, pz) - 0.2); TH.push(h); TR.push(h * (0.21 + rnd() * 0.06));
   }
   // sapins isolés dans le couloir de la forêt : il faut slalomer
-  for (let ps = 532; ps < 725; ps += 9) {
+  for (let ps = 600; ps < 690; ps += 9) {
     for (let k = 0; k < 3; k++) {
       if (rnd() > 0.32) continue;
       const w = smooth(CORR, ps, 1), px = xc(ps) + (rnd() * 2 - 1) * (w - 6), pz = -ps + (rnd() - 0.5) * 8;
@@ -515,7 +516,7 @@ const WORLD = (() => {
   // ---------- Rochers isolés ----------
   const ROCKS = [];
   for (let k = 0; k < 600 && ROCKS.length < 140; k++) {
-    const ps = 20 + rnd() * 680, sd = rnd() < 0.5 ? -1 : 1, w = smooth(CORR, ps, 1);
+    const ps = 20 + rnd() * 640, sd = rnd() < 0.5 ? -1 : 1, w = smooth(CORR, ps, 1);
     const px = xc(ps) + sd * w * (0.4 + rnd() * 0.85), pz = -ps;
     if (GATES.some(g => Math.hypot(g.x - px, g.z - pz) < 22)) continue;
     if (Math.abs(ps - CABLE.s) < 10) continue;
@@ -603,7 +604,12 @@ const FLIGHT = (() => {
   // Voile de speed riding de 9,5 m², trims ouverts : ~71 km/h mains hautes (finesse ~2,7), finesse max ~3,1 freins à moitié,
   // ~45 km/h freins à fond ; virage freiné jusqu'à ~50° d'inclinaison, spirale jusqu'à ~72° (~95 km/h, 2,5 g)
   const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankSpiral: 72 * Math.PI / 180,
-    tauCL: 0.32, tauBank: 0.55, tauHand: 0.1, nMax: 3.2, stallV: 10.2 };
+    tauHand: 0.1, nMax: 3.2, stallV: 10.2,
+    // la voile s'incline vite sous le frein (~0,4 s) ; le pilote se balance dessous (pendule ~2,2 s, peu amorti)
+    // et entraîne un peu la voile : en alternant les freins au bon rythme, on enchaîne des wingovers
+    tauBank: 0.4, rollK: 8.2, rollC: 1.0, swingPull: 0.55, bankLim: 83 * Math.PI / 180,
+    // pendule en tangage : tirer = la voile cabre et dépasse (ressource), relâcher = elle plonge (abattée)
+    pitchK: 26, pitchC: 4.6 };
   const MU_SKI = 0.055, MU_STOP = 0.35, PILOT_CDA = 0.5;
   // géométrie (m, au-dessus des pieds) : mousquetons, centre de la voile, bouts d'aile
   const GEO = { carab: 1.35, lineLen: 5.6, halfAngle: 40 * Math.PI / 180 };
@@ -620,7 +626,7 @@ const FLIGHT = (() => {
       cl: WING.clTrim, bank: 0, inflate: 0, mode: 'ready', launched: false,
       up: { x: 0, y: 1, z: 0 }, upV: { x: 0, y: 0, z: 0 }, fwd: { x: S.dx, y: 0, z: S.dz }, right: { x: -S.dz, y: 0, z: S.dx },
       aero: { x: 0, y: 0, z: 0 }, t: 0, stopT: 0, groundT: 0, airT: 0, crashT: 0, V: 0, gload: 1, vn: 0, inp: { l: 0, r: 0 },
-      bl: 0, br: 0, spiralT: 0, stall: false, stallT: 0, departT: 0,
+      bl: 0, br: 0, spiralT: 0, stall: false, stallT: 0, departT: 0, bankV: 0, clV: 0, swing: 0, swingV: 0,
       spin: { x: 0, y: 0, z: 0 }, tumble: { x: 0, y: 0, z: 0 }, reason: ''
     };
   }
@@ -637,12 +643,23 @@ const FLIGHT = (() => {
     // part commune des deux freins (plus de CL) et différence (virage)
     const sym = Math.min(p.bl, p.br) + 0.35 * Math.abs(p.br - p.bl), dif = p.br - p.bl;
     const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15);
-    p.cl += (clT - p.cl) * (1 - Math.exp(-dt / WING.tauCL));
+    // incidence en pendule : elle dépasse sa consigne puis revient
+    p.clV += ((clT - p.cl) * WING.pitchK - p.clV * WING.pitchC) * dt;
+    p.cl = Math.min(1.32, Math.max(0.24, p.cl + p.clV * dt));
     // un frein tenu fort plus d'une seconde : la voile part en spirale
     if (p.mode === 'air' && Math.abs(dif) > 0.75) p.spiralT += dt; else p.spiralT = Math.max(0, p.spiralT - dt * 2);
     const spiral = Math.min(1, Math.max(0, (p.spiralT - 1) / 2));
     const bankT = p.mode === 'air' ? dif * (WING.bankMax + (WING.bankSpiral - WING.bankMax) * spiral) : 0;
-    p.bank += (bankT - p.bank) * (1 - Math.exp(-dt / WING.tauBank));
+    if (p.mode === 'air') {
+      // pilote : pendule qui suit l'inclinaison de la voile avec retard, la dépasse et revient
+      p.swingV += ((p.bank - p.swing) * WING.rollK - p.swingV * WING.rollC) * dt;
+      p.swing = Math.max(-WING.bankLim, Math.min(WING.bankLim, p.swing + p.swingV * dt));
+      // voile : rejoint vite la consigne des freins, tirée en plus par le poids du pilote qui se balance
+      const b0 = p.bank;
+      p.bank += (bankT + WING.swingPull * (p.swing - p.bank) - p.bank) * (1 - Math.exp(-dt / WING.tauBank));
+      p.bank = Math.max(-WING.bankLim, Math.min(WING.bankLim, p.bank));
+      p.bankV = (p.bank - b0) / dt;
+    } else { p.bank *= Math.exp(-dt * 6); p.swing *= Math.exp(-dt * 6); p.bankV = 0; p.swingV = 0; }
 
     if (p.mode === 'ready') {
       frame(p, dt);
@@ -658,7 +675,7 @@ const FLIGHT = (() => {
     p.V = Math.hypot(p.vel.x, p.vel.y, p.vel.z);
     // gonflage de la voile pendant l'élan, dégonflage à l'arrêt
     if (p.mode === 'landing') p.inflate = Math.max(0, p.inflate - dt * 0.8);
-    else if (p.inflate < 1 && V > 3) p.inflate = Math.min(1, p.inflate + dt * (0.3 + V * 0.06));
+    else if (p.inflate < 1 && V > 2.5) p.inflate = Math.min(1, p.inflate + dt * (0.5 + V * 0.09));
     const inf = p.inflate * p.inflate;
     const q = 0.5 * RHO * V * V;
     // décrochage : freins à fond alors que la voile est trop lente ; on en sort en relâchant les freins
@@ -721,12 +738,20 @@ const FLIGHT = (() => {
           vx = vx * c + cx * s; vy = vy * c + cy * s; vz = vz * c + cz * s;
         }
         p.vel.x = vx; p.vel.y = vy; p.vel.z = vz;
+        // le sol se dérobe-t-il ? si le relief 3 m devant tombe plus vite qu'une chute libre (portance comprise), on s'envole
+        let envol = false;
+        const vhz = Math.hypot(vx, vz);
+        if (p.mode === 'ski' && p.inflate > 0.6 && vhz > 5) {
+          const tt = 3 / vhz, gEff = Math.max(0, -fy / M);
+          const yb = p.pos.y + vy * tt - 0.5 * gEff * tt * tt;
+          envol = w.heightAt(p.pos.x + vx / vhz * 3, p.pos.z + vz / vhz * 3) < yb - 0.06;
+        }
         const ny2 = p.pos.y + vy * dt;
         p.pos.x += vx * dt; p.pos.z += vz * dt;
         const hT = w.heightAt(p.pos.x, p.pos.z);
-        if (p.mode === 'ski' && p.inflate > 0.6 && ny2 > hT + 0.08 && Math.hypot(vx, vy, vz) > 8) {
-          // le sol se dérobe (bord de barre, bosse) : on s'envole
-          p.pos.y = ny2; p.mode = 'air'; p.airT = 0;
+        if (envol) {
+          // bord de falaise, de barre, bosse : on s'envole
+          p.pos.y = Math.max(ny2, hT); p.mode = 'air'; p.airT = 0;
           ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT, airBefore: p.lastAirT || 0 });
           p.launched = true;
           frame(p, dt);
@@ -736,7 +761,7 @@ const FLIGHT = (() => {
         const sp2 = Math.hypot(vx, vy, vz);
         if (sp2 > 0.5) { p.dir.x = vx / sp2; p.dir.z = vz / sp2; const l = Math.hypot(p.dir.x, p.dir.z); p.dir.x /= l; p.dir.z /= l; }
         p.stopT = sp2 < 0.8 ? p.stopT + dt : 0;
-        if (w.surfaceAt(p.pos.x, p.pos.z) === 'rock' && sp2 > 3) return crash(p, 'Rocher', ev);
+        if (sp2 > 3 && w.surfaceAt(p.pos.x, p.pos.z) === 'rock' && w.surfaceAt(p.pos.x + vx * 0.15, p.pos.z + vz * 0.15) === 'rock') return crash(p, 'Rocher', ev);
         // entrée à skis dans la prairie : l'atterrissage est noté au point d'entrée
         if (p.mode === 'ski' && p.launched && -p.pos.z > w.LAND.from) {
           p.mode = 'landing';
@@ -759,6 +784,14 @@ const FLIGHT = (() => {
       const vn = -(p.vel.x * n.x + p.vel.y * n.y + p.vel.z * n.z);
       p.vn = vn;
       if (w.surfaceAt(p.pos.x, p.pos.z) === 'rock') { p.pos.y = hg; return crash(p, 'Rocher', ev); }
+      // juste après l'envol, frottement léger sur la neige : on reste en vol (pas de faux contacts à l'arête)
+      if (p.airT < 0.3 && vn < 1.5 && -p.pos.z <= w.LAND.from) {
+        p.pos.y = hg;
+        const dn = p.vel.x * n.x + p.vel.y * n.y + p.vel.z * n.z;
+        if (dn < 0) { p.vel.x -= n.x * dn; p.vel.y -= n.y * dn; p.vel.z -= n.z * dn; }
+        frame(p, dt);
+        return;
+      }
       if (vn > 7) { p.pos.y = hg; return crash(p, 'Impact trop dur', ev); }
       if (Math.abs(p.bank) > 0.8) { p.pos.y = hg; return crash(p, 'Carre accrochée', ev); }
       p.pos.y = hg;
@@ -806,7 +839,7 @@ const FLIGHT = (() => {
       const l = Math.hypot(tx, ty, tz); tx /= l; ty /= l; tz /= l;
     }
     // ressort amorti : léger dépassement, comme un pendule
-    const k = 38, c = 7.5, u = p.up, uv = p.upV;
+    const k = 24, c = 4.2, u = p.up, uv = p.upV;
     uv.x += ((tx - u.x) * k - uv.x * c) * dt; uv.y += ((ty - u.y) * k - uv.y * c) * dt; uv.z += ((tz - u.z) * k - uv.z * c) * dt;
     u.x += uv.x * dt; u.y += uv.y * dt; u.z += uv.z * dt;
     const ul = Math.hypot(u.x, u.y, u.z); u.x /= ul; u.y /= ul; u.z /= ul;
@@ -865,7 +898,7 @@ const FLIGHT = (() => {
 // Déroulé d'une descente : élan, vol, score (proximité, portes, touch & go, frôlés, câble), crash, atterrissage noté.
 const GAME = (() => {
   const DT = 1 / 120, KEY = 'life-with-you-v2'; // v2 : commandes à deux poignées (anciens records effacés)
-  const MEDALS = [{ id: 'or', nom: 'Or', min: 20000 }, { id: 'argent', nom: 'Argent', min: 14000 }, { id: 'bronze', nom: 'Bronze', min: 8000 }];
+  const MEDALS = [{ id: 'or', nom: 'Or', min: 13000 }, { id: 'argent', nom: 'Argent', min: 8000 }, { id: 'bronze', nom: 'Bronze', min: 4000 }];
   const S = { screen: 'title', run: null, acc: 0, input: { l: 0, r: 0, go: false }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
 
   function load() {
@@ -1066,11 +1099,17 @@ const GAME = (() => {
 
 
 // Pilote automatique (deux freins, comme le joueur) : tests, vidéos, réglage des médailles. Jamais actif en vraie partie.
+// À chaque instant il essaie plusieurs caps, mesure la marge avec le relief, les parois et les obstacles sur ~40 m,
+// et choisit le cap le plus proche de son objectif qui reste sûr. Trop haut : virages en S pour descendre vers la neige.
 const BOT = (() => {
   const wrap = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const CANDS = [-1.1, -0.8, -0.55, -0.35, -0.18, 0, 0.18, 0.35, 0.55, 0.8, 1.1];
   function make(opts = {}) {
-    const target = opts.agl || 5;
+    // réglage par défaut issu d'un balayage (8/8 portes, sans crash) : gain 1,6, amortissement 0,3, virages en S jusqu'à 40 m des portes
+    const target = opts.agl || 3, gain = opts.gain || 1.6;
+    if (opts.kd === undefined) opts.kd = 0.3;
+    if (opts.weaveDist === undefined) opts.weaveDist = 40;
     return function (r) {
       const p = r.p, W = WORLD;
       if (p.mode === 'ready') return { l: 0, r: 0, go: true };
@@ -1083,51 +1122,70 @@ const BOT = (() => {
         const back = Math.min(40, Math.max(0, -along * 0.4));
         tx = g.x - g.nx * back; tz = g.z - g.nz * back;
       } else { tx = W.LAND.x; tz = W.LAND.z; }
-      // trop haut : grands virages en S (en restant dans le couloir)
-      const hg0 = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
-      const along0 = g ? (g.x - p.pos.x) * g.nx + (g.z - p.pos.z) * g.nz : 0;
-      if (g && hg0 > target + 8 && along0 > 70 && opts.weave !== false) {
-        const sAhead = -p.pos.z + 45, c = W.xc(sAhead), half = W.smooth(W.CORR, sAhead, 1);
-        const amp = Math.max(0, Math.min(70, half - 24));
-        tx = c + amp * Math.sign(Math.sin(r.t * 0.42 + 0.5)); tz = -sAhead;
+      const vh = Math.hypot(p.vel.x, p.vel.z) || 1;
+      const hd = Math.atan2(p.vel.x, -p.vel.z);
+      let wantH = Math.atan2(tx - p.pos.x, -(tz - p.pos.z));
+      if (g) {
+        // suivre l'axe de la porte : rejoindre la ligne qui la traverse bien avant d'y arriver
+        const lat = (p.pos.x - g.x) * g.tx + (p.pos.z - g.z) * g.tz, along = (p.pos.x - g.x) * g.nx + (p.pos.z - g.z) * g.nz;
+        wantH = Math.atan2(g.nx, -g.nz) - Math.atan2(lat, Math.max(22, -along * 0.55));
       }
-      const hd = Math.atan2(p.vel.x, -p.vel.z), want = Math.atan2(tx - p.pos.x, -(tz - p.pos.z));
-      let turn = clamp(wrap(want - hd) * (opts.gain || 0.9), -1, 1);
-      // évitement des obstacles devant soi (sapins, rochers, pylônes) : on part du côté libre
-      const vh = Math.hypot(p.vel.x, p.vel.z) || 1, fx = p.vel.x / vh, fz = p.vel.z / vh;
-      const blocked = (qx, qy, qz) => W.hit(qx, qy + 1, qz, 2.5) || W.hit(qx, qy + 6, qz, 2.5);
-      for (const d of [8, 14, 20, 27, 35]) {
-        const qx = p.pos.x + fx * d, qz = p.pos.z + fz * d, qy = p.pos.y + p.vel.y * d / vh;
-        if (blocked(qx, qy, qz)) {
-          const freeR = !blocked(qx - fz * 7, qy, qz + fx * 7), freeL = !blocked(qx + fz * 7, qy, qz - fx * 7);
-          const dirn = freeR && !freeL ? 1 : freeL && !freeR ? -1 : (turn >= 0 ? 1 : -1);
-          turn = clamp(turn + dirn * 1.5 * (1 - d / 45), -1, 1);
-          break;
-        }
-      }
-      if (p.mode === 'ski') { const b = p.launched ? (p.V > 13 ? 0.7 : 0) : (p.V > 11.5 ? 1 : 0); return { l: clamp(b + Math.max(0, -turn), 0, 1), r: clamp(b + Math.max(0, turn), 0, 1) }; }
-      let wantAgl = target;
-      if (r.gate >= W.GATES.length - 2) wantAgl = Math.max(wantAgl, 6);
+      // hauteur au-dessus de la neige
+      const agl0 = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
       const toCable = -p.pos.z - W.CABLE.s;
-      if (toCable > -90 && toCable < 4) wantAgl = opts.underCable === false ? 24 : 2.5;
-      // marge prévue le long de la trajectoire face au relief à venir
-      let agl = 1e9;
-      for (const d of [0, 4, 8, 13, 19]) {
-        const yy = p.pos.y + p.vel.y * (d / vh), h = W.heightAt(p.pos.x + fx * d, p.pos.z + fz * d);
-        agl = Math.min(agl, yy - h - d * 0.03);
+      const nearCable = toCable > -160 && toCable < 4; // passer sous le câble : être bas bien avant
+      const distGate = g ? Math.hypot(tx - p.pos.x, tz - p.pos.z) : 0;
+      // beaucoup trop haut et loin de la porte : spirale (un frein tenu) jusqu'à revenir près de la neige, face à la porte
+      const errG = wrap(wantH - hd);
+      if (r.spiral) {
+        r.spiral.turned += Math.abs(p.bankV) > 0 ? Math.abs(wrap(hd - r.spiral.last)) : 0; r.spiral.last = hd;
+        if (agl0 < target + 12 || r.spiral.turned > 4 * Math.PI || (g && distGate < 60)) r.spiral = null;
+      } else if (g && opts.weave !== false && agl0 > target + 16 && distGate > 75 && p.mode === 'air' && W.smooth(W.CORR, -p.pos.z, 1) > 100) {
+        r.spiral = { dir: errG >= 0 ? 1 : -1, last: hd, turned: 0 };
       }
-      // trop bas : les deux freins (ressource) ; jamais trop lent (décrochage)
-      // freiner seulement si la trajectoire mène franchement trop bas (les freins coûtent de la vitesse)
-      // freins : seulement si la trajectoire va toucher (ressource) ; sinon mains hautes pour garder la vitesse
-      let sym = p.V > 13 ? clamp(((opts.floor || 0.4) - agl) * 0.5, 0, 0.6) : 0;
-      if (agl > wantAgl + 6 && p.V > 16) sym = 0;
+      // un peu trop haut : virages en S (± 40°), sauf à l'approche d'une porte
+      // un peu trop haut : on « carve », incliné d'un côté puis de l'autre (la chute augmente beaucoup en virage)
+      const excess = agl0 - (nearCable ? 2 : target);
+      const carve = !r.spiral && g && opts.weave !== false && excess > 4 && (distGate > (opts.weaveDist || 45) || (nearCable && toCable < -25));
+      const carveBank = carve ? Math.min(0.9, 0.35 + excess / 30) * Math.min(1, W.smooth(W.CORR, -p.pos.z, 1) / 70) : 0;
+      // évaluer chaque cap candidat
+      let best = null;
+      for (const c of CANDS) {
+        const h = hd + c, dx = Math.sin(h), dz = -Math.cos(h);
+        let minC = 99;
+        for (const d of [5, 10, 16, 24, 33, 43]) {
+          const yy = p.pos.y + p.vel.y * (d / vh), qx = p.pos.x + dx * d, qz = p.pos.z + dz * d;
+          minC = Math.min(minC, yy - W.heightAt(qx, qz));
+          // parois : relief à 5 m de part et d'autre (bouts de voile)
+          minC = Math.min(minC, yy - W.heightAt(qx - dz * 5, qz + dx * 5) + 2.5, yy - W.heightAt(qx + dz * 5, qz - dx * 5) + 2.5);
+          if (W.hit(qx, yy + 1, qz, 2.2) || W.hit(qx, yy + 6, qz, 2.6)) minC = Math.min(minC, -4);
+        }
+        const score = -Math.abs(wrap(wantH - h)) * 2.2 + (minC < 2.5 ? (minC - 2.5) * 2.5 : 0) + Math.min(minC, 8) * 0.05 - Math.abs(c) * 0.3;
+        if (!best || score > best.score) best = { c, score, minC };
+      }
+      // inclinaison voulue, puis correction qui amortit le balancement
+      // amortir aussi la rotation (sinon le cap dépasse sa cible à cause du balancement)
+      const yawRate = 9.81 * Math.tan(p.bank) / Math.max(8, p.V);
+      let bankWant = clamp(gain * (best.c - (opts.kd || 0.9) * yawRate), -0.9, 0.9);
+      if (carveBank > 0 && best.minC > 4) {
+        // alterner de côté quand le cap s'écarte trop de l'objectif (S autour de la ligne vers la porte)
+        const off = wrap(hd - wantH);
+        if (!r.carveDir || (r.carveDir > 0 && off > 0.55) || (r.carveDir < 0 && off < -0.55)) r.carveDir = off > 0 ? -1 : 1;
+        bankWant = r.carveDir * carveBank;
+      } else r.carveDir = 0;
+      if (r.spiral) { if (best.minC > 6) bankWant = r.spiral.dir * 1.25; else r.spiral = null; }
+      let turn = clamp(bankWant / FLIGHT.WING.bankMax + (bankWant - p.bank) * 0.6, -1, 1);
+      // freins communs : ressource si tout mène trop bas, arrondi en finale
+      let sym = p.V > 13 && best.minC < 1.2 ? clamp((1.2 - best.minC) * 0.4, 0, 0.7) : 0;
       if (p.stall) return { l: 0, r: 0 };
+      if (p.mode === 'ski') { const b = p.launched ? (p.V > 13 ? 0.7 : 0) : (p.V > 11.5 ? 1 : 0); return { l: clamp(b + Math.max(0, -turn), 0, 1), r: clamp(b + Math.max(0, turn), 0, 1) }; }
       if (!g) {
         // finale : planer vers la cible puis arrondir juste avant le contact
-        const aglG = p.pos.y - W.heightAt(p.pos.x, p.pos.z), dl = Math.hypot(tx - p.pos.x, tz - p.pos.z);
-        sym = (dl < 14 || (aglG < 2.2 && p.vel.y < -1.5)) ? 1 : (aglG > dl / 3 + 4 ? 0 : 0.15);
-        if (aglG > dl / 3 + 4 && dl > 60) turn = clamp(turn + 0.6 * Math.sign(Math.sin(r.t * 0.5)), -1, 1);
+        const dl = Math.hypot(tx - p.pos.x, tz - p.pos.z);
+        sym = (dl < 14 || (agl0 < 2.2 && p.vel.y < -1.5)) ? 1 : 0.1;
+        if (agl0 > dl / 3 + 5 && dl > 60) turn = clamp(turn + 0.7 * Math.sign(Math.sin(r.t * 1.2)), -1, 1);
       }
+      r.botDbg = { c: best.c, minC: best.minC, bankWant, turn, wantH, hd };
       return { l: clamp(sym + Math.max(0, -turn), 0, 1), r: clamp(sym + Math.max(0, turn), 0, 1) };
     };
   }
@@ -1695,7 +1753,11 @@ const R3D = (() => {
     const ground = p.mode === 'ski' || p.mode === 'landing' || p.mode === 'stopped';
     const kneel = ground ? 0.18 + Math.min(0.25, p.V / 60) : 0.08;
     for (const l of pilot.legs) { l.hip.rotation.x = -kneel; l.ski.rotation.x = kneel; }
-    pilot.body.position.y = ground ? -kneel * 0.4 : 0;
+    // le pilote se balance sous la voile : rotation autour des mousquetons (écart entre voile et pilote)
+    const sw = p.mode === 'air' ? clamp(p.bank - p.swing, -0.7, 0.7) : 0, P = G.carab;
+    pilot.body.rotation.z = sw;
+    pilot.body.position.set(P * Math.sin(sw), P - P * Math.cos(sw) + (ground ? -kneel * 0.4 : 0), 0);
+    pilot.body.updateMatrix();
     // suspentes de frein : de chaque main aux points du bord de fuite de son côté
     const show = !crash && p.inflate > 0.8;
     pilot.brakes.visible = show;
@@ -1703,9 +1765,10 @@ const R3D = (() => {
       pilot.wingPivot.updateMatrix();
       const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te;
       for (let k = 0; k < te.length; k++) {
-        const q = te[k], side = q.t > 0 ? 1 : 0, hand = pilot.arms[side].hand.position, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+        const q = te[k], side = q.t > 0 ? 1 : 0, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+        const hand = _y.copy(pilot.arms[side].hand.position).applyMatrix4(pilot.body.matrix);
         _x.set(q.ex * (G.lineLen - b), q.ey * (G.lineLen - b), q.z - b * 0.25).applyMatrix4(pilot.wingPivot.matrix);
-        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y + pilot.body.position.y; arr[k * 6 + 2] = hand.z;
+        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y; arr[k * 6 + 2] = hand.z;
         arr[k * 6 + 3] = _x.x; arr[k * 6 + 4] = _x.y; arr[k * 6 + 5] = _x.z;
       }
       pilot.brakes.geometry.attributes.position.needsUpdate = true;
@@ -1720,11 +1783,13 @@ const R3D = (() => {
     const low = p.mode === 'air' ? 0 : 1 - clamp(p.inflate * 1.15, 0, 1);
     const V = p.V, back = 10.5 + clamp((V - 14) * 0.1, 0, 2.2) + low * 1.5, up = 2.9 + low * 4.2;
     const cg = Math.cos(gam), sg = Math.sin(gam);
-    _v.set(p.pos.x - hx * cg * back, p.pos.y - sg * back + up, p.pos.z - hz * cg * back);
+    // la caméra suit plutôt la voile : en virage, on voit le pilote partir sous elle et revenir
+    const air = p.mode === 'air' ? 1 : 0, ox = p.up.x * 4 * air, oz = p.up.z * 4 * air;
+    _v.set(p.pos.x - hx * cg * back + ox, p.pos.y - sg * back + up, p.pos.z - hz * cg * back + oz);
     const k = snap ? 1 : 1 - Math.exp(-dt * 4.5);
     cam.pos.lerp(_v, k);
     const hg = W.heightAt(cam.pos.x, cam.pos.z) + 1.6; if (cam.pos.y < hg) cam.pos.y = hg;
-    _v.set(p.pos.x + hx * cg * 16, p.pos.y + sg * 16 + 2.2, p.pos.z + hz * cg * 16);
+    _v.set(p.pos.x + hx * cg * 16 + ox * 0.6, p.pos.y + sg * 16 + 2.2, p.pos.z + hz * cg * 16 + oz * 0.6);
     cam.look.lerp(_v, snap ? 1 : 1 - Math.exp(-dt * 7));
     camera.position.copy(cam.pos);
     // vibrations à grande vitesse près du sol
@@ -1733,7 +1798,7 @@ const R3D = (() => {
     if (amp > 0) camera.position.add(_v.set(Math.sin(time * 37.1) * amp, Math.sin(time * 41.7 + 1) * amp, Math.sin(time * 33.3 + 2) * amp));
     // roulis léger dans les virages
     _z.copy(cam.look).sub(camera.position).normalize();
-    camera.up.set(0, 1, 0).applyAxisAngle(_z, -p.bank * 0.22);
+    camera.up.set(0, 1, 0).applyAxisAngle(_z, -(p.swing * 0.42 + p.bank * 0.12) * (p.mode === 'air' ? 1 : 0.3));
     camera.lookAt(cam.look);
     const f = 58 + 16 * clamp((V - 12) / 16, 0, 1);
     cam.fov += (f - cam.fov) * (1 - Math.exp(-dt * 2.5));
@@ -2065,10 +2130,10 @@ const UI = (() => {
   }
   function keysFrame(dt) {
     // rampe douce pour le clavier (sinon la poignée est tout ou rien)
-    const k = 1 - Math.exp(-dt * 6);
+    const k = 1 - Math.exp(-dt * 6), ol = kb.vl, or = kb.vr;
     kb.vl += (Math.max(kb.l, kb.both) - kb.vl) * k; kb.vr += (Math.max(kb.r, kb.both) - kb.vr) * k;
     if (kb.vl < 0.01 && !kb.l && !kb.both) kb.vl = 0; if (kb.vr < 0.01 && !kb.r && !kb.both) kb.vr = 0;
-    apply();
+    if (kb.vl !== ol || kb.vr !== or) apply(); // seulement si le clavier bouge (n'écrase pas les poignées tactiles)
   }
 
   function pause(b) {
@@ -2142,17 +2207,19 @@ const UI = (() => {
   // ---------- conseils (premières descentes) ----------
   function hintFor(r) {
     const p = r.p;
-    if (p.mode === 'ready') return 'Pose tes deux pouces sur l’écran, à gauche et à droite, pour t’élancer';
-    if (p.mode === 'ski' && !p.launched) return p.V > 8.5 ? 'Descends les deux pouces : tu tires les deux poignées et tu décolles' : 'Élan aux bâtons…';
+    if (p.mode === 'ready') return 'Pose tes deux pouces sur l’écran, à gauche et à droite : tu t’élances et tu sautes de la falaise';
+    if (p.mode === 'ski' && !p.launched) return 'Élan… la voile se gonfle, la falaise arrive';
     if (p.stall) return 'Décrochage ! Relâche les deux poignées';
     if ((S.save.runs || 0) > 3) return '';
-    if (p.mode === 'air' && p.airT < 5 && r.gate === 0) return 'Pouce droit vers le bas : tourne à droite · pouce gauche : à gauche · les deux : freine et remonte';
-    if (r.gate === 0) return 'Passe entre les piquets orange, sous la banderole';
+    if (p.mode === 'air' && p.airT < 4 && r.gate === 0) return 'Pouce droit vers le bas : tu vires à droite et tu te balances. Pouce gauche : à gauche';
+    const agl = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
+    if (p.mode === 'air' && agl > 22 && r.gate <= 2) return 'Trop haut ? Enchaîne les virages, gauche puis droite : la voile plonge vers la neige';
+    if (r.gate === 0) return 'Passe entre les piquets orange';
     const toCable = -p.pos.z - W.CABLE.s;
-    if (!r.cable && toCable > -130 && toCable < -15) return 'Télésiège devant : câble à 18 m, passe dessous en rasant la neige';
+    if (!r.cable && toCable > -150 && toCable < -15) return 'Télésiège devant : câble à 22 m. Descends en virant et passe dessous';
     if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
-    if (r.gate === 1 && r.gateOk === 1) return 'Mains hautes = pleine vitesse. Rase la neige : plus tu frôles vite, plus le combo grimpe';
-    if (r.gate === 2) return 'Un frein tenu à fond : la voile part en spirale et plonge. Pratique pour perdre de la hauteur';
+    if (r.gate === 1 && r.gateOk === 1) return 'Rase la neige : plus tu frôles vite, plus le combo grimpe';
+    if (r.gate === 3) return 'Alterne les freins au rythme du balancement : la voile s’incline de plus en plus (wingover)';
     return '';
   }
 

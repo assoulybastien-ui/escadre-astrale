@@ -6,9 +6,9 @@ const fs = require('fs'), path = require('path');
   const out = process.argv[2]; fs.mkdirSync(out, { recursive: true });
   const w = +(process.argv[3] || 640), h = +(process.argv[4] || 296), FPS = 15;
   const { browser, page, errs } = await open({ width: w, height: h });
-  await page.evaluate(() => { window.__lwy.manual(true); window.__lwy.start(); window.__lwy.bot({ agl: 3 }); window.__lwy.advance(1 / 15, 4, false); });
+  await page.evaluate(() => { window.__lwy.manual(true); window.__lwy.start(); window.__lwy.bot({}); window.__lwy.advance(1 / 15, 4, false); });
   // fenêtres de temps (s de course) à filmer
-  const SEG = [[0, 5.5], [14.5, 18], [27.5, 30.5], [43.5, 47], [52.5, 55.5], [59, 70]];
+  const SEG = [[0, 7], [12, 16.5], [22.5, 26], [36, 40], [44.5, 47.5], [50, 70]];
   let n = 0;
   for (const [a, b] of SEG) {
     await page.evaluate(a => { const L = window.__lwy; let i = 0; while (L.state().screen === 'run' && L.state().run.t < a - 0.6 && i++ < 5000) L.advance(1 / 30, 1, false); L.advance(1 / 15, 9, false); }, a);
