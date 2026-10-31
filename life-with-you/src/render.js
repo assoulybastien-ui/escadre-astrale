@@ -671,11 +671,21 @@ const R3D = (() => {
     if (!skipRender) renderer.render(scene, camera);
   }
 
+  // résolution adaptative : si l'iPhone peine (< ~42 images/s), on baisse la densité de pixels par paliers
+  const perf = { t: 0, n: 0, pr: 0 };
+  function adapt(dt) {
+    if (!perf.pr) perf.pr = renderer.getPixelRatio();
+    perf.t += dt; perf.n++;
+    if (perf.t < 2.5) return;
+    const avg = perf.t / perf.n; perf.t = perf.n = 0;
+    if (avg > 1 / 42 && perf.pr > 1.01) { perf.pr = Math.max(1, perf.pr - 0.25); renderer.setPixelRatio(perf.pr); resize(); }
+  }
+
   // position écran d'un point du monde (pour la flèche du HUD)
   function project(x, y, z) {
     _v.set(x, y, z).project(camera);
     return { x: (_v.x * 0.5 + 0.5) * window.innerWidth, y: (-_v.y * 0.5 + 0.5) * window.innerHeight, behind: _v.z > 1 };
   }
 
-  return { init, frame, on, project, get camera() { return camera; }, get renderer() { return renderer; } };
+  return { init, frame, on, project, adapt, get camera() { return camera; }, get renderer() { return renderer; } };
 })();
