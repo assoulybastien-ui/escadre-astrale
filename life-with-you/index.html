@@ -188,7 +188,7 @@ body {
 
 <section id="scrTitle" class="screen">
   <div class="panel title-panel">
-    <p class="eyebrow">Speed riding · prototype 0.3</p>
+    <p class="eyebrow">Speed riding · prototype 0.4 · physique</p>
     <h1 class="logo">Life With You</h1>
     <div class="course">
       <div class="course-name" id="tCourse">Couloir des Aiguilles</div>
@@ -460,13 +460,15 @@ const WORLD = (() => {
   }
 
   // ---------- Portes (piquets orange) ----------
-  const GATES = [[65, -22], [150, 28], [232, -10], [320, 8], [460, 30], [545, -20], [625, 18], [695, 2]].map(([s, du]) => {
+  // portes mises de côté pour l'instant (on règle d'abord la physique) : remettre GATES_ON à true pour les retrouver
+  const GATES_ON = false;
+  const GATES = (GATES_ON ? [[65, -22], [150, 28], [232, -10], [320, 8], [460, 30], [545, -20], [625, 18], [695, 2]] : []).map(([s, du]) => {
     const x = xc(s) + du, z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
     const nx = d / l, nz = -1 / l;
     return { s, x, z, y: heightAt(x, z), nx, nz, tx: -nz, tz: nx, hw: 10, h: 30 };
   });
 
-  LAND.from = GATES[GATES.length - 1].s + 3; // un contact au-delà compte comme atterrissage
+  LAND.from = GATES.length ? GATES[GATES.length - 1].s + 3 : LAND.s - 60; // un contact au-delà compte comme atterrissage
 
   // ---------- Sapins ----------
   const TX = [], TY = [], TZ = [], TH = [], TR = [];
@@ -500,6 +502,7 @@ const WORLD = (() => {
         dl = Math.min(dl, Math.hypot(px - A.x - ex * t, pz - A.z - ez * t));
       }
       if (dl < 9) continue;
+      if (!GATES.length && Math.abs(px - xc(-pz)) < 7) continue; // sans portes : un passage dégagé au milieu
       if (TX.some((x, i) => Math.hypot(x - px, TZ[i] - pz) < 14)) continue;
       const h = 7 + rnd() * 8;
       TX.push(px); TZ.push(pz); TY.push(heightAt(px, pz) - 0.2); TH.push(h); TR.push(h * (0.22 + rnd() * 0.05));
@@ -602,12 +605,13 @@ const WORLD = (() => {
 const FLIGHT = (() => {
   const G = 9.81, RHO = 1.0, M = 90; // air à ~2 000 m, pilote + matériel
   // Voile de speed riding de 9,5 m², trims ouverts : ~71 km/h mains hautes (finesse ~2,7), finesse max ~3,1 freins à moitié,
-  // ~45 km/h freins à fond ; virage freiné jusqu'à ~50° d'inclinaison, spirale jusqu'à ~72° (~95 km/h, 2,5 g)
-  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankSpiral: 72 * Math.PI / 180,
-    tauHand: 0.1, nMax: 3.2, stallV: 10.2,
+  // ~45 km/h freins à fond. Virage sans limite : un frein tenu fait pencher de plus en plus (spirale qui se resserre
+  // jusqu'à ~88°, > 100 km/h, ~4,5 g) ; si on ne relâche pas, on finit au sol
+  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankDeep: 88 * Math.PI / 180,
+    tauHand: 0.1, nMax: 4.5, stallV: 10.2,
     // la voile s'incline vite sous le frein (~0,4 s) ; le pilote se balance dessous (pendule ~2,2 s, peu amorti)
     // et entraîne un peu la voile : en alternant les freins au bon rythme, on enchaîne des wingovers
-    tauBank: 0.4, rollK: 8.2, rollC: 1.0, swingPull: 0.55, bankLim: 83 * Math.PI / 180,
+    tauBank: 0.4, rollK: 8.2, rollC: 1.0, swingPull: 0.55, bankLim: 89 * Math.PI / 180,
     // pendule en tangage : tirer = la voile cabre et dépasse (ressource), relâcher = elle plonge (abattée)
     pitchK: 26, pitchC: 4.6 };
   const MU_SKI = 0.055, MU_STOP = 0.35, PILOT_CDA = 0.5;
@@ -640,16 +644,20 @@ const FLIGHT = (() => {
     // les mains suivent les pouces avec un léger retard
     const kh = 1 - Math.exp(-dt / WING.tauHand);
     p.bl += ((inp.l || 0) - p.bl) * kh; p.br += ((inp.r || 0) - p.br) * kh;
+    // garde : les premiers centimètres de frein ne font presque rien, puis la voile répond de plus en plus (toucher progressif)
+    const garde = b => Math.pow(Math.max(0, (b - 0.08) / 0.92), 1.25);
+    const el = garde(p.bl), er = garde(p.br);
     // part commune des deux freins (plus de CL) et différence (virage)
-    const sym = Math.min(p.bl, p.br) + 0.35 * Math.abs(p.br - p.bl), dif = p.br - p.bl;
+    const sym = Math.min(el, er) + 0.35 * Math.abs(er - el), dif = er - el;
     const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15);
     // incidence en pendule : elle dépasse sa consigne puis revient
     p.clV += ((clT - p.cl) * WING.pitchK - p.clV * WING.pitchC) * dt;
     p.cl = Math.min(1.32, Math.max(0.24, p.cl + p.clV * dt));
-    // un frein tenu fort plus d'une seconde : la voile part en spirale
-    if (p.mode === 'air' && Math.abs(dif) > 0.75) p.spiralT += dt; else p.spiralT = Math.max(0, p.spiralT - dt * 2);
-    const spiral = Math.min(1, Math.max(0, (p.spiralT - 1) / 2));
-    const bankT = p.mode === 'air' ? dif * (WING.bankMax + (WING.bankSpiral - WING.bankMax) * spiral) : 0;
+    // virage sans limite : tant qu'un frein est tenu, la voile penche de plus en plus (d'autant plus vite qu'on tire fort)
+    const ad = Math.abs(dif);
+    if (p.mode === 'air' && ad > 0.3) p.spiralT += dt * (ad - 0.3) / 0.7; else p.spiralT = Math.max(0, p.spiralT - dt * 2.5);
+    const deep = Math.min(1, Math.max(0, (p.spiralT - 0.5) / 2.5));
+    const bankT = p.mode === 'air' ? Math.sign(dif) * (ad * WING.bankMax + deep * (WING.bankDeep - ad * WING.bankMax)) : 0;
     if (p.mode === 'air') {
       // pilote : pendule qui suit l'inclinaison de la voile avec retard, la dépasse et revient
       p.swingV += ((p.bank - p.swing) * WING.rollK - p.swingV * WING.rollC) * dt;
@@ -898,7 +906,7 @@ const FLIGHT = (() => {
 // Déroulé d'une descente : élan, vol, score (proximité, portes, touch & go, frôlés, câble), crash, atterrissage noté.
 const GAME = (() => {
   const DT = 1 / 120, KEY = 'life-with-you-v2'; // v2 : commandes à deux poignées (anciens records effacés)
-  const MEDALS = [{ id: 'or', nom: 'Or', min: 13000 }, { id: 'argent', nom: 'Argent', min: 8000 }, { id: 'bronze', nom: 'Bronze', min: 4000 }];
+  const MEDALS = [{ id: 'or', nom: 'Or', min: 9000 }, { id: 'argent', nom: 'Argent', min: 5000 }, { id: 'bronze', nom: 'Bronze', min: 2000 }];
   const S = { screen: 'title', run: null, acc: 0, input: { l: 0, r: 0, go: false }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
 
   function load() {
@@ -1114,7 +1122,12 @@ const BOT = (() => {
       const p = r.p, W = WORLD;
       if (p.mode === 'ready') return { l: 0, r: 0, go: true };
       if (p.mode === 'landing' || p.mode === 'stopped') return { l: 0.3, r: 0.3 };
-      const g = W.GATES[r.gate];
+      let g = W.GATES[r.gate];
+      // sans portes : on suit le couloir avec un point de passage 70 m devant, jusqu'à la finale
+      if (!g && -p.pos.z < W.LAND.s - 150) {
+        const sw = -p.pos.z + 70, d = (W.xc(sw + 1) - W.xc(sw - 1)) / 2, l = Math.hypot(d, 1);
+        g = { x: W.xc(sw), z: -sw, nx: d / l, nz: -1 / l, tx: 1 / l, tz: d / l };
+      }
       let tx, tz;
       if (g) {
         // viser un point en amont de la porte pour la franchir bien droit
@@ -1538,26 +1551,29 @@ const R3D = (() => {
     windsock = sock;
   }
 
-  // ---------- voile (profil réel, caissons, suspentes) ----------
+  // ---------- voile souple : profil réel, caissons gonflés, nervures, ouvertures, suspentage en cascade ----------
   function wingGeometry(main, light, dark) {
-    const NS = 34, NA = 16, RL = G.lineLen, A = G.halfAngle;
-    const pos = [], col = [], cM = lin(main), cL = lin(light), cD = lin(dark), c = new THREE.Color();
-    const meta = []; // par sommet : t (envergure -1..1), xc (corde 0..1), direction radiale ex, ey
+    const NS = 48, NA = 20, RL = G.lineLen, A = G.halfAngle;
+    const pos = [], col = [], meta = []; // meta par sommet : t (envergure −1..1), xc (corde 0..1), extrados (1/0), caisson (0 nervure → 1 milieu)
+    const cM = lin(main), cL = lin(light), cD = lin(dark), cO = lin(0x10151c), c = new THREE.Color();
+    const chordAt = t => 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t));
     for (let i = 0; i <= NS; i++) {
       const t = -1 + 2 * i / NS, ang = A * t, ex = Math.sin(ang), ey = Math.cos(ang);
-      const chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t)), sweep = 0.35 * t * t;
-      const at = Math.abs(t);
-      const base = at > 0.82 ? cD : (at > 0.6 && at < 0.72) ? cL : (at < 0.06 ? cL : cM);
-      const rib = i % 2 ? 1 : 0.9;
+      const chord = chordAt(t), sweep = 0.35 * t * t, at = Math.abs(t);
+      const cell = i % 2; // nervures sur les stations paires, milieu des caissons sur les impaires
+      const base = at > 0.82 ? cD : (at > 0.6 && at < 0.72) ? cL : (at < 0.05 ? cL : cM);
       for (let k = 0; k < NA; k++) {
         const th = 2 * Math.PI * k / NA, xc = 0.5 + 0.5 * Math.cos(th), up = th < Math.PI;
         const yt = 0.6 * (0.2969 * Math.sqrt(xc) - 0.126 * xc - 0.3516 * xc * xc + 0.2843 * xc * xc * xc - 0.1015 * xc ** 4);
         const camber = 0.05 * Math.sin(Math.PI * Math.min(1, xc * 1.1));
-        const rad = (camber + (up ? yt : -yt * 0.55)) * chord;
-        const zz = -0.32 * chord + xc * chord + sweep;
+        const billow = cell * chord * (up ? 0.03 : -0.012) * Math.sin(Math.PI * Math.min(1, xc * 1.15)); // tissu gonflé entre deux nervures
+        const rad = (camber + (up ? yt : -yt * 0.55)) * chord + billow;
+        const zz = -0.32 * chord + xc * chord * (1 - 0.035 * cell * sstep(0.8, 1, xc)) + sweep; // bord de fuite festonné
         pos.push(ex * (RL + rad), ey * (RL + rad), zz);
-        meta.push(t, xc, ex, ey);
-        c.copy(base).multiplyScalar(rib * (up ? 1 : 0.72)); col.push(c.r, c.g, c.b);
+        meta.push(t, xc, up ? 1 : 0, cell);
+        if (!up && xc < 0.06 && at < 0.93) c.copy(cO);                       // ouvertures des caissons au bord d'attaque
+        else c.copy(base).multiplyScalar((cell ? 1 : 0.84) * (up ? 1 : 0.74)); // nervures un peu plus sombres, intrados à l'ombre
+        col.push(c.r, c.g, c.b);
       }
     }
     const idx = [];
@@ -1568,25 +1584,28 @@ const R3D = (() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setIndex(idx); g.computeVertexNormals();
-    // suspentes : des élévateurs (au-dessus des mousquetons) vers l'intrados
-    const lp = [];
-    for (let i = 2; i <= NS - 2; i += 4) {
-      const t = -1 + 2 * i / NS, ang = A * t, ex = Math.sin(ang), ey = Math.cos(ang);
-      const chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t)), sweep = 0.35 * t * t;
-      for (const xc of [0.12, 0.42, 0.75]) {
-        const sx = t < 0 ? -0.16 : 0.16, zz = -0.32 * chord + xc * chord + sweep;
-        lp.push(sx, 0.45, xc * 0.2 - 0.05, ex * (RL - 0.05), ey * (RL - 0.05), zz);
+    // suspentage : chaque nervure porte 3 suspentes (rangées A, B, C) ; elles se rejoignent par 3 (cascade) puis vont aux élévateurs
+    const lowerIdx = (i, xcT) => { let best = -1, bd = 9; for (let k = 0; k < NA; k++) { const th = 2 * Math.PI * k / NA; if (th <= Math.PI) continue; const d = Math.abs(0.5 + 0.5 * Math.cos(th) - xcT); if (d < bd) { bd = d; best = k; } } return i * NA + best; };
+    const fixed = [], mids = [], segs = [];
+    const riserTop = (side, row) => fixed.push([side * 0.17, 0.42, -0.06 + row * 0.07]) - 1;
+    for (const side of [-1, 1]) for (let row = 0; row < 3; row++) {
+      const top = riserTop(side, row), bot = fixed.push([side * 0.17, 0, 0.0]) - 1;
+      segs.push(['f', bot, 'f', top]);
+      const ribs = [];
+      for (let i = 2; i < NS - 1; i += 2) { const t = -1 + 2 * i / NS; if (Math.sign(t) === side) ribs.push(i); }
+      if (side < 0) ribs.reverse(); // du centre vers le bout d'aile
+      for (let gq = 0; gq < ribs.length; gq += 3) {
+        const grp = ribs.slice(gq, gq + 3).map(i => lowerIdx(i, [0.1, 0.36, 0.64][row]));
+        const m = mids.push({ v: grp, top }) - 1;
+        for (const v of grp) segs.push(['v', v, 'm', m]);
+        segs.push(['m', m, 'f', top]);
       }
     }
-    for (const sx of [-0.16, 0.16]) lp.push(sx, 0, 0, sx, 0.45, 0.02);
-    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-    // points du bord de fuite où s'accrochent les suspentes de frein
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs.length * 6), 3));
+    // points du bord de fuite où s'accrochent les freins (4 par côté)
     const te = [];
-    for (const t of [-0.92, -0.72, -0.5, 0.5, 0.72, 0.92]) {
-      const ang = A * t, chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t));
-      te.push({ t, ex: Math.sin(ang), ey: Math.cos(ang), z: 0.68 * chord + 0.35 * t * t });
-    }
-    return { wing: g, lines: lg, meta: new Float32Array(meta), base: new Float32Array(pos), te };
+    for (const tt of [-0.92, -0.75, -0.58, -0.4, 0.4, 0.58, 0.75, 0.92]) { const i = Math.round((tt + 1) * NS / 2); te.push({ t: -1 + 2 * i / NS, v: i * NA }); }
+    return { wing: g, lines: lg, meta: new Float32Array(meta), base: new Float32Array(pos), te, fixed, mids, segs };
   }
 
   // ---------- pilote debout dans sa sellette, à skis ----------
@@ -1621,14 +1640,15 @@ const R3D = (() => {
     }
     const wingPivot = new THREE.Group(); wingPivot.position.set(0, G.carab, 0); root.add(wingPivot);
     const wg = wingGeometry(C.wingA, C.wingB, C.wingC);
-    const wing = new THREE.Mesh(wg.wing, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: THREE.DoubleSide }));
+    // nylon ripstop : un peu satiné, légèrement translucide à contre-jour (émissif faible)
+    const wing = new THREE.Mesh(wg.wing, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.48, metalness: 0.02, emissive: lin(0x202020), emissiveIntensity: 1, side: THREE.DoubleSide }));
     wing.castShadow = true; wingPivot.add(wing);
-    const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.55 }));
-    wingPivot.add(lines);
-    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wg.te.length * 6), 3));
+    const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.5 }));
+    lines.frustumCulled = false; wingPivot.add(lines);
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array((wg.te.length + 2) * 6), 3));
     const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xd8572a), transparent: true, opacity: 0.5 }));
     brakes.frustumCulled = false; root.add(brakes);
-    return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, dl: -1, dr: -1 };
+    return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, gl: 1 };
   }
 
   function buildGhost(geo) {
@@ -1718,18 +1738,41 @@ const R3D = (() => {
     const back = (1 - inflate) * (fwdFall ? -1.25 : 1.45), pitch = opt ? opt.pitch || 0 : 0, roll = opt ? opt.roll || 0 : 0;
     rig.pivot.rotation.set(back + pitch, 0, roll);
   }
-  // déforme le bord de fuite selon les freins (côté gauche / droit)
-  function deformWing(bl, br) {
-    if (Math.abs(bl - pilot.dl) < 0.004 && Math.abs(br - pilot.dr) < 0.004) return;
-    pilot.dl = bl; pilot.dr = br;
-    const g = pilot.geo, P = g.wing.attributes.position, M = g.meta, B = g.base;
+  // voile souple : la charge ouvre l'arc, la décharge referme les bouts, les caissons respirent, le bord de fuite frémit,
+  // les freins abaissent le bord de fuite de leur côté, le bout extérieur traîne en virage, la voile se froisse au décrochage
+  function deformWing(p, bl, br, dt) {
+    const gd = pilot.geo, P = gd.wing.attributes.position, M = gd.meta, B = gd.base;
+    pilot.gl += (clamp(p.gload, 0.15, 4.5) - pilot.gl) * Math.min(1, dt * 6);
+    const air = p.mode === 'air';
+    const gl = air ? pilot.gl : 1;
+    const sArc = clamp(1 - 0.045 * (gl - 1), 0.86, 1.06), curl = Math.max(0, 0.6 - gl) * 0.5;
+    const flut = (0.006 + 0.028 * clamp((p.V - 15) / 15, 0, 1)) * (air ? 1 : 0.4);
+    const yaw = air ? clamp(9.81 * Math.tan(p.bank) / Math.max(8, p.V), -1.5, 1.5) : 0;
+    const stall = p.stall ? 1 : 0;
     for (let i = 0; i < P.count; i++) {
-      const t = M[i * 4], xc = M[i * 4 + 1], ex = M[i * 4 + 2], ey = M[i * 4 + 3];
-      const b = (t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(t)) * Math.max(0, (xc - 0.5) / 0.5);
-      const d = b * 0.6; // le bord de fuite descend vers le pilote (jusqu'à ~60 cm)
-      P.setXYZ(i, B[i * 3] - ex * d, B[i * 3 + 1] - ey * d, B[i * 3 + 2] - d * 0.25);
+      const t = M[i * 4], xc = M[i * 4 + 1], up = M[i * 4 + 2], cell = M[i * 4 + 3], at = Math.abs(t);
+      const bx = B[i * 3], by = B[i * 3 + 1];
+      let r = Math.hypot(bx, by), th = Math.atan2(bx, by), z = B[i * 3 + 2];
+      th *= sArc * (1 + curl * t * t);
+      r += cell * (up ? 0.012 : -0.006) * Math.sin(time * 5.3 + t * 11);
+      if (xc > 0.65) r += flut * ((xc - 0.65) / 0.35) * Math.sin(time * 23 + t * 9 + xc * 4);
+      const b = (t > 0 ? br : bl) * sstep(0.1, 0.55, at) * Math.max(0, (xc - 0.5) / 0.5);
+      r -= b * 0.6; z -= b * 0.15;
+      z += -t * at * yaw * 0.9;
+      if (stall) { r *= 0.93 + 0.05 * Math.sin(time * 13 + t * 7); z += 0.6 * (1 - at); }
+      P.setXYZ(i, r * Math.sin(th), r * Math.cos(th), z);
     }
-    P.needsUpdate = true; g.wing.computeVertexNormals();
+    P.needsUpdate = true; gd.wing.computeVertexNormals();
+    // suspentes : suivent la voile déformée
+    const L = gd.lines.attributes.position.array, mid = gd.mids.map(m => {
+      let x = 0, y = 0, zz = 0;
+      for (const v of m.v) { x += P.getX(v); y += P.getY(v); zz += P.getZ(v); }
+      const n = m.v.length, f = gd.fixed[m.top];
+      return [x / n * 0.55 + f[0] * 0.45, y / n * 0.55 + f[1] * 0.45, zz / n * 0.55 + f[2] * 0.45];
+    });
+    const pt = (kind, id) => kind === 'v' ? [P.getX(id), P.getY(id), P.getZ(id)] : kind === 'm' ? mid[id] : gd.fixed[id];
+    gd.segs.forEach((sg, k) => { const a = pt(sg[0], sg[1]), c2 = pt(sg[2], sg[3]); L.set(a, k * 6); L.set(c2, k * 6 + 3); });
+    gd.lines.attributes.position.needsUpdate = true;
   }
   function posePilot(p, dt) {
     const crash = p.mode === 'crash';
@@ -1738,7 +1781,7 @@ const R3D = (() => {
     poseRig({ root: pilot.root, pivot: pilot.wingPivot, wing: pilot.wing }, p.pos, p.up, p.fwd, gonfl, {
       forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.12 + (p.cl - 0.45) * 0.3, roll: crash ? Math.sin(time * 9) * 0.3 : 0
     });
-    deformWing(bl, br);
+    deformWing(p, bl, br, dt);
     // bras : chaque main tient sa poignée ; tirer = la main descend vers la hanche
     for (const a of pilot.arms) {
       const pull = a.sx < 0 ? bl : br;
@@ -1758,18 +1801,19 @@ const R3D = (() => {
     pilot.body.rotation.z = sw;
     pilot.body.position.set(P * Math.sin(sw), P - P * Math.cos(sw) + (ground ? -kneel * 0.4 : 0), 0);
     pilot.body.updateMatrix();
-    // suspentes de frein : de chaque main aux points du bord de fuite de son côté
+    // suspentes de frein : de chaque main à un point de cascade, puis aux 4 points du bord de fuite de son côté
     const show = !crash && p.inflate > 0.8;
     pilot.brakes.visible = show;
     if (show) {
       pilot.wingPivot.updateMatrix();
-      const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te;
-      for (let k = 0; k < te.length; k++) {
-        const q = te[k], side = q.t > 0 ? 1 : 0, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+      const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te, P2 = pilot.geo.wing.attributes.position;
+      let k = 0;
+      for (const side of [0, 1]) {
         const hand = _y.copy(pilot.arms[side].hand.position).applyMatrix4(pilot.body.matrix);
-        _x.set(q.ex * (G.lineLen - b), q.ey * (G.lineLen - b), q.z - b * 0.25).applyMatrix4(pilot.wingPivot.matrix);
-        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y; arr[k * 6 + 2] = hand.z;
-        arr[k * 6 + 3] = _x.x; arr[k * 6 + 4] = _x.y; arr[k * 6 + 5] = _x.z;
+        const pts = te.filter(q => (q.t > 0 ? 1 : 0) === side).map(q => new THREE.Vector3(P2.getX(q.v), P2.getY(q.v), P2.getZ(q.v)).applyMatrix4(pilot.wingPivot.matrix));
+        const m = pts.reduce((acc, q) => acc.add(q), new THREE.Vector3()).multiplyScalar(1 / pts.length).lerp(hand, 0.45);
+        arr.set([hand.x, hand.y, hand.z, m.x, m.y, m.z], k * 6); k++;
+        for (const q of pts) { arr.set([m.x, m.y, m.z, q.x, q.y, q.z], k * 6); k++; }
       }
       pilot.brakes.geometry.attributes.position.needsUpdate = true;
     }
@@ -1928,7 +1972,17 @@ const R3D = (() => {
     return { x: (_v.x * 0.5 + 0.5) * window.innerWidth, y: (-_v.y * 0.5 + 0.5) * window.innerHeight, behind: _v.z > 1 };
   }
 
-  return { init, frame, on, project, adapt, get camera() { return camera; }, get renderer() { return renderer; } };
+  // tests : gros plan, caméra placée dans le repère du pilote (x droite, y haut, z arrière) et visant un point de ce repère
+  function closeup(cx, cy, cz, lx, ly, lz) {
+    pilot.root.updateMatrixWorld(true);
+    camera.position.set(cx, cy, cz).applyMatrix4(pilot.root.matrixWorld);
+    _v.set(lx, ly, lz).applyMatrix4(pilot.root.matrixWorld);
+    camera.up.set(0, 1, 0); camera.lookAt(_v); setFov(50);
+    sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+  }
+
+  return { init, frame, on, project, adapt, closeup, get camera() { return camera; }, get renderer() { return renderer; } };
 })();
 
 // Sons réalistes synthétisés (Web Audio), sans musique : vent selon la vitesse, sifflement, claquement de voile,
@@ -2070,12 +2124,13 @@ const UI = (() => {
     $('fLen').textContent = W.FACTS.length >= 1000 ? dec(W.FACTS.length / 1000, 1).replace(',0', '') + ' km' : W.FACTS.length + ' m';
     $('fDrop').textContent = W.FACTS.drop + ' m';
     $('fGates').textContent = W.FACTS.gates;
+    $('fGates').parentElement.hidden = !W.FACTS.gates;
     showTitle();
   }
 
   // ---------- deux poignées de frein ----------
-  // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce ;
-  // descendre le pouce tire la poignée. Monter ou aller sur le côté ne tire rien : le repère suit le pouce.
+  // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce et n'en bouge plus ;
+  // descendre le pouce tire la poignée (course TRAVEL). Monter au-dessus du repère ou aller sur le côté ne tire rien.
   function handOf(id) { return hands.l.id === id ? hands.l : hands.r.id === id ? hands.r : null; }
   function down(e) {
     AUDIO.unlock();
@@ -2090,10 +2145,8 @@ const UI = (() => {
   function move(e) {
     const h = handOf(e.pointerId); if (!h) return;
     e.preventDefault();
-    h.x = e.clientX;
-    let dy = e.clientY - h.y0;
-    if (dy < 0) { h.y0 = e.clientY; dy = 0; }                         // le pouce remonte : mains hautes, le repère suit
-    if (dy > TRAVEL) { h.y0 = e.clientY - TRAVEL; dy = TRAVEL; }      // au-delà de la course : le repère suit aussi
+    // le repère reste là où le pouce s'est posé : au-delà de la course, la poignée reste à fond ; au-dessus, mains hautes
+    const dy = Math.max(0, Math.min(TRAVEL, e.clientY - h.y0));
     h.dy = dy; h.v = curve(dy / TRAVEL);
     draw(h); apply();
   }
@@ -2187,7 +2240,7 @@ const UI = (() => {
     $('rNext').textContent = res.kind !== 'pose' ? 'Il faut se poser dans la prairie pour obtenir une médaille.' : nextM ? `${nextM.nom} à partir de ${fmt(nextM.min)} points` : 'Meilleure médaille obtenue';
     const rows = [
       ['Temps', chrono(res.time), ''],
-      ['Portes', `${res.gateOk} / ${res.gates}`, res.gatePts],
+      ...(res.gates ? [['Portes', `${res.gateOk} / ${res.gates}`, res.gatePts]] : []),
       ['Rase-mottes', dec(res.closeT, 1) + ' s sous 6 m', res.prox],
       ['Touch & go', res.touch, res.touchPts],
       ['Sapins frôlés', res.near, res.nearPts],
@@ -2213,13 +2266,13 @@ const UI = (() => {
     if ((S.save.runs || 0) > 3) return '';
     if (p.mode === 'air' && p.airT < 4 && r.gate === 0) return 'Pouce droit vers le bas : tu vires à droite et tu te balances. Pouce gauche : à gauche';
     const agl = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
-    if (p.mode === 'air' && agl > 22 && r.gate <= 2) return 'Trop haut ? Enchaîne les virages, gauche puis droite : la voile plonge vers la neige';
-    if (r.gate === 0) return 'Passe entre les piquets orange';
+    if (p.mode === 'air' && agl > 22 && -p.pos.z < 260) return 'Trop haut ? Enchaîne les virages, gauche puis droite : la voile plonge vers la neige';
     const toCable = -p.pos.z - W.CABLE.s;
     if (!r.cable && toCable > -150 && toCable < -15) return 'Télésiège devant : câble à 22 m. Descends en virant et passe dessous';
-    if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
-    if (r.gate === 1 && r.gateOk === 1) return 'Rase la neige : plus tu frôles vite, plus le combo grimpe';
-    if (r.gate === 3) return 'Alterne les freins au rythme du balancement : la voile s’incline de plus en plus (wingover)';
+    if (-p.pos.z > W.LAND.s - 160 && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
+    const s = -p.pos.z;
+    if (s > 240 && s < 320) return 'Rase la neige : plus tu frôles vite, plus le combo grimpe';
+    if (s > 400 && s < 450) return 'Alterne les freins au rythme du balancement : la voile s’incline de plus en plus (wingover)';
     return '';
   }
 

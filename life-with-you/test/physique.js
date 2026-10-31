@@ -7,14 +7,14 @@ const F = require('../src/flight.js');
 // air libre : on neutralise le relief et le vent
 const hgt = WORLD.heightAt, wind = WORLD.windAt;
 WORLD.heightAt = () => -1e6; WORLD.windAt = () => ({ x: 0, y: 0, z: 0 });
-for (const [nom, l, r] of [['mains hautes', 0, 0], ['freins à moitié', 0.5, 0.5], ['freins à fond', 1, 1], ['frein droit à moitié', 0, 0.5], ['frein droit à fond (spirale)', 0, 1], ['gauche à fond + droit moitié', 1, 0.5]]) {
+for (const [nom, l, r] of [['mains hautes', 0, 0], ['freins à moitié', 0.5, 0.5], ['freins à fond', 1, 1], ['frein droit à moitié', 0, 0.5], ['frein droit à fond', 0, 1], ['gauche à fond + droit moitié', 1, 0.5]]) {
   const p = F.create(); p.mode = 'air'; p.inflate = 1; p.launched = true; p.pos.y = 5000; p.vel = { x: 0, y: -3, z: -15 };
   const ev = [];
-  for (let i = 0; i < 120 * 25; i++) F.step(p, { l, r }, 1 / 120, ev);
+  for (let i = 0; i < 120 * 6; i++) F.step(p, { l, r }, 1 / 120, ev);
   const y0 = p.pos.y, x0 = p.pos.x, z0 = p.pos.z; let dist = 0, px = x0, pz = z0;
-  for (let i = 0; i < 120 * 5; i++) { F.step(p, { l, r }, 1 / 120, ev); dist += Math.hypot(p.pos.x - px, p.pos.z - pz); px = p.pos.x; pz = p.pos.z; }
-  const sink = (y0 - p.pos.y) / 5, vh = dist / 5;
-  console.log(nom.padEnd(30), 'incl.', (p.bank * 57.3).toFixed(0).padStart(3), '° · vitesse', (p.V * 3.6).toFixed(0).padStart(3), 'km/h · chute', sink.toFixed(1), 'm/s · finesse', (vh / sink).toFixed(2), '· charge', p.gload.toFixed(2), 'g');
+  for (let i = 0; i < 120 * 2; i++) { F.step(p, { l, r }, 1 / 120, ev); dist += Math.hypot(p.pos.x - px, p.pos.z - pz); px = p.pos.x; pz = p.pos.z; }
+  const sink = (y0 - p.pos.y) / 2, vh = dist / 2;
+  console.log(nom.padEnd(30), 'après 8 s · incl.', (p.bank * 57.3).toFixed(0).padStart(3), '° · vitesse', (p.V * 3.6).toFixed(0).padStart(3), 'km/h · chute', sink.toFixed(1), 'm/s · finesse', (vh / sink).toFixed(2), '· charge', p.gload.toFixed(2), 'g');
 }
 // ressource : sortie de spirale puis les deux freins → combien de mètres regagnés ? et décrochage si on insiste
 {

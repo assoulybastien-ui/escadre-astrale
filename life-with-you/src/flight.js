@@ -5,12 +5,13 @@
 const FLIGHT = (() => {
   const G = 9.81, RHO = 1.0, M = 90; // air à ~2 000 m, pilote + matériel
   // Voile de speed riding de 9,5 m², trims ouverts : ~71 km/h mains hautes (finesse ~2,7), finesse max ~3,1 freins à moitié,
-  // ~45 km/h freins à fond ; virage freiné jusqu'à ~50° d'inclinaison, spirale jusqu'à ~72° (~95 km/h, 2,5 g)
-  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankSpiral: 72 * Math.PI / 180,
-    tauHand: 0.1, nMax: 3.2, stallV: 10.2,
+  // ~45 km/h freins à fond. Virage sans limite : un frein tenu fait pencher de plus en plus (spirale qui se resserre
+  // jusqu'à ~88°, > 100 km/h, ~4,5 g) ; si on ne relâche pas, on finit au sol
+  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankDeep: 88 * Math.PI / 180,
+    tauHand: 0.1, nMax: 4.5, stallV: 10.2,
     // la voile s'incline vite sous le frein (~0,4 s) ; le pilote se balance dessous (pendule ~2,2 s, peu amorti)
     // et entraîne un peu la voile : en alternant les freins au bon rythme, on enchaîne des wingovers
-    tauBank: 0.4, rollK: 8.2, rollC: 1.0, swingPull: 0.55, bankLim: 83 * Math.PI / 180,
+    tauBank: 0.4, rollK: 8.2, rollC: 1.0, swingPull: 0.55, bankLim: 89 * Math.PI / 180,
     // pendule en tangage : tirer = la voile cabre et dépasse (ressource), relâcher = elle plonge (abattée)
     pitchK: 26, pitchC: 4.6 };
   const MU_SKI = 0.055, MU_STOP = 0.35, PILOT_CDA = 0.5;
@@ -43,16 +44,20 @@ const FLIGHT = (() => {
     // les mains suivent les pouces avec un léger retard
     const kh = 1 - Math.exp(-dt / WING.tauHand);
     p.bl += ((inp.l || 0) - p.bl) * kh; p.br += ((inp.r || 0) - p.br) * kh;
+    // garde : les premiers centimètres de frein ne font presque rien, puis la voile répond de plus en plus (toucher progressif)
+    const garde = b => Math.pow(Math.max(0, (b - 0.08) / 0.92), 1.25);
+    const el = garde(p.bl), er = garde(p.br);
     // part commune des deux freins (plus de CL) et différence (virage)
-    const sym = Math.min(p.bl, p.br) + 0.35 * Math.abs(p.br - p.bl), dif = p.br - p.bl;
+    const sym = Math.min(el, er) + 0.35 * Math.abs(er - el), dif = er - el;
     const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15);
     // incidence en pendule : elle dépasse sa consigne puis revient
     p.clV += ((clT - p.cl) * WING.pitchK - p.clV * WING.pitchC) * dt;
     p.cl = Math.min(1.32, Math.max(0.24, p.cl + p.clV * dt));
-    // un frein tenu fort plus d'une seconde : la voile part en spirale
-    if (p.mode === 'air' && Math.abs(dif) > 0.75) p.spiralT += dt; else p.spiralT = Math.max(0, p.spiralT - dt * 2);
-    const spiral = Math.min(1, Math.max(0, (p.spiralT - 1) / 2));
-    const bankT = p.mode === 'air' ? dif * (WING.bankMax + (WING.bankSpiral - WING.bankMax) * spiral) : 0;
+    // virage sans limite : tant qu'un frein est tenu, la voile penche de plus en plus (d'autant plus vite qu'on tire fort)
+    const ad = Math.abs(dif);
+    if (p.mode === 'air' && ad > 0.3) p.spiralT += dt * (ad - 0.3) / 0.7; else p.spiralT = Math.max(0, p.spiralT - dt * 2.5);
+    const deep = Math.min(1, Math.max(0, (p.spiralT - 0.5) / 2.5));
+    const bankT = p.mode === 'air' ? Math.sign(dif) * (ad * WING.bankMax + deep * (WING.bankDeep - ad * WING.bankMax)) : 0;
     if (p.mode === 'air') {
       // pilote : pendule qui suit l'inclinaison de la voile avec retard, la dépasse et revient
       p.swingV += ((p.bank - p.swing) * WING.rollK - p.swingV * WING.rollC) * dt;

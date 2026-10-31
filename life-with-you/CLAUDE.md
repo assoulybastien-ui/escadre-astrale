@@ -13,10 +13,10 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - Discipline : **speed flying / speed riding**. À skis **et** à pied selon le lieu (v0.1 : skis seulement).
 - Web app 3D (three.js r128), installable plus tard (PWA).
 - Relief : **lieux réels** (Chamonix/Mont-Blanc, Alpes suisses, Dolomites — données 1–2 m) **et** descentes générées (v0.1 : une descente générée).
-- Objectifs : **score de proximité** + **portes**. Médailles par descente, **fantôme** du record, **voiles à débloquer** (à faire).
+- Objectifs : **score de proximité** + portes. **Portes mises de côté** (31/10 : « on définit d'abord la physique ») : `GATES_ON = false` dans `world.js`. Médailles par descente, **fantôme** du record, **voiles à débloquer** (à faire).
 - **Deux poignées de frein, une par pouce** (changement du 31/10, remplace le stick unique) : moitié gauche de l'écran = poignée gauche,
-  moitié droite = poignée droite. Pouce vers le bas = on tire la poignée (course ~95 px). Pouce vers le haut ou sur le côté : **rien**
-  (le repère suit le pouce). Un frein = virage de ce côté ; un frein tenu à fond = spirale ; les deux = freiner, remonter, arrondir.
+  moitié droite = poignée droite. Pouce vers le bas = on tire la poignée (course ~95 px). Pouce vers le haut ou sur le côté : **rien**.
+  **Le repère reste là où le pouce s'est posé** (demande du 31/10) : au-delà de la course, la poignée reste à fond. Un frein = virage de ce côté, **sans limite** : tenu, la voile penche de plus en plus jusqu'à la spirale engagée (~88°, > 100 km/h, jusqu'au crash si on ne relâche pas) ; les deux = freiner, remonter, arrondir.
   Pas d'accélérateur : mains hautes = pleine vitesse. Repères **flottants**. **Paysage uniquement** (pause auto en portrait).
 - Départ : poser **les deux pouces** lance l'élan ; on **saute d'une falaise** (~28 m) au bout d'un replat de 25 m.
 - **Dynamique (retour du 31/10 : « on ne vole pas assez, on ne sent pas le balancement »)** : la pente est plus raide que le plané de la voile
@@ -39,6 +39,7 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `node test/bot.js <haut_visée> [0=passer au-dessus du câble] [gain]` — descente complète par le pilote automatique, sans rendu (réglage des médailles).
 - `node test/pouces.js [outDir]` — les deux poignées au doigt (multi-touch réel via CDP), avec vérifications et capture d'un virage.
 - `node test/balance.js outDir` — captures du saut de falaise et du balancement (frein tenu, relâché).
+- `node test/voile.js outDir` — gros plans de la voile souple (vol droit, de face, frein droit, spirale), en dpr 2.
 - `node test/trace.js <haut_visée>` — trace du bot tous les 20 m.
 - `node test/shots.js outDir [dpr]` — captures des moments clés (Chromium + SwiftShader, ~10 s par image : ne rendre que les images capturées).
 - Crochet de test : `window.__lwy` (`manual`, `advance(dt, n, render)`, `state`, `start`, `bot(opts)`, `input`). Bloc `@@TEST` dans `main.js`.
@@ -49,12 +50,16 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `flight.js` — `FLIGHT` : modèle à point matériel. Entrées `{ l, r, go }` (freins 0–1). Voile 9,5 m², CL 0,45 (mains hautes) à 1,15 (freins à fond),
   polaire CD = 0,12 + 0,22·CL², charge max 3,2 g. Part commune des freins = min(l, r) + 0,35·|r − l| ; différence = inclinaison (50°, spirale 72° si un frein reste à fond > 1 s).
   Voile : `bank` (1er ordre, 0,4 s) tirée par `swing` (pilote, pendule rollK 8,2 / rollC 1,0, couplage 0,55). CL en pendule (pitchK 26 / pitchC 4,6).
+  Garde des freins : effet = ((b − 0,08)/0,92)^1,25. Virage sans limite : `spiralT` monte tant que |différence| > 0,3, inclinaison jusqu'à 88°, charge max 4,5 g.
   Envol au bord d'une rupture de pente : si le relief 3 m devant tombe plus vite qu'une chute libre (portance comprise).
   Décrochage si freins > 85 % et vitesse < 10,2 m/s pendant 0,5 s ; on en sort en relâchant (< 50 %). Glisse à skis (frottement, carre), décollage quand la portance dépasse la composante normale du poids, contact (touch & go / atterrissage / crash), repère visuel en balancier, points de collision (buste, centre et bouts de voile).
 - `game.js` — `GAME` : pas fixe 1/120 s, score (proximité × vitesse × combo, portes, touch & go, frôlés, câble, atterrissage), médailles (Bronze 4 000, Argent 8 000, Or 13 000), fantôme 10 Hz, chrono arrêté au toucher dans la prairie, sauvegarde `localStorage['life-with-you-v2']`.
 - `bot.js` — pilote automatique (tests et vidéos uniquement) : essaie plusieurs caps et garde le plus proche de l'objectif qui reste sûr,
   suit l'axe des portes, « carve » (reste incliné d'un côté puis de l'autre) ou spirale quand il est trop haut. Réglage par défaut issu d'un balayage.
-- `render.js` — `R3D` : ciel, relief en tuiles (texture triplanaire), relief lointain aligné sur la grille fine, sapins/rochers instanciés, chalets, télésiège, portes, cible + manche à air, pilote + voile (profil réel, suspentes), fantôme, traînées et gerbes de neige, caméra de poursuite.
+- `render.js` — `R3D` : ciel, relief en tuiles (texture triplanaire), relief lointain aligné sur la grille fine, sapins/rochers instanciés, chalets, télésiège, portes, cible + manche à air, pilote + voile, fantôme, traînées et gerbes de neige, caméra de poursuite, `closeup()` (gros plans de test).
+  Voile souple (`wingGeometry` + `deformWing` à chaque image) : 48 stations, caissons gonflés entre nervures, ouvertures au bord d'attaque, bord de fuite festonné ;
+  la charge ouvre l'arc, la décharge referme les bouts, les caissons respirent, le bord de fuite frémit avec la vitesse, les freins l'abaissent, le bout extérieur traîne en virage,
+  la voile se froisse au décrochage ; suspentage en cascade (A, B, C groupées par 3) et freins (main → cascade → 4 points du bord de fuite) qui suivent la déformation.
 - `audio.js` — sons synthétisés (bruit rose filtré) : vent, sifflement, claquement, skis, frôlés, portes, crash.
 - `ui.js` — écrans, HUD, deux poignées flottantes (`hands`, `TRAVEL`), clavier (← / Q / A = frein gauche, → / D = frein droit, ↓ / S = les deux, Espace = départ/rejouer, Échap = pause).
 - `body.html`, `style.css` — écrans et HUD (polices Big Shoulders Display, Barlow, Barlow Condensed).

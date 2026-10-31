@@ -14,7 +14,12 @@ const BOT = (() => {
       const p = r.p, W = WORLD;
       if (p.mode === 'ready') return { l: 0, r: 0, go: true };
       if (p.mode === 'landing' || p.mode === 'stopped') return { l: 0.3, r: 0.3 };
-      const g = W.GATES[r.gate];
+      let g = W.GATES[r.gate];
+      // sans portes : on suit le couloir avec un point de passage 70 m devant, jusqu'à la finale
+      if (!g && -p.pos.z < W.LAND.s - 150) {
+        const sw = -p.pos.z + 70, d = (W.xc(sw + 1) - W.xc(sw - 1)) / 2, l = Math.hypot(d, 1);
+        g = { x: W.xc(sw), z: -sw, nx: d / l, nz: -1 / l, tx: 1 / l, tz: d / l };
+      }
       let tx, tz;
       if (g) {
         // viser un point en amont de la porte pour la franchir bien droit

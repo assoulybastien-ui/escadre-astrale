@@ -166,13 +166,15 @@ const WORLD = (() => {
   }
 
   // ---------- Portes (piquets orange) ----------
-  const GATES = [[65, -22], [150, 28], [232, -10], [320, 8], [460, 30], [545, -20], [625, 18], [695, 2]].map(([s, du]) => {
+  // portes mises de côté pour l'instant (on règle d'abord la physique) : remettre GATES_ON à true pour les retrouver
+  const GATES_ON = false;
+  const GATES = (GATES_ON ? [[65, -22], [150, 28], [232, -10], [320, 8], [460, 30], [545, -20], [625, 18], [695, 2]] : []).map(([s, du]) => {
     const x = xc(s) + du, z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
     const nx = d / l, nz = -1 / l;
     return { s, x, z, y: heightAt(x, z), nx, nz, tx: -nz, tz: nx, hw: 10, h: 30 };
   });
 
-  LAND.from = GATES[GATES.length - 1].s + 3; // un contact au-delà compte comme atterrissage
+  LAND.from = GATES.length ? GATES[GATES.length - 1].s + 3 : LAND.s - 60; // un contact au-delà compte comme atterrissage
 
   // ---------- Sapins ----------
   const TX = [], TY = [], TZ = [], TH = [], TR = [];
@@ -206,6 +208,7 @@ const WORLD = (() => {
         dl = Math.min(dl, Math.hypot(px - A.x - ex * t, pz - A.z - ez * t));
       }
       if (dl < 9) continue;
+      if (!GATES.length && Math.abs(px - xc(-pz)) < 7) continue; // sans portes : un passage dégagé au milieu
       if (TX.some((x, i) => Math.hypot(x - px, TZ[i] - pz) < 14)) continue;
       const h = 7 + rnd() * 8;
       TX.push(px); TZ.push(pz); TY.push(heightAt(px, pz) - 0.2); TH.push(h); TR.push(h * (0.22 + rnd() * 0.05));

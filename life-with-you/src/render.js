@@ -343,26 +343,29 @@ const R3D = (() => {
     windsock = sock;
   }
 
-  // ---------- voile (profil réel, caissons, suspentes) ----------
+  // ---------- voile souple : profil réel, caissons gonflés, nervures, ouvertures, suspentage en cascade ----------
   function wingGeometry(main, light, dark) {
-    const NS = 34, NA = 16, RL = G.lineLen, A = G.halfAngle;
-    const pos = [], col = [], cM = lin(main), cL = lin(light), cD = lin(dark), c = new THREE.Color();
-    const meta = []; // par sommet : t (envergure -1..1), xc (corde 0..1), direction radiale ex, ey
+    const NS = 48, NA = 20, RL = G.lineLen, A = G.halfAngle;
+    const pos = [], col = [], meta = []; // meta par sommet : t (envergure −1..1), xc (corde 0..1), extrados (1/0), caisson (0 nervure → 1 milieu)
+    const cM = lin(main), cL = lin(light), cD = lin(dark), cO = lin(0x10151c), c = new THREE.Color();
+    const chordAt = t => 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t));
     for (let i = 0; i <= NS; i++) {
       const t = -1 + 2 * i / NS, ang = A * t, ex = Math.sin(ang), ey = Math.cos(ang);
-      const chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t)), sweep = 0.35 * t * t;
-      const at = Math.abs(t);
-      const base = at > 0.82 ? cD : (at > 0.6 && at < 0.72) ? cL : (at < 0.06 ? cL : cM);
-      const rib = i % 2 ? 1 : 0.9;
+      const chord = chordAt(t), sweep = 0.35 * t * t, at = Math.abs(t);
+      const cell = i % 2; // nervures sur les stations paires, milieu des caissons sur les impaires
+      const base = at > 0.82 ? cD : (at > 0.6 && at < 0.72) ? cL : (at < 0.05 ? cL : cM);
       for (let k = 0; k < NA; k++) {
         const th = 2 * Math.PI * k / NA, xc = 0.5 + 0.5 * Math.cos(th), up = th < Math.PI;
         const yt = 0.6 * (0.2969 * Math.sqrt(xc) - 0.126 * xc - 0.3516 * xc * xc + 0.2843 * xc * xc * xc - 0.1015 * xc ** 4);
         const camber = 0.05 * Math.sin(Math.PI * Math.min(1, xc * 1.1));
-        const rad = (camber + (up ? yt : -yt * 0.55)) * chord;
-        const zz = -0.32 * chord + xc * chord + sweep;
+        const billow = cell * chord * (up ? 0.03 : -0.012) * Math.sin(Math.PI * Math.min(1, xc * 1.15)); // tissu gonflé entre deux nervures
+        const rad = (camber + (up ? yt : -yt * 0.55)) * chord + billow;
+        const zz = -0.32 * chord + xc * chord * (1 - 0.035 * cell * sstep(0.8, 1, xc)) + sweep; // bord de fuite festonné
         pos.push(ex * (RL + rad), ey * (RL + rad), zz);
-        meta.push(t, xc, ex, ey);
-        c.copy(base).multiplyScalar(rib * (up ? 1 : 0.72)); col.push(c.r, c.g, c.b);
+        meta.push(t, xc, up ? 1 : 0, cell);
+        if (!up && xc < 0.06 && at < 0.93) c.copy(cO);                       // ouvertures des caissons au bord d'attaque
+        else c.copy(base).multiplyScalar((cell ? 1 : 0.84) * (up ? 1 : 0.74)); // nervures un peu plus sombres, intrados à l'ombre
+        col.push(c.r, c.g, c.b);
       }
     }
     const idx = [];
@@ -373,25 +376,28 @@ const R3D = (() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     g.setIndex(idx); g.computeVertexNormals();
-    // suspentes : des élévateurs (au-dessus des mousquetons) vers l'intrados
-    const lp = [];
-    for (let i = 2; i <= NS - 2; i += 4) {
-      const t = -1 + 2 * i / NS, ang = A * t, ex = Math.sin(ang), ey = Math.cos(ang);
-      const chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t)), sweep = 0.35 * t * t;
-      for (const xc of [0.12, 0.42, 0.75]) {
-        const sx = t < 0 ? -0.16 : 0.16, zz = -0.32 * chord + xc * chord + sweep;
-        lp.push(sx, 0.45, xc * 0.2 - 0.05, ex * (RL - 0.05), ey * (RL - 0.05), zz);
+    // suspentage : chaque nervure porte 3 suspentes (rangées A, B, C) ; elles se rejoignent par 3 (cascade) puis vont aux élévateurs
+    const lowerIdx = (i, xcT) => { let best = -1, bd = 9; for (let k = 0; k < NA; k++) { const th = 2 * Math.PI * k / NA; if (th <= Math.PI) continue; const d = Math.abs(0.5 + 0.5 * Math.cos(th) - xcT); if (d < bd) { bd = d; best = k; } } return i * NA + best; };
+    const fixed = [], mids = [], segs = [];
+    const riserTop = (side, row) => fixed.push([side * 0.17, 0.42, -0.06 + row * 0.07]) - 1;
+    for (const side of [-1, 1]) for (let row = 0; row < 3; row++) {
+      const top = riserTop(side, row), bot = fixed.push([side * 0.17, 0, 0.0]) - 1;
+      segs.push(['f', bot, 'f', top]);
+      const ribs = [];
+      for (let i = 2; i < NS - 1; i += 2) { const t = -1 + 2 * i / NS; if (Math.sign(t) === side) ribs.push(i); }
+      if (side < 0) ribs.reverse(); // du centre vers le bout d'aile
+      for (let gq = 0; gq < ribs.length; gq += 3) {
+        const grp = ribs.slice(gq, gq + 3).map(i => lowerIdx(i, [0.1, 0.36, 0.64][row]));
+        const m = mids.push({ v: grp, top }) - 1;
+        for (const v of grp) segs.push(['v', v, 'm', m]);
+        segs.push(['m', m, 'f', top]);
       }
     }
-    for (const sx of [-0.16, 0.16]) lp.push(sx, 0, 0, sx, 0.45, 0.02);
-    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-    // points du bord de fuite où s'accrochent les suspentes de frein
+    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(segs.length * 6), 3));
+    // points du bord de fuite où s'accrochent les freins (4 par côté)
     const te = [];
-    for (const t of [-0.92, -0.72, -0.5, 0.5, 0.72, 0.92]) {
-      const ang = A * t, chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t));
-      te.push({ t, ex: Math.sin(ang), ey: Math.cos(ang), z: 0.68 * chord + 0.35 * t * t });
-    }
-    return { wing: g, lines: lg, meta: new Float32Array(meta), base: new Float32Array(pos), te };
+    for (const tt of [-0.92, -0.75, -0.58, -0.4, 0.4, 0.58, 0.75, 0.92]) { const i = Math.round((tt + 1) * NS / 2); te.push({ t: -1 + 2 * i / NS, v: i * NA }); }
+    return { wing: g, lines: lg, meta: new Float32Array(meta), base: new Float32Array(pos), te, fixed, mids, segs };
   }
 
   // ---------- pilote debout dans sa sellette, à skis ----------
@@ -426,14 +432,15 @@ const R3D = (() => {
     }
     const wingPivot = new THREE.Group(); wingPivot.position.set(0, G.carab, 0); root.add(wingPivot);
     const wg = wingGeometry(C.wingA, C.wingB, C.wingC);
-    const wing = new THREE.Mesh(wg.wing, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, side: THREE.DoubleSide }));
+    // nylon ripstop : un peu satiné, légèrement translucide à contre-jour (émissif faible)
+    const wing = new THREE.Mesh(wg.wing, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.48, metalness: 0.02, emissive: lin(0x202020), emissiveIntensity: 1, side: THREE.DoubleSide }));
     wing.castShadow = true; wingPivot.add(wing);
-    const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.55 }));
-    wingPivot.add(lines);
-    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wg.te.length * 6), 3));
+    const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.5 }));
+    lines.frustumCulled = false; wingPivot.add(lines);
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array((wg.te.length + 2) * 6), 3));
     const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xd8572a), transparent: true, opacity: 0.5 }));
     brakes.frustumCulled = false; root.add(brakes);
-    return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, dl: -1, dr: -1 };
+    return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, gl: 1 };
   }
 
   function buildGhost(geo) {
@@ -523,18 +530,41 @@ const R3D = (() => {
     const back = (1 - inflate) * (fwdFall ? -1.25 : 1.45), pitch = opt ? opt.pitch || 0 : 0, roll = opt ? opt.roll || 0 : 0;
     rig.pivot.rotation.set(back + pitch, 0, roll);
   }
-  // déforme le bord de fuite selon les freins (côté gauche / droit)
-  function deformWing(bl, br) {
-    if (Math.abs(bl - pilot.dl) < 0.004 && Math.abs(br - pilot.dr) < 0.004) return;
-    pilot.dl = bl; pilot.dr = br;
-    const g = pilot.geo, P = g.wing.attributes.position, M = g.meta, B = g.base;
+  // voile souple : la charge ouvre l'arc, la décharge referme les bouts, les caissons respirent, le bord de fuite frémit,
+  // les freins abaissent le bord de fuite de leur côté, le bout extérieur traîne en virage, la voile se froisse au décrochage
+  function deformWing(p, bl, br, dt) {
+    const gd = pilot.geo, P = gd.wing.attributes.position, M = gd.meta, B = gd.base;
+    pilot.gl += (clamp(p.gload, 0.15, 4.5) - pilot.gl) * Math.min(1, dt * 6);
+    const air = p.mode === 'air';
+    const gl = air ? pilot.gl : 1;
+    const sArc = clamp(1 - 0.045 * (gl - 1), 0.86, 1.06), curl = Math.max(0, 0.6 - gl) * 0.5;
+    const flut = (0.006 + 0.028 * clamp((p.V - 15) / 15, 0, 1)) * (air ? 1 : 0.4);
+    const yaw = air ? clamp(9.81 * Math.tan(p.bank) / Math.max(8, p.V), -1.5, 1.5) : 0;
+    const stall = p.stall ? 1 : 0;
     for (let i = 0; i < P.count; i++) {
-      const t = M[i * 4], xc = M[i * 4 + 1], ex = M[i * 4 + 2], ey = M[i * 4 + 3];
-      const b = (t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(t)) * Math.max(0, (xc - 0.5) / 0.5);
-      const d = b * 0.6; // le bord de fuite descend vers le pilote (jusqu'à ~60 cm)
-      P.setXYZ(i, B[i * 3] - ex * d, B[i * 3 + 1] - ey * d, B[i * 3 + 2] - d * 0.25);
+      const t = M[i * 4], xc = M[i * 4 + 1], up = M[i * 4 + 2], cell = M[i * 4 + 3], at = Math.abs(t);
+      const bx = B[i * 3], by = B[i * 3 + 1];
+      let r = Math.hypot(bx, by), th = Math.atan2(bx, by), z = B[i * 3 + 2];
+      th *= sArc * (1 + curl * t * t);
+      r += cell * (up ? 0.012 : -0.006) * Math.sin(time * 5.3 + t * 11);
+      if (xc > 0.65) r += flut * ((xc - 0.65) / 0.35) * Math.sin(time * 23 + t * 9 + xc * 4);
+      const b = (t > 0 ? br : bl) * sstep(0.1, 0.55, at) * Math.max(0, (xc - 0.5) / 0.5);
+      r -= b * 0.6; z -= b * 0.15;
+      z += -t * at * yaw * 0.9;
+      if (stall) { r *= 0.93 + 0.05 * Math.sin(time * 13 + t * 7); z += 0.6 * (1 - at); }
+      P.setXYZ(i, r * Math.sin(th), r * Math.cos(th), z);
     }
-    P.needsUpdate = true; g.wing.computeVertexNormals();
+    P.needsUpdate = true; gd.wing.computeVertexNormals();
+    // suspentes : suivent la voile déformée
+    const L = gd.lines.attributes.position.array, mid = gd.mids.map(m => {
+      let x = 0, y = 0, zz = 0;
+      for (const v of m.v) { x += P.getX(v); y += P.getY(v); zz += P.getZ(v); }
+      const n = m.v.length, f = gd.fixed[m.top];
+      return [x / n * 0.55 + f[0] * 0.45, y / n * 0.55 + f[1] * 0.45, zz / n * 0.55 + f[2] * 0.45];
+    });
+    const pt = (kind, id) => kind === 'v' ? [P.getX(id), P.getY(id), P.getZ(id)] : kind === 'm' ? mid[id] : gd.fixed[id];
+    gd.segs.forEach((sg, k) => { const a = pt(sg[0], sg[1]), c2 = pt(sg[2], sg[3]); L.set(a, k * 6); L.set(c2, k * 6 + 3); });
+    gd.lines.attributes.position.needsUpdate = true;
   }
   function posePilot(p, dt) {
     const crash = p.mode === 'crash';
@@ -543,7 +573,7 @@ const R3D = (() => {
     poseRig({ root: pilot.root, pivot: pilot.wingPivot, wing: pilot.wing }, p.pos, p.up, p.fwd, gonfl, {
       forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.12 + (p.cl - 0.45) * 0.3, roll: crash ? Math.sin(time * 9) * 0.3 : 0
     });
-    deformWing(bl, br);
+    deformWing(p, bl, br, dt);
     // bras : chaque main tient sa poignée ; tirer = la main descend vers la hanche
     for (const a of pilot.arms) {
       const pull = a.sx < 0 ? bl : br;
@@ -563,18 +593,19 @@ const R3D = (() => {
     pilot.body.rotation.z = sw;
     pilot.body.position.set(P * Math.sin(sw), P - P * Math.cos(sw) + (ground ? -kneel * 0.4 : 0), 0);
     pilot.body.updateMatrix();
-    // suspentes de frein : de chaque main aux points du bord de fuite de son côté
+    // suspentes de frein : de chaque main à un point de cascade, puis aux 4 points du bord de fuite de son côté
     const show = !crash && p.inflate > 0.8;
     pilot.brakes.visible = show;
     if (show) {
       pilot.wingPivot.updateMatrix();
-      const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te;
-      for (let k = 0; k < te.length; k++) {
-        const q = te[k], side = q.t > 0 ? 1 : 0, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+      const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te, P2 = pilot.geo.wing.attributes.position;
+      let k = 0;
+      for (const side of [0, 1]) {
         const hand = _y.copy(pilot.arms[side].hand.position).applyMatrix4(pilot.body.matrix);
-        _x.set(q.ex * (G.lineLen - b), q.ey * (G.lineLen - b), q.z - b * 0.25).applyMatrix4(pilot.wingPivot.matrix);
-        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y; arr[k * 6 + 2] = hand.z;
-        arr[k * 6 + 3] = _x.x; arr[k * 6 + 4] = _x.y; arr[k * 6 + 5] = _x.z;
+        const pts = te.filter(q => (q.t > 0 ? 1 : 0) === side).map(q => new THREE.Vector3(P2.getX(q.v), P2.getY(q.v), P2.getZ(q.v)).applyMatrix4(pilot.wingPivot.matrix));
+        const m = pts.reduce((acc, q) => acc.add(q), new THREE.Vector3()).multiplyScalar(1 / pts.length).lerp(hand, 0.45);
+        arr.set([hand.x, hand.y, hand.z, m.x, m.y, m.z], k * 6); k++;
+        for (const q of pts) { arr.set([m.x, m.y, m.z, q.x, q.y, q.z], k * 6); k++; }
       }
       pilot.brakes.geometry.attributes.position.needsUpdate = true;
     }
@@ -733,5 +764,15 @@ const R3D = (() => {
     return { x: (_v.x * 0.5 + 0.5) * window.innerWidth, y: (-_v.y * 0.5 + 0.5) * window.innerHeight, behind: _v.z > 1 };
   }
 
-  return { init, frame, on, project, adapt, get camera() { return camera; }, get renderer() { return renderer; } };
+  // tests : gros plan, caméra placée dans le repère du pilote (x droite, y haut, z arrière) et visant un point de ce repère
+  function closeup(cx, cy, cz, lx, ly, lz) {
+    pilot.root.updateMatrixWorld(true);
+    camera.position.set(cx, cy, cz).applyMatrix4(pilot.root.matrixWorld);
+    _v.set(lx, ly, lz).applyMatrix4(pilot.root.matrixWorld);
+    camera.up.set(0, 1, 0); camera.lookAt(_v); setFov(50);
+    sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+  }
+
+  return { init, frame, on, project, adapt, closeup, get camera() { return camera; }, get renderer() { return renderer; } };
 })();

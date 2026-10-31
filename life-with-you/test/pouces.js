@@ -25,11 +25,15 @@ const fs = require('fs'), path = require('path');
   // les deux à fond (et au-delà : le repère suit)
   await touch('touchMove', [[205, 340, 1], [640, 330, 2]]);
   v = await page.evaluate(() => window.__lwy.state().input); console.log('les deux en bas :', JSON.stringify(v)); check(v.l === 1 && v.r === 1, 'les deux pouces en bas = les deux poignées à fond');
-  // pouce gauche qui remonte un peu : la poignée gauche se relâche d'autant (pas de course morte)
+  // pouce gauche qui remonte de 40 px depuis tout en bas : le repère n'a pas bougé (posé à 220), donc 80 px tirés ≈ 82 %
   await touch('touchMove', [[205, 300, 1], [640, 330, 2]]);
-  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche remonte de 40 px :', JSON.stringify(v)); check(v.l > 0.45 && v.l < 0.65 && v.r === 1, 'remonter le pouce relâche la poignée');
+  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche remonte de 40 px :', JSON.stringify(v)); check(v.l > 0.75 && v.l < 0.9 && v.r === 1, 'le repère reste fixe : remonter le pouce relâche d\'autant');
+  // au-dessus du point de départ : mains hautes, et le repère ne monte pas avec le pouce
+  await touch('touchMove', [[205, 150, 1], [640, 330, 2]]);
+  await touch('touchMove', [[205, 250, 1], [640, 330, 2]]);
+  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche monté puis redescendu à +30 px :', JSON.stringify(v)); check(v.l > 0.2 && v.l < 0.4, 'monter au-dessus du repère ne le déplace pas');
   // gauche/droite : ignoré
-  await touch('touchMove', [[120, 300, 1], [760, 330, 2]]);
+  await touch('touchMove', [[120, 250, 1], [760, 330, 2]]);
   const v2 = await page.evaluate(() => window.__lwy.state().input); check(Math.abs(v2.l - v.l) < 1e-6 && v2.r === 1, 'le mouvement sur le côté ne change rien');
   // vol : on laisse le bot décoller puis on reprend la main avec un virage à droite
   await page.evaluate(() => { window.__lwy.bot({}); for (let i = 0; i < 2000; i++) { window.__lwy.advance(1 / 30, 1, false); const p = window.__lwy.state().run.p; if (p.mode === 'air' && p.airT > 1.2 && -p.pos.z > 150) break; } window.__lwy.bot(null); });

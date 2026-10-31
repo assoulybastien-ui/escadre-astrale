@@ -42,12 +42,13 @@ const UI = (() => {
     $('fLen').textContent = W.FACTS.length >= 1000 ? dec(W.FACTS.length / 1000, 1).replace(',0', '') + ' km' : W.FACTS.length + ' m';
     $('fDrop').textContent = W.FACTS.drop + ' m';
     $('fGates').textContent = W.FACTS.gates;
+    $('fGates').parentElement.hidden = !W.FACTS.gates;
     showTitle();
   }
 
   // ---------- deux poignées de frein ----------
-  // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce ;
-  // descendre le pouce tire la poignée. Monter ou aller sur le côté ne tire rien : le repère suit le pouce.
+  // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce et n'en bouge plus ;
+  // descendre le pouce tire la poignée (course TRAVEL). Monter au-dessus du repère ou aller sur le côté ne tire rien.
   function handOf(id) { return hands.l.id === id ? hands.l : hands.r.id === id ? hands.r : null; }
   function down(e) {
     AUDIO.unlock();
@@ -62,10 +63,8 @@ const UI = (() => {
   function move(e) {
     const h = handOf(e.pointerId); if (!h) return;
     e.preventDefault();
-    h.x = e.clientX;
-    let dy = e.clientY - h.y0;
-    if (dy < 0) { h.y0 = e.clientY; dy = 0; }                         // le pouce remonte : mains hautes, le repère suit
-    if (dy > TRAVEL) { h.y0 = e.clientY - TRAVEL; dy = TRAVEL; }      // au-delà de la course : le repère suit aussi
+    // le repère reste là où le pouce s'est posé : au-delà de la course, la poignée reste à fond ; au-dessus, mains hautes
+    const dy = Math.max(0, Math.min(TRAVEL, e.clientY - h.y0));
     h.dy = dy; h.v = curve(dy / TRAVEL);
     draw(h); apply();
   }
@@ -159,7 +158,7 @@ const UI = (() => {
     $('rNext').textContent = res.kind !== 'pose' ? 'Il faut se poser dans la prairie pour obtenir une médaille.' : nextM ? `${nextM.nom} à partir de ${fmt(nextM.min)} points` : 'Meilleure médaille obtenue';
     const rows = [
       ['Temps', chrono(res.time), ''],
-      ['Portes', `${res.gateOk} / ${res.gates}`, res.gatePts],
+      ...(res.gates ? [['Portes', `${res.gateOk} / ${res.gates}`, res.gatePts]] : []),
       ['Rase-mottes', dec(res.closeT, 1) + ' s sous 6 m', res.prox],
       ['Touch & go', res.touch, res.touchPts],
       ['Sapins frôlés', res.near, res.nearPts],
@@ -185,13 +184,13 @@ const UI = (() => {
     if ((S.save.runs || 0) > 3) return '';
     if (p.mode === 'air' && p.airT < 4 && r.gate === 0) return 'Pouce droit vers le bas : tu vires à droite et tu te balances. Pouce gauche : à gauche';
     const agl = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
-    if (p.mode === 'air' && agl > 22 && r.gate <= 2) return 'Trop haut ? Enchaîne les virages, gauche puis droite : la voile plonge vers la neige';
-    if (r.gate === 0) return 'Passe entre les piquets orange';
+    if (p.mode === 'air' && agl > 22 && -p.pos.z < 260) return 'Trop haut ? Enchaîne les virages, gauche puis droite : la voile plonge vers la neige';
     const toCable = -p.pos.z - W.CABLE.s;
     if (!r.cable && toCable > -150 && toCable < -15) return 'Télésiège devant : câble à 22 m. Descends en virant et passe dessous';
-    if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
-    if (r.gate === 1 && r.gateOk === 1) return 'Rase la neige : plus tu frôles vite, plus le combo grimpe';
-    if (r.gate === 3) return 'Alterne les freins au rythme du balancement : la voile s’incline de plus en plus (wingover)';
+    if (-p.pos.z > W.LAND.s - 160 && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
+    const s = -p.pos.z;
+    if (s > 240 && s < 320) return 'Rase la neige : plus tu frôles vite, plus le combo grimpe';
+    if (s > 400 && s < 450) return 'Alterne les freins au rythme du balancement : la voile s’incline de plus en plus (wingover)';
     return '';
   }
 
