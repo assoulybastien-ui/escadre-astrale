@@ -13,7 +13,7 @@ puis se poser dans la cible.
 La physique est celle d'une vraie voile de speed riding de 9,5 m² : 71 km/h mains hautes, 44 km/h freins à fond,
 une finesse de 2,7, une spirale à 90 km/h, un décrochage si l'on freine trop longtemps, et l'énergie qui se conserve.
 
-## Version 0.4 : la physique d'abord (portes mises de côté)
+## Version 0.5 : voile nerveuse, premier virage immédiat (portes mises de côté)
 - Une descente générée, le **Couloir des Aiguilles** : départ d'une falaise, ~775 m, ~350 m de dénivelé, un télésiège, une forêt, un village et une cible (portes mises de côté pour l’instant).
 - Score : proximité × vitesse × combo, touch & go, sapins frôlés, passage sous le câble, atterrissage noté (précision et douceur).
 - Médailles, record et **fantôme** du meilleur passage.

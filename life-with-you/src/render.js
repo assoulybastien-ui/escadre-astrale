@@ -589,7 +589,7 @@ const R3D = (() => {
     const kneel = ground ? 0.18 + Math.min(0.25, p.V / 60) : 0.08;
     for (const l of pilot.legs) { l.hip.rotation.x = -kneel; l.ski.rotation.x = kneel; }
     // le pilote se balance sous la voile : rotation autour des mousquetons (écart entre voile et pilote)
-    const sw = p.mode === 'air' ? clamp(p.bank - p.swing, -0.7, 0.7) : 0, P = G.carab;
+    const sw = p.mode === 'air' ? clamp(p.bank - p.swing, -0.85, 0.85) : 0, P = G.carab;
     pilot.body.rotation.z = sw;
     pilot.body.position.set(P * Math.sin(sw), P - P * Math.cos(sw) + (ground ? -kneel * 0.4 : 0), 0);
     pilot.body.updateMatrix();

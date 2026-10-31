@@ -40,6 +40,8 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `node test/pouces.js [outDir]` — les deux poignées au doigt (multi-touch réel via CDP), avec vérifications et capture d'un virage.
 - `node test/balance.js outDir` — captures du saut de falaise et du balancement (frein tenu, relâché).
 - `node test/voile.js outDir` — gros plans de la voile souple (vol droit, de face, frein droit, spirale), en dpr 2.
+- `node test/reactivite.js` — premier virage depuis le vol droit puis bascule (inclinaison voile/pilote, vitesse), sans rendu.
+- `node test/virage.js outDir` — captures du premier virage et de la bascule.
 - `node test/trace.js <haut_visée>` — trace du bot tous les 20 m.
 - `node test/shots.js outDir [dpr]` — captures des moments clés (Chromium + SwiftShader, ~10 s par image : ne rendre que les images capturées).
 - Crochet de test : `window.__lwy` (`manual`, `advance(dt, n, render)`, `state`, `start`, `bot(opts)`, `input`). Bloc `@@TEST` dans `main.js`.
@@ -50,7 +52,12 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `flight.js` — `FLIGHT` : modèle à point matériel. Entrées `{ l, r, go }` (freins 0–1). Voile 9,5 m², CL 0,45 (mains hautes) à 1,15 (freins à fond),
   polaire CD = 0,12 + 0,22·CL², charge max 3,2 g. Part commune des freins = min(l, r) + 0,35·|r − l| ; différence = inclinaison (50°, spirale 72° si un frein reste à fond > 1 s).
   Voile : `bank` (1er ordre, 0,4 s) tirée par `swing` (pilote, pendule rollK 8,2 / rollC 1,0, couplage 0,55). CL en pendule (pitchK 26 / pitchC 4,6).
-  Garde des freins : effet = ((b − 0,08)/0,92)^1,25. Virage sans limite : `spiralT` monte tant que |différence| > 0,3, inclinaison jusqu'à 88°, charge max 4,5 g.
+  Virage sans limite : `spiralT` monte tant que |différence| > 0,3, inclinaison jusqu'à 88°, charge max 4,5 g.
+  **Voile nerveuse (0.5, retour du 31/10 : « le premier virage est tout lent »)** : garde quasi nulle (3 %), 62° à fond atteints en ~0,2 s
+  (`tauBank` 0,17), un seul frein ne compte que pour 12 % dans le freinage commun, le pilote retient peu la voile (`swingPull` 0,2),
+  et la voile plonge dans le virage quand elle bascule (`turnDive` : moins d'incidence selon la vitesse de bascule) → elle accélère.
+  Mesures (`node test/reactivite.js`) : frein droit à fond depuis le vol droit → 26° à 0,2 s, 44° à 0,4 s, 70 → 80 km/h en 2 s ;
+  bascule à gauche : la voile passe de l'autre côté en 0,4 s pendant que le pilote est encore lancé (écart jusqu'à 85°).
   Envol au bord d'une rupture de pente : si le relief 3 m devant tombe plus vite qu'une chute libre (portance comprise).
   Décrochage si freins > 85 % et vitesse < 10,2 m/s pendant 0,5 s ; on en sort en relâchant (< 50 %). Glisse à skis (frottement, carre), décollage quand la portance dépasse la composante normale du poids, contact (touch & go / atterrissage / crash), repère visuel en balancier, points de collision (buste, centre et bouts de voile).
 - `game.js` — `GAME` : pas fixe 1/120 s, score (proximité × vitesse × combo, portes, touch & go, frôlés, câble, atterrissage), médailles (Bronze 4 000, Argent 8 000, Or 13 000), fantôme 10 Hz, chrono arrêté au toucher dans la prairie, sauvegarde `localStorage['life-with-you-v2']`.

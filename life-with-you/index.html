@@ -188,7 +188,7 @@ body {
 
 <section id="scrTitle" class="screen">
   <div class="panel title-panel">
-    <p class="eyebrow">Speed riding · prototype 0.4 · physique</p>
+    <p class="eyebrow">Speed riding · prototype 0.5 · physique</p>
     <h1 class="logo">Life With You</h1>
     <div class="course">
       <div class="course-name" id="tCourse">Couloir des Aiguilles</div>
@@ -607,11 +607,11 @@ const FLIGHT = (() => {
   // Voile de speed riding de 9,5 m², trims ouverts : ~71 km/h mains hautes (finesse ~2,7), finesse max ~3,1 freins à moitié,
   // ~45 km/h freins à fond. Virage sans limite : un frein tenu fait pencher de plus en plus (spirale qui se resserre
   // jusqu'à ~88°, > 100 km/h, ~4,5 g) ; si on ne relâche pas, on finit au sol
-  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankDeep: 88 * Math.PI / 180,
+  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 62 * Math.PI / 180, bankDeep: 88 * Math.PI / 180,
     tauHand: 0.1, nMax: 4.5, stallV: 10.2,
-    // la voile s'incline vite sous le frein (~0,4 s) ; le pilote se balance dessous (pendule ~2,2 s, peu amorti)
-    // et entraîne un peu la voile : en alternant les freins au bon rythme, on enchaîne des wingovers
-    tauBank: 0.4, rollK: 8.2, rollC: 1.0, swingPull: 0.55, bankLim: 89 * Math.PI / 180,
+    // voile nerveuse : elle bascule sous le frein en ~0,2 s et plonge dans le virage ; le pilote, en retard, part à l'extérieur
+    // puis revient en dépassant (pendule ~2,2 s, peu amorti) et entraîne un peu la voile : en alternant, on enchaîne des wingovers
+    tauBank: 0.17, rollK: 8.2, rollC: 0.9, swingPull: 0.2, turnDive: 0.24, bankLim: 89 * Math.PI / 180,
     // pendule en tangage : tirer = la voile cabre et dépasse (ressource), relâcher = elle plonge (abattée)
     pitchK: 26, pitchC: 4.6 };
   const MU_SKI = 0.055, MU_STOP = 0.35, PILOT_CDA = 0.5;
@@ -644,12 +644,14 @@ const FLIGHT = (() => {
     // les mains suivent les pouces avec un léger retard
     const kh = 1 - Math.exp(-dt / WING.tauHand);
     p.bl += ((inp.l || 0) - p.bl) * kh; p.br += ((inp.r || 0) - p.br) * kh;
-    // garde : les premiers centimètres de frein ne font presque rien, puis la voile répond de plus en plus (toucher progressif)
-    const garde = b => Math.pow(Math.max(0, (b - 0.08) / 0.92), 1.25);
+    // garde réduite : le frein agit presque dès le début de la course
+    const garde = b => Math.max(0, (b - 0.03) / 0.97);
     const el = garde(p.bl), er = garde(p.br);
-    // part commune des deux freins (plus de CL) et différence (virage)
-    const sym = Math.min(el, er) + 0.35 * Math.abs(er - el), dif = er - el;
-    const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15);
+    // part commune des deux freins (plus de CL) et différence (virage) ; un seul frein ralentit peu la voile
+    const sym = Math.min(el, er) + 0.12 * Math.abs(er - el), dif = er - el;
+    // quand la voile bascule, elle plonge dans le virage (moins d'incidence) : elle prend de la vitesse au lieu d'en perdre
+    const dive = WING.turnDive * Math.min(1, Math.abs(p.bankV) / 1.5);
+    const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15) - dive;
     // incidence en pendule : elle dépasse sa consigne puis revient
     p.clV += ((clT - p.cl) * WING.pitchK - p.clV * WING.pitchC) * dt;
     p.cl = Math.min(1.32, Math.max(0.24, p.cl + p.clV * dt));
@@ -1114,9 +1116,9 @@ const BOT = (() => {
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const CANDS = [-1.1, -0.8, -0.55, -0.35, -0.18, 0, 0.18, 0.35, 0.55, 0.8, 1.1];
   function make(opts = {}) {
-    // réglage par défaut issu d'un balayage (8/8 portes, sans crash) : gain 1,6, amortissement 0,3, virages en S jusqu'à 40 m des portes
-    const target = opts.agl || 3, gain = opts.gain || 1.6;
-    if (opts.kd === undefined) opts.kd = 0.3;
+    // réglage par défaut issu d'un balayage (voile nerveuse de la 0.5, sans crash) : gain 1,3, amortissement 0,6
+    const target = opts.agl || 3, gain = opts.gain || 1.3;
+    if (opts.kd === undefined) opts.kd = 0.6;
     if (opts.weaveDist === undefined) opts.weaveDist = 40;
     return function (r) {
       const p = r.p, W = WORLD;
@@ -1797,7 +1799,7 @@ const R3D = (() => {
     const kneel = ground ? 0.18 + Math.min(0.25, p.V / 60) : 0.08;
     for (const l of pilot.legs) { l.hip.rotation.x = -kneel; l.ski.rotation.x = kneel; }
     // le pilote se balance sous la voile : rotation autour des mousquetons (écart entre voile et pilote)
-    const sw = p.mode === 'air' ? clamp(p.bank - p.swing, -0.7, 0.7) : 0, P = G.carab;
+    const sw = p.mode === 'air' ? clamp(p.bank - p.swing, -0.85, 0.85) : 0, P = G.carab;
     pilot.body.rotation.z = sw;
     pilot.body.position.set(P * Math.sin(sw), P - P * Math.cos(sw) + (ground ? -kneel * 0.4 : 0), 0);
     pilot.body.updateMatrix();
