@@ -1,0 +1,76 @@
+<canvas id="gl" aria-label="Vue 3D de la descente"></canvas>
+<div id="vig"></div>
+<div id="touch"></div>
+<div id="stick" hidden><div class="ring"></div><div class="knob"></div></div>
+
+<div id="hud" hidden>
+  <div class="hud-l">
+    <div class="read"><span id="hSpeed" class="num">0</span><span class="unit">km/h</span></div>
+    <div class="read small" id="hAglBox"><span class="lab">Sol</span><span id="hAgl" class="num">0</span><span class="unit">m</span></div>
+  </div>
+  <div class="hud-c">
+    <div class="gatechip" id="hGate">
+      <svg id="hArrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 L21 20 L12 15.5 L3 20 Z"/></svg>
+      <span id="hGateTxt">Porte 1/8</span><span id="hGateDist" class="dist">0 m</span>
+    </div>
+    <div id="hTime" class="time">0:00,0</div>
+  </div>
+  <div class="hud-r">
+    <div class="scorebox">
+      <div class="read"><span id="hScore" class="num">0</span></div>
+      <div id="hCombo" class="combo">×1,0</div>
+    </div>
+    <button id="btnPause" class="iconbtn" aria-label="Pause"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+  </div>
+  <div id="hint" hidden></div>
+  <div id="pops" aria-live="polite"></div>
+</div>
+
+<section id="scrTitle" class="screen">
+  <div class="panel title-panel">
+    <p class="eyebrow">Speed riding · prototype 0.1</p>
+    <h1 class="logo">Life With You</h1>
+    <div class="course">
+      <div class="course-name" id="tCourse">Couloir des Aiguilles</div>
+      <div class="facts">
+        <span><b id="fLen">1 km</b> de descente</span>
+        <span><b id="fDrop">390 m</b> de dénivelé</span>
+        <span><b id="fGates">8</b> portes</span>
+        <span>vent <b>calme</b></span>
+      </div>
+      <div class="best" id="tBest">Pas encore de record sur cette descente</div>
+    </div>
+    <button id="btnPlay" class="cta"><span>S'élancer</span></button>
+    <p class="help">Un seul contrôle : pose le pouce n'importe où, le stick apparaît dessous.
+      <b>Haut</b> pour piquer et accélérer, <b>bas</b> pour freiner, remonter et arrondir, <b>côtés</b> pour tourner.</p>
+  </div>
+</section>
+
+<section id="scrPause" class="screen" hidden>
+  <div class="panel pause-panel">
+    <h2 class="h2">Pause</h2>
+    <button id="btnResume" class="cta"><span>Reprendre</span></button>
+    <div class="row2">
+      <button id="btnRestart" class="ghostbtn">Recommencer</button>
+      <button id="btnMenu" class="ghostbtn">Menu</button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="optInvert"><span>Inverser haut / bas</span></label>
+    <label class="toggle"><input type="checkbox" id="optSound" checked><span>Son</span></label>
+  </div>
+</section>
+
+<section id="scrResult" class="screen" hidden>
+  <div class="panel result-panel">
+    <div class="res-main">
+      <p class="eyebrow" id="rKind">Posé</p>
+      <div class="res-score"><div id="rMedal" class="medal">—</div><div><div class="score" id="rScore">0</div><div class="sub" id="rRecord"></div></div></div>
+      <p class="sub" id="rNext"></p>
+      <div class="actions"><button id="btnAgain" class="cta"><span>Rejouer</span></button><button id="btnMenu2" class="ghostbtn">Menu</button></div>
+    </div>
+    <dl class="rows" id="rRows"></dl>
+  </div>
+</section>
+
+<div id="crash" hidden><div class="crash-t">Crash</div><div class="crash-r" id="crashWhy"></div><div class="crash-h">Toucher pour rejouer</div></div>
+<div id="rotate"><div><div class="logo small">Life With You</div><p>Tourne ton iPhone : le jeu se joue en paysage.</p></div></div>
+<div id="boot"><div><div class="logo small">Life With You</div><p id="bootMsg">Préparation de la montagne…</p></div></div>
