@@ -49,8 +49,8 @@ body {
 .unit, .lab { font-size: 11px; font-weight: 600; color: var(--mist); letter-spacing: 0.1em; text-transform: uppercase; }
 .read.small .num { font-size: 24px; }
 .hud-l { position: absolute; top: var(--st); left: var(--sl); display: flex; flex-direction: column; gap: 6px; }
-#hAglBox.close { background: rgba(143, 216, 255, 0.28); }
-#hAglBox.close .num { color: var(--ice); }
+#hAglBox.close { background: var(--ice); }
+#hAglBox.close .num, #hAglBox.close .lab, #hAglBox.close .unit { color: var(--night); }
 .hud-c { position: absolute; top: var(--st); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .gatechip { display: flex; align-items: center; gap: 8px; background: var(--glass); padding: 5px 12px 5px 8px; border-radius: 8px; font-weight: 600; font-size: 15px; }
 .gatechip svg { width: 20px; height: 20px; fill: var(--signal); transition: transform 0.12s linear; }
