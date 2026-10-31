@@ -70,7 +70,8 @@ const GAME = (() => {
       case 'decollage': emit(e); break;
       case 'redecollage': {
         emit(e);
-        if (e.groundT < 8 && r.t - (r.lastTouch || -9) > 1.5) {
+        // un vrai touch & go : au moins 1 s de vol avant de toucher, un vrai appui sur la neige (pas les petits rebonds)
+        if (e.groundT >= 0.15 && e.groundT < 8 && e.airBefore >= 1 && r.t - (r.lastTouch || -9) > 1.5) {
           r.lastTouch = r.t;
           const pts = Math.round(150 * r.combo);
           r.touch++; r.touchPts += pts; r.score += pts; r.combo = Math.min(5, r.combo + 0.3);

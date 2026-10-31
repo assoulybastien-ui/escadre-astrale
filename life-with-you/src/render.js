@@ -431,7 +431,7 @@ const R3D = (() => {
     const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.55 }));
     wingPivot.add(lines);
     const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wg.te.length * 6), 3));
-    const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xff5b1f), transparent: true, opacity: 0.8 }));
+    const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xd8572a), transparent: true, opacity: 0.5 }));
     brakes.frustumCulled = false; root.add(brakes);
     return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, dl: -1, dr: -1 };
   }
@@ -614,9 +614,9 @@ const R3D = (() => {
     camera.position.copy(cam.pos); camera.up.set(0, 1, 0); camera.lookAt(cam.look); setFov(55);
   }
   function orbitCam(p, dt) {
-    const a = time * 0.22 + 2.4, R = 13;
+    const a = time * 0.22 + 2.4, R = 12;
     _v.set(p.pos.x + Math.cos(a) * R, 0, p.pos.z + Math.sin(a) * R);
-    _v.y = Math.max(W.heightAt(_v.x, _v.z) + 2, p.pos.y + 4.2);
+    _v.y = Math.max(W.heightAt(_v.x, _v.z) + 2, p.pos.y + 9); // assez haut pour passer au-dessus des sapins
     cam.pos.lerp(_v, 1 - Math.exp(-dt * 2));
     cam.look.lerp(_x.set(p.pos.x, p.pos.y + 2.5, p.pos.z), 1 - Math.exp(-dt * 3));
     camera.position.copy(cam.pos); camera.up.set(0, 1, 0); camera.lookAt(cam.look); setFov(55);

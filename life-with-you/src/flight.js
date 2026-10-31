@@ -102,7 +102,7 @@ const FLIGHT = (() => {
       if (Fn > 0 && p.mode === 'ski' && p.inflate > 0.6 && (!p.launched || p.groundT > 0.2)) {
         // la voile soulève le pilote : décollage
         p.mode = 'air'; p.airT = 0;
-        ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT });
+        ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT, airBefore: p.lastAirT || 0 });
         p.launched = true;
       } else {
         p.groundT += dt;
@@ -131,7 +131,7 @@ const FLIGHT = (() => {
         if (p.mode === 'ski' && p.inflate > 0.6 && ny2 > hT + 0.08 && Math.hypot(vx, vy, vz) > 8) {
           // le sol se dérobe (bord de barre, bosse) : on s'envole
           p.pos.y = ny2; p.mode = 'air'; p.airT = 0;
-          ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT });
+          ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT, airBefore: p.lastAirT || 0 });
           p.launched = true;
           frame(p, dt);
           return;
@@ -170,7 +170,7 @@ const FLIGHT = (() => {
       p.vel.x -= n.x * d; p.vel.y -= n.y * d; p.vel.z -= n.z * d;
       const s = -p.pos.z;
       const landing = s > w.LAND.from; // prairie d'atterrissage, après la dernière porte
-      p.mode = landing ? 'landing' : 'ski'; p.groundT = 0;
+      p.mode = landing ? 'landing' : 'ski'; p.groundT = 0; p.lastAirT = p.airT;
       // petits rebonds au ras de la neige : pas d'événement (évite d'enchaîner les bruits)
       if (landing || p.airT > 0.25 || vn > 1.5) ev.push({ type: 'contact', vn, landing, x: p.pos.x, z: p.pos.z, V: p.V });
       const sp = Math.hypot(p.vel.x, p.vel.z);

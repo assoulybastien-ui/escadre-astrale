@@ -8,7 +8,7 @@ const fs = require('fs'), path = require('path');
   const { browser, page, errs } = await open({ width: w, height: h });
   await page.evaluate(() => { window.__lwy.manual(true); window.__lwy.start(); window.__lwy.bot({ agl: 3 }); window.__lwy.advance(1 / 15, 4, false); });
   // fenêtres de temps (s de course) à filmer
-  const SEG = [[0, 5.5], [15, 18.5], [25, 28], [39.5, 43], [47, 50.5], [57.5, 64]];
+  const SEG = [[0, 5.5], [14.5, 18], [27.5, 30.5], [43.5, 47], [52.5, 55.5], [59, 70]];
   let n = 0;
   for (const [a, b] of SEG) {
     await page.evaluate(a => { const L = window.__lwy; let i = 0; while (L.state().screen === 'run' && L.state().run.t < a - 0.6 && i++ < 5000) L.advance(1 / 30, 1, false); L.advance(1 / 15, 9, false); }, a);

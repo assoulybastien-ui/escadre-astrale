@@ -698,7 +698,7 @@ const FLIGHT = (() => {
       if (Fn > 0 && p.mode === 'ski' && p.inflate > 0.6 && (!p.launched || p.groundT > 0.2)) {
         // la voile soulève le pilote : décollage
         p.mode = 'air'; p.airT = 0;
-        ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT });
+        ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT, airBefore: p.lastAirT || 0 });
         p.launched = true;
       } else {
         p.groundT += dt;
@@ -727,7 +727,7 @@ const FLIGHT = (() => {
         if (p.mode === 'ski' && p.inflate > 0.6 && ny2 > hT + 0.08 && Math.hypot(vx, vy, vz) > 8) {
           // le sol se dérobe (bord de barre, bosse) : on s'envole
           p.pos.y = ny2; p.mode = 'air'; p.airT = 0;
-          ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT });
+          ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT, airBefore: p.lastAirT || 0 });
           p.launched = true;
           frame(p, dt);
           return;
@@ -766,7 +766,7 @@ const FLIGHT = (() => {
       p.vel.x -= n.x * d; p.vel.y -= n.y * d; p.vel.z -= n.z * d;
       const s = -p.pos.z;
       const landing = s > w.LAND.from; // prairie d'atterrissage, après la dernière porte
-      p.mode = landing ? 'landing' : 'ski'; p.groundT = 0;
+      p.mode = landing ? 'landing' : 'ski'; p.groundT = 0; p.lastAirT = p.airT;
       // petits rebonds au ras de la neige : pas d'événement (évite d'enchaîner les bruits)
       if (landing || p.airT > 0.25 || vn > 1.5) ev.push({ type: 'contact', vn, landing, x: p.pos.x, z: p.pos.z, V: p.V });
       const sp = Math.hypot(p.vel.x, p.vel.z);
@@ -934,7 +934,8 @@ const GAME = (() => {
       case 'decollage': emit(e); break;
       case 'redecollage': {
         emit(e);
-        if (e.groundT < 8 && r.t - (r.lastTouch || -9) > 1.5) {
+        // un vrai touch & go : au moins 1 s de vol avant de toucher, un vrai appui sur la neige (pas les petits rebonds)
+        if (e.groundT >= 0.15 && e.groundT < 8 && e.airBefore >= 1 && r.t - (r.lastTouch || -9) > 1.5) {
           r.lastTouch = r.t;
           const pts = Math.round(150 * r.combo);
           r.touch++; r.touchPts += pts; r.score += pts; r.combo = Math.min(5, r.combo + 0.3);
@@ -1567,7 +1568,7 @@ const R3D = (() => {
     const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.55 }));
     wingPivot.add(lines);
     const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wg.te.length * 6), 3));
-    const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xff5b1f), transparent: true, opacity: 0.8 }));
+    const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xd8572a), transparent: true, opacity: 0.5 }));
     brakes.frustumCulled = false; root.add(brakes);
     return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, dl: -1, dr: -1 };
   }
@@ -1750,9 +1751,9 @@ const R3D = (() => {
     camera.position.copy(cam.pos); camera.up.set(0, 1, 0); camera.lookAt(cam.look); setFov(55);
   }
   function orbitCam(p, dt) {
-    const a = time * 0.22 + 2.4, R = 13;
+    const a = time * 0.22 + 2.4, R = 12;
     _v.set(p.pos.x + Math.cos(a) * R, 0, p.pos.z + Math.sin(a) * R);
-    _v.y = Math.max(W.heightAt(_v.x, _v.z) + 2, p.pos.y + 4.2);
+    _v.y = Math.max(W.heightAt(_v.x, _v.z) + 2, p.pos.y + 9); // assez haut pour passer au-dessus des sapins
     cam.pos.lerp(_v, 1 - Math.exp(-dt * 2));
     cam.look.lerp(_x.set(p.pos.x, p.pos.y + 2.5, p.pos.z), 1 - Math.exp(-dt * 3));
     camera.position.copy(cam.pos); camera.up.set(0, 1, 0); camera.lookAt(cam.look); setFov(55);
