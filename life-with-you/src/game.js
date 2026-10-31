@@ -1,12 +1,12 @@
 // Déroulé d'une descente : élan, vol, score (proximité, portes, touch & go, frôlés, câble), crash, atterrissage noté.
 const GAME = (() => {
-  const DT = 1 / 120, KEY = 'life-with-you-v1';
-  const MEDALS = [{ id: 'or', nom: 'Or', min: 14000 }, { id: 'argent', nom: 'Argent', min: 10000 }, { id: 'bronze', nom: 'Bronze', min: 6000 }];
-  const S = { screen: 'title', run: null, acc: 0, input: { x: 0, y: 0 }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
+  const DT = 1 / 120, KEY = 'life-with-you-v2'; // v2 : commandes à deux poignées (anciens records effacés)
+  const MEDALS = [{ id: 'or', nom: 'Or', min: 20000 }, { id: 'argent', nom: 'Argent', min: 14000 }, { id: 'bronze', nom: 'Bronze', min: 8000 }];
+  const S = { screen: 'title', run: null, acc: 0, input: { l: 0, r: 0, go: false }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
 
   function load() {
-    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) return s; } catch (e) { /* stockage indisponible */ }
-    return { v: 1, best: null, opts: { invert: false }, runs: 0 };
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 2) return s; } catch (e) { /* stockage indisponible */ }
+    return { v: 2, best: null, opts: {}, runs: 0 };
   }
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(S.save)); } catch (e) { /* stockage indisponible */ } }
   function emit(e) { S.events.push(e); }
@@ -49,7 +49,7 @@ const GAME = (() => {
     const inp = S.bot ? S.bot(r) : S.input;
     const a = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     FLIGHT.step(p, inp, dt, ev);
-    if (S.screen === 'run' && p.mode !== 'ready' && !r.end) r.t += dt;
+    if (S.screen === 'run' && p.mode !== 'ready' && p.mode !== 'landing' && p.mode !== 'stopped' && !r.end) r.t += dt; // chrono arrêté au toucher dans la prairie
     if (S.screen === 'run') { const why = FLIGHT.collide(p); if (why) FLIGHT.crash(p, why, ev); }
     for (const e of ev) handle(e);
     if (S.screen !== 'run' || r.end) return;
@@ -65,6 +65,8 @@ const GAME = (() => {
     const r = S.run;
     switch (e.type) {
       case 'depart': emit(e); break;
+      case 'decrochage': emit(e); pop('Décrochage ! Relâche les freins', 'miss', 0); break;
+      case 'raccroche': emit(e); break;
       case 'decollage': emit(e); break;
       case 'redecollage': {
         emit(e);

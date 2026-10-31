@@ -86,6 +86,8 @@ const AUDIO = (() => {
       case 'gate': if (e.ok) for (let k = 0; k < 6; k++) burst('bandpass', 700, 380, 1.2, 0.05, 0.4 - k * 0.05, k * 0.055); break;
       case 'pop': if (e.kind === 'cable') burst('bandpass', 300, 1800, 1.2, 0.6, 0.6); break;
       case 'decollage': burst('lowpass', 300, 900, 0.7, 0.8, 0.25); break;
+      case 'decrochage': burst('lowpass', 500, 90, 0.9, 1.1, 0.7); for (let k = 0; k < 8; k++) burst('bandpass', 260, 160, 1.4, 0.07, 0.45, k * 0.09); break;
+      case 'raccroche': burst('bandpass', 300, 1400, 1.1, 0.35, 0.55); break;
     }
   }
   return { unlock, frame, on, setEnabled };

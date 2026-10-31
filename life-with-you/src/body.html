@@ -1,7 +1,8 @@
 <canvas id="gl" aria-label="Vue 3D de la descente"></canvas>
 <div id="vig"></div>
 <div id="touch"></div>
-<div id="stick" hidden><div class="ring"></div><div class="knob"></div></div>
+<div id="gripL" class="grip" hidden><div class="rail"><div class="fill"></div></div><div class="knob"></div><span class="tag">G</span></div>
+<div id="gripR" class="grip" hidden><div class="rail"><div class="fill"></div></div><div class="knob"></div><span class="tag">D</span></div>
 
 <div id="hud" hidden>
   <div class="hud-l">
@@ -28,7 +29,7 @@
 
 <section id="scrTitle" class="screen">
   <div class="panel title-panel">
-    <p class="eyebrow">Speed riding · prototype 0.1</p>
+    <p class="eyebrow">Speed riding · prototype 0.2</p>
     <h1 class="logo">Life With You</h1>
     <div class="course">
       <div class="course-name" id="tCourse">Couloir des Aiguilles</div>
@@ -41,8 +42,9 @@
       <div class="best" id="tBest">Pas encore de record sur cette descente</div>
     </div>
     <button id="btnPlay" class="cta"><span>S'élancer</span></button>
-    <p class="help">Un seul contrôle : pose le pouce n'importe où, le stick apparaît dessous.
-      <b>Haut</b> pour piquer et accélérer, <b>bas</b> pour freiner, remonter et arrondir, <b>côtés</b> pour tourner.</p>
+    <p class="help">Deux poignées de frein, une par pouce : pose les pouces à gauche et à droite de l'écran.
+      <b>Pouce droit vers le bas</b> : tu tires la poignée droite, la voile tourne à droite. Pareil à gauche.
+      <b>Les deux</b> : tu freines, tu remontes, tu arrondis. <b>Mains hautes</b> : pleine vitesse.</p>
   </div>
 </section>
 
@@ -54,7 +56,6 @@
       <button id="btnRestart" class="ghostbtn">Recommencer</button>
       <button id="btnMenu" class="ghostbtn">Menu</button>
     </div>
-    <label class="toggle"><input type="checkbox" id="optInvert"><span>Inverser haut / bas</span></label>
     <label class="toggle"><input type="checkbox" id="optSound" checked><span>Son</span></label>
   </div>
 </section>
@@ -72,5 +73,5 @@
 </section>
 
 <div id="crash" hidden><div class="crash-t">Crash</div><div class="crash-r" id="crashWhy"></div><div class="crash-h">Toucher pour rejouer</div></div>
-<div id="rotate"><div><div class="logo small">Life With You</div><p>Tourne ton iPhone : le jeu se joue en paysage.</p></div></div>
+<div id="rotate"><div><div class="logo small">Life With You</div><p>Tourne ton iPhone à l'horizontale : on pilote avec les deux pouces.</p></div></div>
 <div id="boot"><div><div class="logo small">Life With You</div><p id="bootMsg">Préparation de la montagne…</p></div></div>

@@ -52,12 +52,15 @@ body {
 #vig { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
   background: radial-gradient(ellipse 75% 70% at 50% 48%, rgba(10, 21, 32, 0) 58%, rgba(10, 21, 32, 0.55) 100%); }
 
-/* ---------- stick flottant ---------- */
-#stick { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; }
-#stick .ring { position: absolute; width: 128px; height: 128px; margin: -64px 0 0 -64px; border-radius: 50%;
-  border: 2px solid rgba(242, 246, 250, 0.5); background: rgba(10, 21, 32, 0.18); }
-#stick .knob { position: absolute; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
-  background: rgba(242, 246, 250, 0.88); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+/* ---------- poignées de frein (une par pouce) ---------- */
+.grip { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; }
+.grip .rail { position: absolute; left: -9px; top: -6px; width: 18px; height: 107px; border-radius: 9px;
+  background: rgba(10, 21, 32, 0.32); border: 2px solid rgba(242, 246, 250, 0.55); box-sizing: border-box; overflow: hidden; }
+.grip .fill { position: absolute; left: 0; right: 0; top: 0; height: 0; background: var(--signal); opacity: 0.85; }
+.grip .knob { position: absolute; left: -26px; top: -14px; width: 52px; height: 28px; border-radius: 14px;
+  background: rgba(242, 246, 250, 0.92); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+.grip .tag { position: absolute; left: -40px; top: -40px; width: 80px; text-align: center; font-family: var(--f-num); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.1em; color: var(--snow); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); }
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
@@ -83,8 +86,8 @@ body {
 .iconbtn:focus-visible, button:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
 #hint { position: absolute; top: calc(var(--st) + 62px); left: 50%; transform: translateX(-50%); max-width: min(520px, 70vw);
   background: var(--glass-hi); padding: 7px 14px; border-radius: 8px; font-size: 15px; font-weight: 500; text-align: center; text-wrap: balance; }
-#pops { position: absolute; top: 34%; right: calc(var(--sr) + 6%); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.pop { font-family: var(--f-display); font-weight: 800; font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase;
+#pops { position: absolute; top: calc(var(--st) + 112px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pop { font-family: var(--f-display); font-weight: 800; font-size: 24px; letter-spacing: 0.03em; text-transform: uppercase;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); animation: pop 1.5s ease-out forwards; white-space: nowrap; }
 .pop b { color: var(--ice); margin-left: 8px; font-family: var(--f-num); font-weight: 700; }
 .pop.miss { color: var(--bad); font-size: 20px; }
@@ -147,7 +150,7 @@ body {
 #boot { display: flex; }
 #boot[hidden] { display: none; }
 #rotate p, #boot p { color: var(--mist); margin: 10px 0 0; }
-@media (orientation: portrait) and (max-width: 760px) { #rotate { display: flex; } }
+@media (orientation: portrait) { #rotate { display: flex; } }
 @media (max-height: 340px) { .num { font-size: 30px; } .help { display: none; } }
 @media (prefers-reduced-motion: reduce) { .pop { animation-duration: 0.01s; animation-fill-mode: forwards; opacity: 1; } .gatechip svg { transition: none; } }
 
@@ -157,7 +160,8 @@ body {
 <canvas id="gl" aria-label="Vue 3D de la descente"></canvas>
 <div id="vig"></div>
 <div id="touch"></div>
-<div id="stick" hidden><div class="ring"></div><div class="knob"></div></div>
+<div id="gripL" class="grip" hidden><div class="rail"><div class="fill"></div></div><div class="knob"></div><span class="tag">G</span></div>
+<div id="gripR" class="grip" hidden><div class="rail"><div class="fill"></div></div><div class="knob"></div><span class="tag">D</span></div>
 
 <div id="hud" hidden>
   <div class="hud-l">
@@ -184,7 +188,7 @@ body {
 
 <section id="scrTitle" class="screen">
   <div class="panel title-panel">
-    <p class="eyebrow">Speed riding · prototype 0.1</p>
+    <p class="eyebrow">Speed riding · prototype 0.2</p>
     <h1 class="logo">Life With You</h1>
     <div class="course">
       <div class="course-name" id="tCourse">Couloir des Aiguilles</div>
@@ -197,8 +201,9 @@ body {
       <div class="best" id="tBest">Pas encore de record sur cette descente</div>
     </div>
     <button id="btnPlay" class="cta"><span>S'élancer</span></button>
-    <p class="help">Un seul contrôle : pose le pouce n'importe où, le stick apparaît dessous.
-      <b>Haut</b> pour piquer et accélérer, <b>bas</b> pour freiner, remonter et arrondir, <b>côtés</b> pour tourner.</p>
+    <p class="help">Deux poignées de frein, une par pouce : pose les pouces à gauche et à droite de l'écran.
+      <b>Pouce droit vers le bas</b> : tu tires la poignée droite, la voile tourne à droite. Pareil à gauche.
+      <b>Les deux</b> : tu freines, tu remontes, tu arrondis. <b>Mains hautes</b> : pleine vitesse.</p>
   </div>
 </section>
 
@@ -210,7 +215,6 @@ body {
       <button id="btnRestart" class="ghostbtn">Recommencer</button>
       <button id="btnMenu" class="ghostbtn">Menu</button>
     </div>
-    <label class="toggle"><input type="checkbox" id="optInvert"><span>Inverser haut / bas</span></label>
     <label class="toggle"><input type="checkbox" id="optSound" checked><span>Son</span></label>
   </div>
 </section>
@@ -228,7 +232,7 @@ body {
 </section>
 
 <div id="crash" hidden><div class="crash-t">Crash</div><div class="crash-r" id="crashWhy"></div><div class="crash-h">Toucher pour rejouer</div></div>
-<div id="rotate"><div><div class="logo small">Life With You</div><p>Tourne ton iPhone : le jeu se joue en paysage.</p></div></div>
+<div id="rotate"><div><div class="logo small">Life With You</div><p>Tourne ton iPhone à l'horizontale : on pilote avec les deux pouces.</p></div></div>
 <div id="boot"><div><div class="logo small">Life With You</div><p id="bootMsg">Préparation de la montagne…</p></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -297,15 +301,15 @@ const WORLD = (() => {
   const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   // ---------- Profil de la ligne de pente : tangente de la pente selon s ----------
-  // départ à skis (~17°), face (~27°), barre rocheuse (~20 m), replat, couloir (~21°), ressaut, bosses, forêt, prairie.
-  // Une voile accélérée plane à ~23° : on suit les pentes douces en piqué, les ressauts font « décoller » le sol.
-  const SLOPE = [[-700, 0.05], [-140, 0.03], [-78, 0.06], [-64, 0.30], [0, 0.32], [25, 0.5], [140, 0.52], [146, 2.6], [153, 2.6],
-    [158, 0.36], [250, 0.36], [270, 0.42], [455, 0.42], [470, 0.62], [495, 0.62], [510, 0.36], [720, 0.32], [880, 0.15], [960, 0.045],
-    [1200, 0.025], [1330, 0], [3400, 0]];
+  // départ à skis (~17°), face (~29°), barre rocheuse (~12 m, contournable à droite), replat, couloir (~20°), ressaut, bosses, forêt, prairie.
+  // La voile plane à ~20° mains hautes : on rase en vol droit, on coupe les passages plus raides en virant.
+  const SLOPE = [[-700, 0.05], [-140, 0.03], [-78, 0.06], [-64, 0.30], [0, 0.32], [25, 0.55], [140, 0.55],
+    [146, 0.26], [250, 0.26], [270, 0.37], [385, 0.37], [400, 0.58], [425, 0.58], [440, 0.34], [510, 0.34], [650, 0.28], [710, 0.12],
+    [770, 0.04], [990, 0.025], [1120, 0], [3400, 0]];
   // Couloir de la descente : [s, demi-largeur ouverte, hauteur des parois, largeur des parois, pente des flancs]
   const CORR = [[-700, 90, 0, 30, 0.22], [-70, 80, 0, 30, 0.25], [0, 130, 0, 30, 0.3], [205, 140, 0, 30, 0.3], [245, 44, 40, 22, 0.35],
-    [275, 30, 58, 16, 0.42], [455, 30, 58, 16, 0.42], [505, 85, 8, 30, 0.3], [770, 92, 0, 30, 0.28], [810, 72, 0, 30, 0.24],
-    [950, 72, 0, 30, 0.2], [1010, 190, 0, 40, 0.12], [1300, 230, 0, 40, 0.08], [1450, 700, 0, 40, 0.04], [3400, 700, 0, 40, 0.04]];
+    [275, 30, 58, 16, 0.42], [385, 30, 58, 16, 0.42], [435, 85, 8, 30, 0.3], [560, 92, 0, 30, 0.28], [600, 72, 0, 30, 0.24],
+    [740, 72, 0, 30, 0.2], [800, 190, 0, 40, 0.12], [1090, 230, 0, 40, 0.08], [1240, 700, 0, 40, 0.04], [3400, 700, 0, 40, 0.04]];
 
   function lin(pts, s, k) {
     if (s <= pts[0][0]) return pts[0][k];
@@ -325,16 +329,16 @@ const WORLD = (() => {
   (() => {
     let h = 0;
     for (let i = 0; i < prof.length; i++) { prof[i] = h; h -= lin(SLOPE, S0 + i + 0.5, 1); }
-    const ref = prof[1330 - S0];
+    const ref = prof[1120 - S0];
     for (let i = 0; i < prof.length; i++) prof[i] -= ref;
   })();
   function P(s) { const f = clamp(s - S0, 0, prof.length - 1.0001), i = f | 0; return prof[i] + (prof[i + 1] - prof[i]) * (f - i); }
   // Ligne médiane de la descente (légers méandres)
   function xc(s) {
-    const m = sstep(-260, -120, s) * (1 - sstep(900, 1040, s));
+    const m = sstep(-260, -120, s) * (1 - sstep(690, 830, s));
     return m * (26 * Math.sin(s / 185 + 0.3) + 9 * Math.sin(s / 79 + 1.1));
   }
-  const LAND = { s: 955, x: xc(955), z: -955, r: 90 };
+  const LAND = { s: 735, x: xc(735), z: -735, r: 90 };
 
   // ---------- Relief analytique ----------
   function hRaw(x, z) {
@@ -345,22 +349,25 @@ const WORLD = (() => {
     // parois rocheuses du couloir
     if (wallH > 0.5) { const k = sstep(0, wallW, e); h += k * (wallH * (1 + 0.22 * ridged(nB, x / 24, s / 24, 3)) + 5 * (ridged(nE, x / 10, s / 10, 2) - 0.45)); }
     // massifs latéraux
-    const sm = sstep(240, 760, a) * (1 - sstep(1150, 1500, s));
+    const sm = sstep(240, 760, a) * (1 - sstep(940, 1290, s));
     if (sm > 0) h += sm * (360 + 720 * ridged(nB, x / 640, s / 640, 4));
     // sommet derrière le départ
     const bk = sstep(130, 560, -s);
     if (bk > 0) h += bk * (320 + 560 * ridged(nC, x / 520, s / 520, 4));
     // massif d'en face, de l'autre côté de la vallée
-    const op = sstep(1750, 3100, s);
+    const op = sstep(1540, 2890, s);
     if (op > 0) h += op * (1150 + 950 * ridged(nD, x / 820, s / 820, 5));
     // ondulations (gommées autour de la cible)
     const dT = Math.hypot(x - LAND.x, s - LAND.s), m = sstep(75, 150, dT);
     h += m * ((4.5 + 2.5 * sstep(w * 0.6, w + 20, a)) * fbm(nA, x / 150, s / 150, 3) + 1.4 * fbm(nC, x / 34, s / 34, 2));
     // bosses (rouleaux) au milieu de la descente
-    const rw = sstep(480, 540, s) * (1 - sstep(740, 800, s)) * (1 - sstep(w * 0.7, w + 10, a));
+    const rw = sstep(410, 470, s) * (1 - sstep(530, 590, s)) * (1 - sstep(w * 0.7, w + 10, a));
     if (rw > 0) h += rw * 3.3 * Math.sin(s * 0.131 + 0.9 * Math.sin(x / 40));
+    // barre rocheuse de 12 m à gauche et au centre ; à droite, une rampe de neige plus raide
+    const mk = 1 - sstep(8, 42, u);
+    h -= 12 * (mk * sstep(131, 135, s) + (1 - mk) * sstep(105, 170, s));
     // pointements rocheux dans la face
-    const fw = sstep(15, 60, s) * (1 - sstep(215, 255, s));
+    const fw = sstep(15, 60, s) * (1 - sstep(215, 255, s)) * sstep(55, 90, a);
     if (fw > 0) h += fw * 11 * Math.max(0, ridged(nD, x / 55, s / 55, 3) - 0.6);
     return h;
   }
@@ -410,7 +417,7 @@ const WORLD = (() => {
   function nearChalet(x, z, m) { for (const c of CHALETS) if (Math.hypot(x - c.x, z - c.z) < Math.max(c.w, c.d) / 2 + m) return true; return false; }
 
   // ---------- Télésiège qui traverse la descente ----------
-  const CABLE = { s: 640, z: -640, pylons: [], segs: [], chairs: [], lines: [] };
+  const CABLE = { s: 485, z: -485, pylons: [], segs: [], chairs: [], lines: [] };
   (() => {
     const PU = [-230, -48, 48, 230];
     const gc = heightAt(xc(CABLE.s), CABLE.z), sagIn = 0.032 * (PU[2] - PU[1]);
@@ -452,7 +459,7 @@ const WORLD = (() => {
   }
 
   // ---------- Portes (piquets orange) ----------
-  const GATES = [[40, -18], [118, 22], [300, -8], [400, 10], [540, -32], [720, -26], [790, 20], [860, 2]].map(([s, du]) => {
+  const GATES = [[40, -18], [112, 52], [290, -8], [360, 10], [445, -32], [525, -26], [590, 20], [655, 2]].map(([s, du]) => {
     const x = xc(s) + du, z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
     const nx = d / l, nz = -1 / l;
     return { s, x, z, y: heightAt(x, z), nx, nz, tx: -nz, tz: nx, hw: 8, h: 14 };
@@ -471,15 +478,15 @@ const WORLD = (() => {
     if (nearChalet(px, pz, 9)) continue;
     const g = grad(px, pz);
     if (Math.hypot(g[0], g[1]) > 0.78) continue;
-    let dens = 0.22 + 0.78 * sstep(330, 640, ps);
+    let dens = 0.22 + 0.78 * sstep(300, 520, ps);
     dens *= sstep(-0.45, 0.2, fbm(nA, px / 110, ps / 110, 2));
-    dens *= 1 - 0.6 * sstep(1300, 1420, ps);
+    dens *= 1 - 0.6 * sstep(1090, 1210, ps);
     if (rnd() > dens * 0.8) continue;
     const h = 8 + rnd() * 10;
     TX.push(px); TZ.push(pz); TY.push(heightAt(px, pz) - 0.2); TH.push(h); TR.push(h * (0.21 + rnd() * 0.06));
   }
   // sapins isolés dans le couloir de la forêt : il faut slalomer
-  for (let ps = 742; ps < 935; ps += 9) {
+  for (let ps = 532; ps < 725; ps += 9) {
     for (let k = 0; k < 3; k++) {
       if (rnd() > 0.32) continue;
       const w = smooth(CORR, ps, 1), px = xc(ps) + (rnd() * 2 - 1) * (w - 6), pz = -ps + (rnd() - 0.5) * 8;
@@ -508,7 +515,7 @@ const WORLD = (() => {
   // ---------- Rochers isolés ----------
   const ROCKS = [];
   for (let k = 0; k < 600 && ROCKS.length < 140; k++) {
-    const ps = 20 + rnd() * 880, sd = rnd() < 0.5 ? -1 : 1, w = smooth(CORR, ps, 1);
+    const ps = 20 + rnd() * 680, sd = rnd() < 0.5 ? -1 : 1, w = smooth(CORR, ps, 1);
     const px = xc(ps) + sd * w * (0.4 + rnd() * 0.85), pz = -ps;
     if (GATES.some(g => Math.hypot(g.x - px, g.z - pz) < 22)) continue;
     if (Math.abs(ps - CABLE.s) < 10) continue;
@@ -588,12 +595,15 @@ const WORLD = (() => {
 
 
 // Physique de vol d'une voile de speed riding (modèle à point matériel) et glisse à skis.
-// Portance et traînée réelles : L = ½ρV²S·CL, D = ½ρV²S·(CD0 + k·CL²). Le stick règle le CL (freins/accélérateur)
-// et l'inclinaison (virage). L'énergie se conserve : piquer fait prendre de la vitesse, tirer la retransforme en hauteur.
+// Portance et traînée réelles : L = ½ρV²S·CL, D = ½ρV²S·(CD0 + k·CL²). Deux poignées de frein, comme en vrai :
+// les deux tirées = plus de CL (ralentir, remonter, arrondir) ; une seule = la voile s'incline et tourne de ce côté ;
+// tenue à fond, elle part en spirale. Freins à fond trop lent = décrochage. L'énergie se conserve.
 const FLIGHT = (() => {
   const G = 9.81, RHO = 1.0, M = 90; // air à ~2 000 m, pilote + matériel
-  // Voile de 11 m² : finesse max ≈ 3,5 ; ~57 km/h bras hauts, ~95 km/h accélérateur à fond (plané ~28°), ~42 km/h freins à fond
-  const WING = { nom: 'Voile 11 m²', S: 11, cd0: 0.10, k: 0.20, clMin: 0.20, clTrim: 0.62, clMax: 1.15, bankMax: 0.96, tauCL: 0.32, tauBank: 0.42, nMax: 3.2 };
+  // Voile de speed riding de 9,5 m², trims ouverts : ~71 km/h mains hautes (finesse ~2,7), finesse max ~3,1 freins à moitié,
+  // ~45 km/h freins à fond ; virage freiné jusqu'à ~50° d'inclinaison, spirale jusqu'à ~72° (~95 km/h, 2,5 g)
+  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankSpiral: 72 * Math.PI / 180,
+    tauCL: 0.32, tauBank: 0.55, tauHand: 0.1, nMax: 3.2, stallV: 10.2 };
   const MU_SKI = 0.055, MU_STOP = 0.35, PILOT_CDA = 0.5;
   // géométrie (m, au-dessus des pieds) : mousquetons, centre de la voile, bouts d'aile
   const GEO = { carab: 1.35, lineLen: 5.6, halfAngle: 40 * Math.PI / 180 };
@@ -609,7 +619,8 @@ const FLIGHT = (() => {
       pos: { x: S.x, y: S.y, z: S.z }, vel: { x: 0, y: 0, z: 0 }, dir: { x: S.dx, y: 0, z: S.dz },
       cl: WING.clTrim, bank: 0, inflate: 0, mode: 'ready', launched: false,
       up: { x: 0, y: 1, z: 0 }, upV: { x: 0, y: 0, z: 0 }, fwd: { x: S.dx, y: 0, z: S.dz }, right: { x: -S.dz, y: 0, z: S.dx },
-      aero: { x: 0, y: 0, z: 0 }, t: 0, stopT: 0, groundT: 0, airT: 0, crashT: 0, V: 0, gload: 1, vn: 0, inp: { x: 0, y: 0 },
+      aero: { x: 0, y: 0, z: 0 }, t: 0, stopT: 0, groundT: 0, airT: 0, crashT: 0, V: 0, gload: 1, vn: 0, inp: { l: 0, r: 0 },
+      bl: 0, br: 0, spiralT: 0, stall: false, stallT: 0, departT: 0,
       spin: { x: 0, y: 0, z: 0 }, tumble: { x: 0, y: 0, z: 0 }, reason: ''
     };
   }
@@ -620,16 +631,22 @@ const FLIGHT = (() => {
     p.t += dt; p.inp = inp;
     if (p.mode === 'stopped') return;
     if (p.mode === 'crash') return stepCrash(p, dt);
-    const ix = inp.x, iy = inp.y;
-    // consignes : CL (haut = accélérer/piquer, bas = freiner/cabrer) et inclinaison
-    const clT = iy >= 0 ? WING.clTrim + (WING.clMin - WING.clTrim) * iy : WING.clTrim + (WING.clMax - WING.clTrim) * -iy;
+    // les mains suivent les pouces avec un léger retard
+    const kh = 1 - Math.exp(-dt / WING.tauHand);
+    p.bl += ((inp.l || 0) - p.bl) * kh; p.br += ((inp.r || 0) - p.br) * kh;
+    // part commune des deux freins (plus de CL) et différence (virage)
+    const sym = Math.min(p.bl, p.br) + 0.35 * Math.abs(p.br - p.bl), dif = p.br - p.bl;
+    const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15);
     p.cl += (clT - p.cl) * (1 - Math.exp(-dt / WING.tauCL));
-    const bankT = p.mode === 'air' ? ix * WING.bankMax : 0;
+    // un frein tenu fort plus d'une seconde : la voile part en spirale
+    if (p.mode === 'air' && Math.abs(dif) > 0.75) p.spiralT += dt; else p.spiralT = Math.max(0, p.spiralT - dt * 2);
+    const spiral = Math.min(1, Math.max(0, (p.spiralT - 1) / 2));
+    const bankT = p.mode === 'air' ? dif * (WING.bankMax + (WING.bankSpiral - WING.bankMax) * spiral) : 0;
     p.bank += (bankT - p.bank) * (1 - Math.exp(-dt / WING.tauBank));
 
     if (p.mode === 'ready') {
       frame(p, dt);
-      if (iy > 0.35) { p.mode = 'ski'; p.vel = { x: p.dir.x * 2, y: 0, z: p.dir.z * 2 }; ev.push({ type: 'depart' }); }
+      if (inp.go) { p.mode = 'ski'; p.departT = 0; p.vel = { x: p.dir.x * 2, y: 0, z: p.dir.z * 2 }; ev.push({ type: 'depart' }); }
       return;
     }
 
@@ -644,11 +661,18 @@ const FLIGHT = (() => {
     else if (p.inflate < 1 && V > 3) p.inflate = Math.min(1, p.inflate + dt * (0.3 + V * 0.06));
     const inf = p.inflate * p.inflate;
     const q = 0.5 * RHO * V * V;
-    let L = q * WING.S * p.cl * inf;
+    // décrochage : freins à fond alors que la voile est trop lente ; on en sort en relâchant les freins
+    if (p.mode === 'air') {
+      if (!p.stall) {
+        p.stallT = sym > 0.85 && V < WING.stallV ? p.stallT + dt : 0;
+        if (p.stallT > 0.5) { p.stall = true; ev.push({ type: 'decrochage' }); }
+      } else if (sym < 0.5) { p.stall = false; p.stallT = 0; ev.push({ type: 'raccroche' }); }
+    } else { p.stall = false; p.stallT = 0; }
+    let L = q * WING.S * (p.stall ? 0.3 : p.cl) * inf;
     const Lmax = WING.nMax * M * G;
     if (L > Lmax) L = Lmax; // la voile ne tient pas plus de ~3 g
     const clE = inf > 0.01 ? L / (q * WING.S * inf) : 0;
-    const D = q * (WING.S * (WING.cd0 + WING.k * clE * clE) * inf + PILOT_CDA * (1 - inf));
+    const D = q * (WING.S * (WING.cd0 + WING.k * clE * clE + (p.stall ? 0.75 : 0)) * inf + PILOT_CDA * (1 - inf));
     // direction de la portance : perpendiculaire au vent relatif, inclinée de « bank » autour de lui
     let ux = -hy * hx, uy = 1 - hy * hy, uz = -hy * hz;
     let ul = Math.hypot(ux, uy, uz);
@@ -663,10 +687,11 @@ const FLIGHT = (() => {
     let fx = ax, fy = ay - M * G, fz = az;
 
     if (p.mode === 'ski' || p.mode === 'landing') {
-      // élan aux bâtons tant que la vitesse est faible
-      if (p.mode === 'ski' && !p.launched && iy > 0.2) {
+      // élan aux bâtons pendant les premières secondes
+      p.departT += dt;
+      if (p.mode === 'ski' && !p.launched && p.departT < 4) {
         const sp = Math.hypot(p.vel.x, p.vel.z);
-        if (sp < 7) { fx += p.dir.x * M * 1.6 * iy; fz += p.dir.z * M * 1.6 * iy; }
+        if (sp < 7) { fx += p.dir.x * M * 1.6; fz += p.dir.z * M * 1.6; }
       }
       const n = w.normalAt(p.pos.x, p.pos.z);
       const Fn = fx * n.x + fy * n.y + fz * n.z;
@@ -689,14 +714,25 @@ const FLIGHT = (() => {
         if (sp > 0.05 && nvx * vx + nvy * vy + nvz * vz < 0 && Math.hypot(tx, ty, tz) < mu * N * 1.05) { vx = vy = vz = 0; }
         else { vx = nvx; vy = nvy; vz = nvz; }
         // virage sur les carres (rotation autour de la normale)
-        const om = -ix * 0.9 * Math.min(1, sp / 4) * dt;
+        const om = -dif * 0.9 * Math.min(1, sp / 4) * dt;
         if (om !== 0) {
           const c = Math.cos(om), s = Math.sin(om);
           const cx = n.y * vz - n.z * vy, cy = n.z * vx - n.x * vz, cz = n.x * vy - n.y * vx;
           vx = vx * c + cx * s; vy = vy * c + cy * s; vz = vz * c + cz * s;
         }
         p.vel.x = vx; p.vel.y = vy; p.vel.z = vz;
-        p.pos.x += vx * dt; p.pos.z += vz * dt; p.pos.y = w.heightAt(p.pos.x, p.pos.z);
+        const ny2 = p.pos.y + vy * dt;
+        p.pos.x += vx * dt; p.pos.z += vz * dt;
+        const hT = w.heightAt(p.pos.x, p.pos.z);
+        if (p.mode === 'ski' && p.inflate > 0.6 && ny2 > hT + 0.08 && Math.hypot(vx, vy, vz) > 8) {
+          // le sol se dérobe (bord de barre, bosse) : on s'envole
+          p.pos.y = ny2; p.mode = 'air'; p.airT = 0;
+          ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT });
+          p.launched = true;
+          frame(p, dt);
+          return;
+        }
+        p.pos.y = hT;
         const sp2 = Math.hypot(vx, vy, vz);
         if (sp2 > 0.5) { p.dir.x = vx / sp2; p.dir.z = vz / sp2; const l = Math.hypot(p.dir.x, p.dir.z); p.dir.x /= l; p.dir.z /= l; }
         p.stopT = sp2 < 0.8 ? p.stopT + dt : 0;
@@ -731,7 +767,8 @@ const FLIGHT = (() => {
       const s = -p.pos.z;
       const landing = s > w.LAND.from; // prairie d'atterrissage, après la dernière porte
       p.mode = landing ? 'landing' : 'ski'; p.groundT = 0;
-      ev.push({ type: 'contact', vn, landing, x: p.pos.x, z: p.pos.z, V: p.V });
+      // petits rebonds au ras de la neige : pas d'événement (évite d'enchaîner les bruits)
+      if (landing || p.airT > 0.25 || vn > 1.5) ev.push({ type: 'contact', vn, landing, x: p.pos.x, z: p.pos.z, V: p.V });
       const sp = Math.hypot(p.vel.x, p.vel.z);
       if (sp > 0.5) { p.dir.x = p.vel.x / sp; p.dir.z = p.vel.z / sp; }
     }
@@ -827,13 +864,13 @@ const FLIGHT = (() => {
 
 // Déroulé d'une descente : élan, vol, score (proximité, portes, touch & go, frôlés, câble), crash, atterrissage noté.
 const GAME = (() => {
-  const DT = 1 / 120, KEY = 'life-with-you-v1';
-  const MEDALS = [{ id: 'or', nom: 'Or', min: 14000 }, { id: 'argent', nom: 'Argent', min: 10000 }, { id: 'bronze', nom: 'Bronze', min: 6000 }];
-  const S = { screen: 'title', run: null, acc: 0, input: { x: 0, y: 0 }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
+  const DT = 1 / 120, KEY = 'life-with-you-v2'; // v2 : commandes à deux poignées (anciens records effacés)
+  const MEDALS = [{ id: 'or', nom: 'Or', min: 20000 }, { id: 'argent', nom: 'Argent', min: 14000 }, { id: 'bronze', nom: 'Bronze', min: 8000 }];
+  const S = { screen: 'title', run: null, acc: 0, input: { l: 0, r: 0, go: false }, bot: null, paused: false, crashT: 0, events: [], save: load(), result: null };
 
   function load() {
-    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 1) return s; } catch (e) { /* stockage indisponible */ }
-    return { v: 1, best: null, opts: { invert: false }, runs: 0 };
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.v === 2) return s; } catch (e) { /* stockage indisponible */ }
+    return { v: 2, best: null, opts: {}, runs: 0 };
   }
   function persist() { try { localStorage.setItem(KEY, JSON.stringify(S.save)); } catch (e) { /* stockage indisponible */ } }
   function emit(e) { S.events.push(e); }
@@ -876,7 +913,7 @@ const GAME = (() => {
     const inp = S.bot ? S.bot(r) : S.input;
     const a = { x: p.pos.x, y: p.pos.y, z: p.pos.z };
     FLIGHT.step(p, inp, dt, ev);
-    if (S.screen === 'run' && p.mode !== 'ready' && !r.end) r.t += dt;
+    if (S.screen === 'run' && p.mode !== 'ready' && p.mode !== 'landing' && p.mode !== 'stopped' && !r.end) r.t += dt; // chrono arrêté au toucher dans la prairie
     if (S.screen === 'run') { const why = FLIGHT.collide(p); if (why) FLIGHT.crash(p, why, ev); }
     for (const e of ev) handle(e);
     if (S.screen !== 'run' || r.end) return;
@@ -892,6 +929,8 @@ const GAME = (() => {
     const r = S.run;
     switch (e.type) {
       case 'depart': emit(e); break;
+      case 'decrochage': emit(e); pop('Décrochage ! Relâche les freins', 'miss', 0); break;
+      case 'raccroche': emit(e); break;
       case 'decollage': emit(e); break;
       case 'redecollage': {
         emit(e);
@@ -1025,7 +1064,7 @@ const GAME = (() => {
 })();
 
 
-// Pilote automatique : sert aux tests, aux vidéos et au réglage des médailles (jamais actif en vraie partie).
+// Pilote automatique (deux freins, comme le joueur) : tests, vidéos, réglage des médailles. Jamais actif en vraie partie.
 const BOT = (() => {
   const wrap = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -1033,9 +1072,8 @@ const BOT = (() => {
     const target = opts.agl || 5;
     return function (r) {
       const p = r.p, W = WORLD;
-      if (p.mode === 'ready') return { x: 0, y: 1 };
-      if (p.mode === 'ski' && !p.launched) return { x: 0, y: p.V > 11 ? -1 : 1 };
-      if (p.mode !== 'air') return { x: 0, y: -0.5 };
+      if (p.mode === 'ready') return { l: 0, r: 0, go: true };
+      if (p.mode === 'landing' || p.mode === 'stopped') return { l: 0.3, r: 0.3 };
       const g = W.GATES[r.gate];
       let tx, tz;
       if (g) {
@@ -1044,52 +1082,52 @@ const BOT = (() => {
         const back = Math.min(40, Math.max(0, -along * 0.4));
         tx = g.x - g.nx * back; tz = g.z - g.nz * back;
       } else { tx = W.LAND.x; tz = W.LAND.z; }
-      // trop haut : virages en S (on vise un point décalé sur le côté, en restant dans le couloir)
+      // trop haut : grands virages en S (en restant dans le couloir)
       const hg0 = p.pos.y - W.heightAt(p.pos.x, p.pos.z);
       const along0 = g ? (g.x - p.pos.x) * g.nx + (g.z - p.pos.z) * g.nz : 0;
-      if (g && hg0 > target + 10 && along0 > 90 && opts.weave !== false) {
-        const sAhead = -tz, c = W.xc(sAhead), half = W.smooth(W.CORR, sAhead, 1);
-        const amp = Math.max(0, Math.min(45, half - 22));
-        tx = c + amp * Math.sign(Math.sin(r.t * 0.55 + 0.5));
+      if (g && hg0 > target + 8 && along0 > 70 && opts.weave !== false) {
+        const sAhead = -p.pos.z + 45, c = W.xc(sAhead), half = W.smooth(W.CORR, sAhead, 1);
+        const amp = Math.max(0, Math.min(70, half - 24));
+        tx = c + amp * Math.sign(Math.sin(r.t * 0.42 + 0.5)); tz = -sAhead;
       }
       const hd = Math.atan2(p.vel.x, -p.vel.z), want = Math.atan2(tx - p.pos.x, -(tz - p.pos.z));
-      let x = clamp(wrap(want - hd) * 2.2, -1, 1);
-      // évitement des sapins devant soi
-      {
-        const vh0 = Math.hypot(p.vel.x, p.vel.z) || 1, fx = p.vel.x / vh0, fz = p.vel.z / vh0;
-        for (const d of [8, 14, 20, 27, 35]) {
-          const qx = p.pos.x + fx * d, qz = p.pos.z + fz * d, qy = p.pos.y + p.vel.y * d / vh0;
-          const t = W.nearTree(qx, qy + 1, qz, 5) || W.nearTree(qx, qy + 6, qz, 4.5);
-          if (t) {
-            const side = (W.TREES.X[t.i] - p.pos.x) * -fz + (W.TREES.Z[t.i] - p.pos.z) * fx; // > 0 : sapin à droite
-            x = clamp(x + (side > 0 ? -1.4 : 1.4) * (1 - d / 45), -1, 1);
-            break;
-          }
+      let turn = clamp(wrap(want - hd) * (opts.gain || 0.9), -1, 1);
+      // évitement des obstacles devant soi (sapins, rochers, pylônes) : on part du côté libre
+      const vh = Math.hypot(p.vel.x, p.vel.z) || 1, fx = p.vel.x / vh, fz = p.vel.z / vh;
+      const blocked = (qx, qy, qz) => W.hit(qx, qy + 1, qz, 2.5) || W.hit(qx, qy + 6, qz, 2.5);
+      for (const d of [8, 14, 20, 27, 35]) {
+        const qx = p.pos.x + fx * d, qz = p.pos.z + fz * d, qy = p.pos.y + p.vel.y * d / vh;
+        if (blocked(qx, qy, qz)) {
+          const freeR = !blocked(qx - fz * 7, qy, qz + fx * 7), freeL = !blocked(qx + fz * 7, qy, qz - fx * 7);
+          const dirn = freeR && !freeL ? 1 : freeL && !freeR ? -1 : (turn >= 0 ? 1 : -1);
+          turn = clamp(turn + dirn * 1.5 * (1 - d / 45), -1, 1);
+          break;
         }
       }
+      if (p.mode === 'ski') { const b = p.launched ? (p.V > 13 ? 0.7 : 0) : (p.V > 11.5 ? 1 : 0); return { l: clamp(b + Math.max(0, -turn), 0, 1), r: clamp(b + Math.max(0, turn), 0, 1) }; }
       let wantAgl = target;
+      if (r.gate >= W.GATES.length - 2) wantAgl = Math.max(wantAgl, 6);
       const toCable = -p.pos.z - W.CABLE.s;
-      if (r.gate >= W.GATES.length - 2) wantAgl = Math.max(wantAgl, 6); // garder de l'énergie pour la finale
       if (toCable > -90 && toCable < 4) wantAgl = opts.underCable === false ? 24 : 2.5;
-      // marge prévue le long de la trajectoire (prolongée en ligne droite) face au relief à venir
-      const vh = Math.hypot(p.vel.x, p.vel.z) || 1;
+      // marge prévue le long de la trajectoire face au relief à venir
       let agl = 1e9;
-      for (const d of [0, 5, 10, 16, 24, 34, 46]) {
-        const yy = p.pos.y + p.vel.y * (d / vh), h = W.heightAt(p.pos.x + p.vel.x / vh * d, p.pos.z + p.vel.z / vh * d);
+      for (const d of [0, 4, 8, 13, 19]) {
+        const yy = p.pos.y + p.vel.y * (d / vh), h = W.heightAt(p.pos.x + fx * d, p.pos.z + fz * d);
         agl = Math.min(agl, yy - h - d * 0.03);
       }
-      let y = clamp((agl - wantAgl) * 0.18, -1, 1);
-      if (g && agl > wantAgl + 30) y = 1;
-      if (g && p.V < 15) y = Math.max(y, 0.4); // ne pas laisser tomber la vitesse
+      // trop bas : les deux freins (ressource) ; jamais trop lent (décrochage)
+      // freiner seulement si la trajectoire mène franchement trop bas (les freins coûtent de la vitesse)
+      // freins : seulement si la trajectoire va toucher (ressource) ; sinon mains hautes pour garder la vitesse
+      let sym = p.V > 13 ? clamp(((opts.floor || 0.4) - agl) * 0.5, 0, 0.6) : 0;
+      if (agl > wantAgl + 6 && p.V > 16) sym = 0;
+      if (p.stall) return { l: 0, r: 0 };
       if (!g) {
         // finale : planer vers la cible puis arrondir juste avant le contact
         const aglG = p.pos.y - W.heightAt(p.pos.x, p.pos.z), dl = Math.hypot(tx - p.pos.x, tz - p.pos.z);
-        const hreq = dl / 3.4;
-        if (dl < 14 || (aglG < 2.2 && p.vel.y < -1.5) || p.V < 12.5) y = -1;
-        else if (aglG > hreq + 4) y = 0.8;
-        else y = -0.15; // meilleure finesse
+        sym = (dl < 14 || (aglG < 2.2 && p.vel.y < -1.5)) ? 1 : (aglG > dl / 3 + 4 ? 0 : 0.15);
+        if (aglG > dl / 3 + 4 && dl > 60) turn = clamp(turn + 0.6 * Math.sign(Math.sin(r.t * 0.5)), -1, 1);
       }
-      return { x, y };
+      return { l: clamp(sym + Math.max(0, -turn), 0, 1), r: clamp(sym + Math.max(0, turn), 0, 1) };
     };
   }
   return { make };
@@ -1445,6 +1483,7 @@ const R3D = (() => {
   function wingGeometry(main, light, dark) {
     const NS = 34, NA = 16, RL = G.lineLen, A = G.halfAngle;
     const pos = [], col = [], cM = lin(main), cL = lin(light), cD = lin(dark), c = new THREE.Color();
+    const meta = []; // par sommet : t (envergure -1..1), xc (corde 0..1), direction radiale ex, ey
     for (let i = 0; i <= NS; i++) {
       const t = -1 + 2 * i / NS, ang = A * t, ex = Math.sin(ang), ey = Math.cos(ang);
       const chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t)), sweep = 0.35 * t * t;
@@ -1458,6 +1497,7 @@ const R3D = (() => {
         const rad = (camber + (up ? yt : -yt * 0.55)) * chord;
         const zz = -0.32 * chord + xc * chord + sweep;
         pos.push(ex * (RL + rad), ey * (RL + rad), zz);
+        meta.push(t, xc, ex, ey);
         c.copy(base).multiplyScalar(rib * (up ? 1 : 0.72)); col.push(c.r, c.g, c.b);
       }
     }
@@ -1481,7 +1521,13 @@ const R3D = (() => {
     }
     for (const sx of [-0.16, 0.16]) lp.push(sx, 0, 0, sx, 0.45, 0.02);
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-    return { wing: g, lines: lg };
+    // points du bord de fuite où s'accrochent les suspentes de frein
+    const te = [];
+    for (const t of [-0.92, -0.72, -0.5, 0.5, 0.72, 0.92]) {
+      const ang = A * t, chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t));
+      te.push({ t, ex: Math.sin(ang), ey: Math.cos(ang), z: 0.68 * chord + 0.35 * t * t });
+    }
+    return { wing: g, lines: lg, meta: new Float32Array(meta), base: new Float32Array(pos), te };
   }
 
   // ---------- pilote debout dans sa sellette, à skis ----------
@@ -1520,14 +1566,17 @@ const R3D = (() => {
     wing.castShadow = true; wingPivot.add(wing);
     const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.55 }));
     wingPivot.add(lines);
-    return { root, body, legs, arms, wingPivot, wing, lines, geo: wg };
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wg.te.length * 6), 3));
+    const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xff5b1f), transparent: true, opacity: 0.8 }));
+    brakes.frustumCulled = false; root.add(brakes);
+    return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, dl: -1, dr: -1 };
   }
 
   function buildGhost(geo) {
     const root = new THREE.Group();
     const mat = new THREE.MeshBasicMaterial({ color: lin(0x8fd8ff), transparent: true, opacity: 0.26, depthWrite: false });
     const pivot = new THREE.Group(); pivot.position.set(0, G.carab, 0); root.add(pivot);
-    pivot.add(new THREE.Mesh(geo.wing, mat));
+    pivot.add(new THREE.Mesh(geo.wing.clone(), mat));
     const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.7, 8), mat); b.position.y = 0.85; root.add(b);
     root.visible = false;
     scene.add(root);
@@ -1610,17 +1659,31 @@ const R3D = (() => {
     const back = (1 - inflate) * (fwdFall ? -1.25 : 1.45), pitch = opt ? opt.pitch || 0 : 0, roll = opt ? opt.roll || 0 : 0;
     rig.pivot.rotation.set(back + pitch, 0, roll);
   }
-  function posePilot(p, inp, dt) {
+  // déforme le bord de fuite selon les freins (côté gauche / droit)
+  function deformWing(bl, br) {
+    if (Math.abs(bl - pilot.dl) < 0.004 && Math.abs(br - pilot.dr) < 0.004) return;
+    pilot.dl = bl; pilot.dr = br;
+    const g = pilot.geo, P = g.wing.attributes.position, M = g.meta, B = g.base;
+    for (let i = 0; i < P.count; i++) {
+      const t = M[i * 4], xc = M[i * 4 + 1], ex = M[i * 4 + 2], ey = M[i * 4 + 3];
+      const b = (t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(t)) * Math.max(0, (xc - 0.5) / 0.5);
+      const d = b * 0.6; // le bord de fuite descend vers le pilote (jusqu'à ~60 cm)
+      P.setXYZ(i, B[i * 3] - ex * d, B[i * 3 + 1] - ey * d, B[i * 3 + 2] - d * 0.25);
+    }
+    P.needsUpdate = true; g.wing.computeVertexNormals();
+  }
+  function posePilot(p, dt) {
     const crash = p.mode === 'crash';
     const gonfl = crash ? Math.max(0.2, p.inflate) : p.inflate;
+    const bl = crash ? 0 : p.bl, br = crash ? 0 : p.br;
     poseRig({ root: pilot.root, pivot: pilot.wingPivot, wing: pilot.wing }, p.pos, p.up, p.fwd, gonfl, {
-      forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.1 + (p.cl - 0.62) * 0.35 - (inp.y > 0 ? inp.y * 0.08 : 0), roll: crash ? Math.sin(time * 9) * 0.3 : 0
+      forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.12 + (p.cl - 0.45) * 0.3, roll: crash ? Math.sin(time * 9) * 0.3 : 0
     });
-    // bras : freins (stick bas) et virage (main intérieure qui descend)
-    const brake = clamp(-inp.y, 0, 1), turn = inp.x;
+    deformWing(bl, br);
+    // bras : chaque main tient sa poignée ; tirer = la main descend vers la hanche
     for (const a of pilot.arms) {
-      const pull = clamp(brake * 0.55 + Math.max(0, a.sx * turn) * 0.5 - Math.max(0, -a.sx * turn) * 0.1, 0, 0.75);
-      _v.set(0.33 * a.sx, 1.92 - pull, -0.06 + pull * 0.15);
+      const pull = a.sx < 0 ? bl : br;
+      _v.set((0.33 - pull * 0.08) * a.sx, 1.92 - pull * 0.72, -0.06 + pull * 0.2);
       if (p.mode === 'ready' || p.mode === 'ski' && p.inflate < 0.8) _v.set(0.36 * a.sx, 1.5 - p.inflate * 0.2, 0.25); // tient les élévateurs à l'élan
       a.hand.position.copy(_v);
       const d = _v.clone().sub(a.sh.position), l = d.length();
@@ -1632,6 +1695,20 @@ const R3D = (() => {
     const kneel = ground ? 0.18 + Math.min(0.25, p.V / 60) : 0.08;
     for (const l of pilot.legs) { l.hip.rotation.x = -kneel; l.ski.rotation.x = kneel; }
     pilot.body.position.y = ground ? -kneel * 0.4 : 0;
+    // suspentes de frein : de chaque main aux points du bord de fuite de son côté
+    const show = !crash && p.inflate > 0.8;
+    pilot.brakes.visible = show;
+    if (show) {
+      pilot.wingPivot.updateMatrix();
+      const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te;
+      for (let k = 0; k < te.length; k++) {
+        const q = te[k], side = q.t > 0 ? 1 : 0, hand = pilot.arms[side].hand.position, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+        _x.set(q.ex * (G.lineLen - b), q.ey * (G.lineLen - b), q.z - b * 0.25).applyMatrix4(pilot.wingPivot.matrix);
+        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y + pilot.body.position.y; arr[k * 6 + 2] = hand.z;
+        arr[k * 6 + 3] = _x.x; arr[k * 6 + 4] = _x.y; arr[k * 6 + 5] = _x.z;
+      }
+      pilot.brakes.geometry.attributes.position.needsUpdate = true;
+    }
   }
 
   // ---------- caméra ----------
@@ -1746,7 +1823,7 @@ const R3D = (() => {
     if (r && (S.screen === 'run' || S.screen === 'crash' || S.screen === 'results')) {
       p = r.p;
       pilot.root.visible = true;
-      posePilot(p, S.screen === 'run' ? (S.bot ? r.p.inp : S.input) : { x: 0, y: 0 }, dt);
+      posePilot(p, dt);
       if (S.screen === 'results') orbitCam(p, dt);
       else if (S.screen === 'crash') {
         cam.look.lerp(_x.set(p.pos.x, p.pos.y + 1, p.pos.z), 1 - Math.exp(-dt * 4));
@@ -1876,12 +1953,14 @@ const AUDIO = (() => {
       case 'gate': if (e.ok) for (let k = 0; k < 6; k++) burst('bandpass', 700, 380, 1.2, 0.05, 0.4 - k * 0.05, k * 0.055); break;
       case 'pop': if (e.kind === 'cable') burst('bandpass', 300, 1800, 1.2, 0.6, 0.6); break;
       case 'decollage': burst('lowpass', 300, 900, 0.7, 0.8, 0.25); break;
+      case 'decrochage': burst('lowpass', 500, 90, 0.9, 1.1, 0.7); for (let k = 0; k < 8; k++) burst('bandpass', 260, 160, 1.4, 0.07, 0.45, k * 0.09); break;
+      case 'raccroche': burst('bandpass', 300, 1400, 1.1, 0.35, 0.55); break;
     }
   }
   return { unlock, frame, on, setEnabled };
 })();
 
-// Interface : écrans, HUD, stick flottant (un seul contrôle), clavier pour l'ordinateur, conseils de prise en main.
+// Interface : écrans, HUD, deux poignées de frein (une par pouce), clavier pour l'ordinateur, conseils de prise en main.
 const UI = (() => {
   const $ = id => document.getElementById(id);
   const S = GAME.S, W = WORLD;
@@ -1889,8 +1968,10 @@ const UI = (() => {
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
   const dec = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const chrono = t => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + dec(s, 1); };
-  const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0, R: 64 };
-  const kb = { l: 0, r: 0, u: 0, d: 0, x: 0, y: 0 };
+  // course du pouce pour tirer une poignée à fond (px)
+  const TRAVEL = 95;
+  const hands = { l: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null }, r: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null } };
+  const kb = { l: 0, r: 0, both: 0, go: 0, vl: 0, vr: 0 };
   const cache = {};
   let el = {};
 
@@ -1898,6 +1979,7 @@ const UI = (() => {
 
   function init() {
     el = { hSpeed: $('hSpeed'), hAgl: $('hAgl'), hScore: $('hScore'), hCombo: $('hCombo'), hGateTxt: $('hGateTxt'), hGateDist: $('hGateDist'), hTime: $('hTime') };
+    hands.l.el = $('gripL'); hands.r.el = $('gripR');
     $('btnPlay').addEventListener('click', () => { AUDIO.unlock(); GAME.start(); });
     $('btnAgain').addEventListener('click', () => { AUDIO.unlock(); GAME.start(); });
     $('btnPause').addEventListener('click', () => pause(true));
@@ -1905,10 +1987,9 @@ const UI = (() => {
     $('btnRestart').addEventListener('click', () => { GAME.start(); });
     $('btnMenu').addEventListener('click', () => GAME.menu());
     $('btnMenu2').addEventListener('click', () => GAME.menu());
-    const inv = $('optInvert'), snd = $('optSound');
-    inv.checked = !!S.save.opts.invert; snd.checked = S.save.opts.sound !== false;
+    const snd = $('optSound');
+    snd.checked = S.save.opts.sound !== false;
     AUDIO.setEnabled(snd.checked);
-    inv.addEventListener('change', () => GAME.setOpt('invert', inv.checked));
     snd.addEventListener('change', () => { GAME.setOpt('sound', snd.checked); AUDIO.setEnabled(snd.checked); });
     const t = $('touch');
     t.addEventListener('pointerdown', down);
@@ -1920,65 +2001,72 @@ const UI = (() => {
     document.addEventListener('visibilitychange', () => { if (document.hidden) pause(true); });
     // chiffres de la descente
     $('tCourse').textContent = W.name;
-    $('fLen').textContent = dec(W.FACTS.length / 1000, 1).replace(',0', '') + ' km';
+    $('fLen').textContent = W.FACTS.length >= 1000 ? dec(W.FACTS.length / 1000, 1).replace(',0', '') + ' km' : W.FACTS.length + ' m';
     $('fDrop').textContent = W.FACTS.drop + ' m';
     $('fGates').textContent = W.FACTS.gates;
     showTitle();
   }
 
-  // ---------- stick flottant ----------
+  // ---------- deux poignées de frein ----------
+  // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce ;
+  // descendre le pouce tire la poignée. Monter ou aller sur le côté ne tire rien : le repère suit le pouce.
+  function handOf(id) { return hands.l.id === id ? hands.l : hands.r.id === id ? hands.r : null; }
   function down(e) {
     AUDIO.unlock();
     if (S.screen === 'crash') { if (S.crashT > 0.45) GAME.start(); return; }
-    if (S.screen !== 'run' || S.paused || stick.id !== null) return;
-    stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; stick.x = stick.y = 0;
-    $('stick').hidden = false; drawStick(0, 0);
+    if (S.screen !== 'run' || S.paused) return;
+    const h = e.clientX < window.innerWidth / 2 ? hands.l : hands.r;
+    if (h.id !== null) return;
+    h.id = e.pointerId; h.x = e.clientX; h.y0 = e.clientY; h.dy = 0; h.v = 0;
+    h.el.hidden = false; draw(h); apply();
     e.preventDefault();
   }
   function move(e) {
-    if (e.pointerId !== stick.id) return;
+    const h = handOf(e.pointerId); if (!h) return;
     e.preventDefault();
-    let dx = e.clientX - stick.ox, dy = e.clientY - stick.oy;
-    const R = stick.R, d = Math.hypot(dx, dy);
-    // au-delà du cercle, le stick suit le pouce : on ne « perd » jamais le contrôle
-    if (d > R * 1.2) { const k = (d - R * 1.2) / d; stick.ox += dx * k; stick.oy += dy * k; dx = e.clientX - stick.ox; dy = e.clientY - stick.oy; }
-    const dd = Math.hypot(dx, dy), c = Math.min(1, dd / R);
-    stick.x = curve(dd > 0 ? dx / dd * c : 0); stick.y = curve(dd > 0 ? -dy / dd * c : 0);
-    const k2 = dd > R ? R / dd : 1;
-    drawStick(dx * k2, dy * k2);
-    apply();
+    h.x = e.clientX;
+    let dy = e.clientY - h.y0;
+    if (dy < 0) { h.y0 = e.clientY; dy = 0; }                         // le pouce remonte : mains hautes, le repère suit
+    if (dy > TRAVEL) { h.y0 = e.clientY - TRAVEL; dy = TRAVEL; }      // au-delà de la course : le repère suit aussi
+    h.dy = dy; h.v = curve(dy / TRAVEL);
+    draw(h); apply();
   }
   function up(e) {
-    if (e.pointerId !== stick.id) return;
-    stick.id = null; stick.x = stick.y = 0; $('stick').hidden = true; apply();
+    const h = handOf(e.pointerId); if (!h) return;
+    h.id = null; h.v = 0; h.dy = 0; h.el.hidden = true; apply();
   }
-  // petite zone morte + courbe douce au centre, pleine course au bord
-  function curve(v) { const a = Math.abs(v), b = a < 0.06 ? 0 : (a - 0.06) / 0.94; return Math.sign(v) * (0.45 * b + 0.55 * b * b); }
-  function drawStick(dx, dy) {
-    const s = $('stick');
-    s.style.transform = `translate(${stick.ox}px, ${stick.oy}px)`;
-    s.querySelector('.knob').style.transform = `translate(${dx}px, ${dy}px)`;
+  function release() { for (const h of [hands.l, hands.r]) { h.id = null; h.v = 0; h.dy = 0; h.el.hidden = true; } apply(); }
+  // petite zone morte en haut, puis progression régulière
+  function curve(v) { const b = v < 0.05 ? 0 : (v - 0.05) / 0.95; return Math.pow(b, 1.1); }
+  function draw(h) {
+    h.el.style.transform = `translate(${h.x}px, ${h.y0}px)`;
+    h.el.querySelector('.knob').style.transform = `translateY(${h.dy}px)`;
+    h.el.querySelector('.fill').style.height = h.dy + 'px';
   }
   function apply() {
-    const inv = S.save.opts.invert ? -1 : 1;
-    S.input.x = clamp(stick.x + kb.x, -1, 1);
-    S.input.y = clamp((stick.y + kb.y) * inv, -1, 1);
+    S.input.l = clamp(Math.max(hands.l.v, kb.vl), 0, 1);
+    S.input.r = clamp(Math.max(hands.r.v, kb.vr), 0, 1);
+    // départ : les deux pouces posés (ou Espace / flèche bas au clavier)
+    S.input.go = (hands.l.id !== null && hands.r.id !== null) || kb.go > 0;
   }
   function key(isDown) {
     return e => {
       const k = e.key;
-      if (isDown && (k === ' ' || k === 'Enter')) { if (S.screen === 'title' || S.screen === 'results' || S.screen === 'crash') { AUDIO.unlock(); GAME.start(); e.preventDefault(); return; } }
+      if (isDown && (k === ' ' || k === 'Enter')) {
+        if (S.screen === 'title' || S.screen === 'results' || S.screen === 'crash') { AUDIO.unlock(); GAME.start(); e.preventDefault(); return; }
+      }
       if (isDown && k === 'Escape' && S.screen === 'run') { pause(!S.paused); return; }
-      const m = { ArrowLeft: 'l', a: 'l', q: 'l', ArrowRight: 'r', d: 'r', ArrowUp: 'u', w: 'u', z: 'u', ArrowDown: 'd', s: 'd' }[k];
+      const m = { ArrowLeft: 'l', a: 'l', q: 'l', ArrowRight: 'r', d: 'r', ArrowDown: 'both', s: 'both', ' ': 'go', ArrowUp: 'go' }[k];
       if (!m) return;
-      kb[m] = isDown ? 1 : 0; e.preventDefault();
+      kb[m] = isDown ? 1 : 0; if (m === 'both' && isDown) kb.go = 1; if (m === 'both' && !isDown) kb.go = 0;
+      e.preventDefault();
     };
   }
   function keysFrame(dt) {
-    // rampe douce pour le clavier (sinon le contrôle est tout ou rien)
-    const tx = kb.r - kb.l, ty = kb.u - kb.d, k = 1 - Math.exp(-dt * 6);
-    kb.x += (tx - kb.x) * k; kb.y += (ty - kb.y) * k;
-    if (Math.abs(kb.x) < 0.01 && !tx) kb.x = 0; if (Math.abs(kb.y) < 0.01 && !ty) kb.y = 0;
+    // rampe douce pour le clavier (sinon la poignée est tout ou rien)
+    const k = 1 - Math.exp(-dt * 6);
+    kb.vl += (Math.max(kb.l, kb.both) - kb.vl) * k; kb.vr += (Math.max(kb.r, kb.both) - kb.vr) * k;
+    if (kb.vl < 0.01 && !kb.l && !kb.both) kb.vl = 0; if (kb.vr < 0.01 && !kb.r && !kb.both) kb.vr = 0;
     apply();
   }
 
@@ -1986,7 +2074,7 @@ const UI = (() => {
     if (S.screen !== 'run') return;
     GAME.pause(b);
     $('scrPause').hidden = !b;
-    if (b) { stick.id = null; stick.x = stick.y = 0; $('stick').hidden = true; apply(); }
+    if (b) release();
   }
 
   // ---------- écrans ----------
@@ -2005,7 +2093,7 @@ const UI = (() => {
       case 'pop': pop(e); break;
       case 'crash':
         $('crashWhy').textContent = e.reason; $('crash').hidden = false;
-        stick.id = null; stick.x = stick.y = 0; $('stick').hidden = true; apply(); break;
+        release(); break;
       case 'results': results(e.res); break;
     }
   }
@@ -2019,7 +2107,7 @@ const UI = (() => {
     setTimeout(() => d.remove(), 1500);
   }
   function results(res) {
-    $('hud').hidden = true; $('crash').hidden = true; $('stick').hidden = true;
+    $('hud').hidden = true; $('crash').hidden = true; release();
     $('scrResult').hidden = false;
     $('rKind').textContent = res.kind === 'pose' ? (res.land && res.land.inTarget ? 'Posé dans la cible' : 'Posé') : 'Arrêté avant la prairie';
     $('rScore').textContent = fmt(res.score);
@@ -2053,15 +2141,17 @@ const UI = (() => {
   // ---------- conseils (premières descentes) ----------
   function hintFor(r) {
     const p = r.p;
-    if (p.mode === 'ready') return 'Pose le pouce n’importe où et glisse vers le haut pour t’élancer';
-    if (p.mode === 'ski' && !p.launched) return p.V > 8.5 ? 'Glisse vers le bas pour décoller' : 'Garde le stick vers le haut pour prendre de l’élan';
+    if (p.mode === 'ready') return 'Pose tes deux pouces sur l’écran, à gauche et à droite, pour t’élancer';
+    if (p.mode === 'ski' && !p.launched) return p.V > 8.5 ? 'Descends les deux pouces : tu tires les deux poignées et tu décolles' : 'Élan aux bâtons…';
+    if (p.stall) return 'Décrochage ! Relâche les deux poignées';
     if ((S.save.runs || 0) > 3) return '';
-    if (p.mode === 'air' && p.airT < 4 && r.gate === 0) return 'Haut : piquer · Bas : freiner · Côtés : tourner';
+    if (p.mode === 'air' && p.airT < 5 && r.gate === 0) return 'Pouce droit vers le bas : tourne à droite · pouce gauche : à gauche · les deux : freine et remonte';
     if (r.gate === 0) return 'Passe entre les piquets orange, sous la banderole';
     const toCable = -p.pos.z - W.CABLE.s;
     if (!r.cable && toCable > -130 && toCable < -15) return 'Télésiège devant : câble à 18 m, passe dessous en rasant la neige';
-    if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible orange : tire juste avant de toucher';
-    if (r.gate === 1 && r.gateOk === 1) return 'Reste près de la neige : plus tu rases vite, plus le combo grimpe';
+    if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
+    if (r.gate === 1 && r.gateOk === 1) return 'Mains hautes = pleine vitesse. Rase la neige : plus tu frôles vite, plus le combo grimpe';
+    if (r.gate === 2) return 'Un frein tenu à fond : la voile part en spirale et plonge. Pratique pour perdre de la hauteur';
     return '';
   }
 
@@ -2095,6 +2185,7 @@ const UI = (() => {
 
   function frame(dt) {
     keysFrame(dt);
+    if (S.screen === 'run' && !S.paused && window.innerHeight > window.innerWidth) pause(true); // le jeu se joue en paysage
     if (S.screen === 'run' || S.screen === 'crash') hud(dt);
     else $('vig').style.opacity = 0;
   }
@@ -2129,7 +2220,7 @@ const UI = (() => {
     state: () => GAME.S,
     start: () => GAME.start(),
     bot(opts) { GAME.S.bot = opts ? BOT.make(opts) : null; },
-    input(x, y) { GAME.S.input.x = x; GAME.S.input.y = y; }
+    input(l, r, go) { GAME.S.input.l = l; GAME.S.input.r = r; GAME.S.input.go = !!go; }
   };
   // @@FIN-TEST
 })();

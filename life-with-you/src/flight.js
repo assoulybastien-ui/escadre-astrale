@@ -1,10 +1,13 @@
 // Physique de vol d'une voile de speed riding (modèle à point matériel) et glisse à skis.
-// Portance et traînée réelles : L = ½ρV²S·CL, D = ½ρV²S·(CD0 + k·CL²). Le stick règle le CL (freins/accélérateur)
-// et l'inclinaison (virage). L'énergie se conserve : piquer fait prendre de la vitesse, tirer la retransforme en hauteur.
+// Portance et traînée réelles : L = ½ρV²S·CL, D = ½ρV²S·(CD0 + k·CL²). Deux poignées de frein, comme en vrai :
+// les deux tirées = plus de CL (ralentir, remonter, arrondir) ; une seule = la voile s'incline et tourne de ce côté ;
+// tenue à fond, elle part en spirale. Freins à fond trop lent = décrochage. L'énergie se conserve.
 const FLIGHT = (() => {
   const G = 9.81, RHO = 1.0, M = 90; // air à ~2 000 m, pilote + matériel
-  // Voile de 11 m² : finesse max ≈ 3,5 ; ~57 km/h bras hauts, ~95 km/h accélérateur à fond (plané ~28°), ~42 km/h freins à fond
-  const WING = { nom: 'Voile 11 m²', S: 11, cd0: 0.10, k: 0.20, clMin: 0.20, clTrim: 0.62, clMax: 1.15, bankMax: 0.96, tauCL: 0.32, tauBank: 0.42, nMax: 3.2 };
+  // Voile de speed riding de 9,5 m², trims ouverts : ~71 km/h mains hautes (finesse ~2,7), finesse max ~3,1 freins à moitié,
+  // ~45 km/h freins à fond ; virage freiné jusqu'à ~50° d'inclinaison, spirale jusqu'à ~72° (~95 km/h, 2,5 g)
+  const WING = { nom: 'Voile 9,5 m²', S: 9.5, cd0: 0.12, k: 0.22, clTrim: 0.45, clMax: 1.15, bankMax: 50 * Math.PI / 180, bankSpiral: 72 * Math.PI / 180,
+    tauCL: 0.32, tauBank: 0.55, tauHand: 0.1, nMax: 3.2, stallV: 10.2 };
   const MU_SKI = 0.055, MU_STOP = 0.35, PILOT_CDA = 0.5;
   // géométrie (m, au-dessus des pieds) : mousquetons, centre de la voile, bouts d'aile
   const GEO = { carab: 1.35, lineLen: 5.6, halfAngle: 40 * Math.PI / 180 };
@@ -20,7 +23,8 @@ const FLIGHT = (() => {
       pos: { x: S.x, y: S.y, z: S.z }, vel: { x: 0, y: 0, z: 0 }, dir: { x: S.dx, y: 0, z: S.dz },
       cl: WING.clTrim, bank: 0, inflate: 0, mode: 'ready', launched: false,
       up: { x: 0, y: 1, z: 0 }, upV: { x: 0, y: 0, z: 0 }, fwd: { x: S.dx, y: 0, z: S.dz }, right: { x: -S.dz, y: 0, z: S.dx },
-      aero: { x: 0, y: 0, z: 0 }, t: 0, stopT: 0, groundT: 0, airT: 0, crashT: 0, V: 0, gload: 1, vn: 0, inp: { x: 0, y: 0 },
+      aero: { x: 0, y: 0, z: 0 }, t: 0, stopT: 0, groundT: 0, airT: 0, crashT: 0, V: 0, gload: 1, vn: 0, inp: { l: 0, r: 0 },
+      bl: 0, br: 0, spiralT: 0, stall: false, stallT: 0, departT: 0,
       spin: { x: 0, y: 0, z: 0 }, tumble: { x: 0, y: 0, z: 0 }, reason: ''
     };
   }
@@ -31,16 +35,22 @@ const FLIGHT = (() => {
     p.t += dt; p.inp = inp;
     if (p.mode === 'stopped') return;
     if (p.mode === 'crash') return stepCrash(p, dt);
-    const ix = inp.x, iy = inp.y;
-    // consignes : CL (haut = accélérer/piquer, bas = freiner/cabrer) et inclinaison
-    const clT = iy >= 0 ? WING.clTrim + (WING.clMin - WING.clTrim) * iy : WING.clTrim + (WING.clMax - WING.clTrim) * -iy;
+    // les mains suivent les pouces avec un léger retard
+    const kh = 1 - Math.exp(-dt / WING.tauHand);
+    p.bl += ((inp.l || 0) - p.bl) * kh; p.br += ((inp.r || 0) - p.br) * kh;
+    // part commune des deux freins (plus de CL) et différence (virage)
+    const sym = Math.min(p.bl, p.br) + 0.35 * Math.abs(p.br - p.bl), dif = p.br - p.bl;
+    const clT = WING.clTrim + (WING.clMax - WING.clTrim) * Math.pow(sym, 1.15);
     p.cl += (clT - p.cl) * (1 - Math.exp(-dt / WING.tauCL));
-    const bankT = p.mode === 'air' ? ix * WING.bankMax : 0;
+    // un frein tenu fort plus d'une seconde : la voile part en spirale
+    if (p.mode === 'air' && Math.abs(dif) > 0.75) p.spiralT += dt; else p.spiralT = Math.max(0, p.spiralT - dt * 2);
+    const spiral = Math.min(1, Math.max(0, (p.spiralT - 1) / 2));
+    const bankT = p.mode === 'air' ? dif * (WING.bankMax + (WING.bankSpiral - WING.bankMax) * spiral) : 0;
     p.bank += (bankT - p.bank) * (1 - Math.exp(-dt / WING.tauBank));
 
     if (p.mode === 'ready') {
       frame(p, dt);
-      if (iy > 0.35) { p.mode = 'ski'; p.vel = { x: p.dir.x * 2, y: 0, z: p.dir.z * 2 }; ev.push({ type: 'depart' }); }
+      if (inp.go) { p.mode = 'ski'; p.departT = 0; p.vel = { x: p.dir.x * 2, y: 0, z: p.dir.z * 2 }; ev.push({ type: 'depart' }); }
       return;
     }
 
@@ -55,11 +65,18 @@ const FLIGHT = (() => {
     else if (p.inflate < 1 && V > 3) p.inflate = Math.min(1, p.inflate + dt * (0.3 + V * 0.06));
     const inf = p.inflate * p.inflate;
     const q = 0.5 * RHO * V * V;
-    let L = q * WING.S * p.cl * inf;
+    // décrochage : freins à fond alors que la voile est trop lente ; on en sort en relâchant les freins
+    if (p.mode === 'air') {
+      if (!p.stall) {
+        p.stallT = sym > 0.85 && V < WING.stallV ? p.stallT + dt : 0;
+        if (p.stallT > 0.5) { p.stall = true; ev.push({ type: 'decrochage' }); }
+      } else if (sym < 0.5) { p.stall = false; p.stallT = 0; ev.push({ type: 'raccroche' }); }
+    } else { p.stall = false; p.stallT = 0; }
+    let L = q * WING.S * (p.stall ? 0.3 : p.cl) * inf;
     const Lmax = WING.nMax * M * G;
     if (L > Lmax) L = Lmax; // la voile ne tient pas plus de ~3 g
     const clE = inf > 0.01 ? L / (q * WING.S * inf) : 0;
-    const D = q * (WING.S * (WING.cd0 + WING.k * clE * clE) * inf + PILOT_CDA * (1 - inf));
+    const D = q * (WING.S * (WING.cd0 + WING.k * clE * clE + (p.stall ? 0.75 : 0)) * inf + PILOT_CDA * (1 - inf));
     // direction de la portance : perpendiculaire au vent relatif, inclinée de « bank » autour de lui
     let ux = -hy * hx, uy = 1 - hy * hy, uz = -hy * hz;
     let ul = Math.hypot(ux, uy, uz);
@@ -74,10 +91,11 @@ const FLIGHT = (() => {
     let fx = ax, fy = ay - M * G, fz = az;
 
     if (p.mode === 'ski' || p.mode === 'landing') {
-      // élan aux bâtons tant que la vitesse est faible
-      if (p.mode === 'ski' && !p.launched && iy > 0.2) {
+      // élan aux bâtons pendant les premières secondes
+      p.departT += dt;
+      if (p.mode === 'ski' && !p.launched && p.departT < 4) {
         const sp = Math.hypot(p.vel.x, p.vel.z);
-        if (sp < 7) { fx += p.dir.x * M * 1.6 * iy; fz += p.dir.z * M * 1.6 * iy; }
+        if (sp < 7) { fx += p.dir.x * M * 1.6; fz += p.dir.z * M * 1.6; }
       }
       const n = w.normalAt(p.pos.x, p.pos.z);
       const Fn = fx * n.x + fy * n.y + fz * n.z;
@@ -100,14 +118,25 @@ const FLIGHT = (() => {
         if (sp > 0.05 && nvx * vx + nvy * vy + nvz * vz < 0 && Math.hypot(tx, ty, tz) < mu * N * 1.05) { vx = vy = vz = 0; }
         else { vx = nvx; vy = nvy; vz = nvz; }
         // virage sur les carres (rotation autour de la normale)
-        const om = -ix * 0.9 * Math.min(1, sp / 4) * dt;
+        const om = -dif * 0.9 * Math.min(1, sp / 4) * dt;
         if (om !== 0) {
           const c = Math.cos(om), s = Math.sin(om);
           const cx = n.y * vz - n.z * vy, cy = n.z * vx - n.x * vz, cz = n.x * vy - n.y * vx;
           vx = vx * c + cx * s; vy = vy * c + cy * s; vz = vz * c + cz * s;
         }
         p.vel.x = vx; p.vel.y = vy; p.vel.z = vz;
-        p.pos.x += vx * dt; p.pos.z += vz * dt; p.pos.y = w.heightAt(p.pos.x, p.pos.z);
+        const ny2 = p.pos.y + vy * dt;
+        p.pos.x += vx * dt; p.pos.z += vz * dt;
+        const hT = w.heightAt(p.pos.x, p.pos.z);
+        if (p.mode === 'ski' && p.inflate > 0.6 && ny2 > hT + 0.08 && Math.hypot(vx, vy, vz) > 8) {
+          // le sol se dérobe (bord de barre, bosse) : on s'envole
+          p.pos.y = ny2; p.mode = 'air'; p.airT = 0;
+          ev.push({ type: p.launched ? 'redecollage' : 'decollage', groundT: p.groundT });
+          p.launched = true;
+          frame(p, dt);
+          return;
+        }
+        p.pos.y = hT;
         const sp2 = Math.hypot(vx, vy, vz);
         if (sp2 > 0.5) { p.dir.x = vx / sp2; p.dir.z = vz / sp2; const l = Math.hypot(p.dir.x, p.dir.z); p.dir.x /= l; p.dir.z /= l; }
         p.stopT = sp2 < 0.8 ? p.stopT + dt : 0;
@@ -142,7 +171,8 @@ const FLIGHT = (() => {
       const s = -p.pos.z;
       const landing = s > w.LAND.from; // prairie d'atterrissage, après la dernière porte
       p.mode = landing ? 'landing' : 'ski'; p.groundT = 0;
-      ev.push({ type: 'contact', vn, landing, x: p.pos.x, z: p.pos.z, V: p.V });
+      // petits rebonds au ras de la neige : pas d'événement (évite d'enchaîner les bruits)
+      if (landing || p.airT > 0.25 || vn > 1.5) ev.push({ type: 'contact', vn, landing, x: p.pos.x, z: p.pos.z, V: p.V });
       const sp = Math.hypot(p.vel.x, p.vel.z);
       if (sp > 0.5) { p.dir.x = p.vel.x / sp; p.dir.z = p.vel.z / sp; }
     }

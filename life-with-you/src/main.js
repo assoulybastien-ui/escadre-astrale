@@ -25,7 +25,7 @@
     state: () => GAME.S,
     start: () => GAME.start(),
     bot(opts) { GAME.S.bot = opts ? BOT.make(opts) : null; },
-    input(x, y) { GAME.S.input.x = x; GAME.S.input.y = y; }
+    input(l, r, go) { GAME.S.input.l = l; GAME.S.input.r = r; GAME.S.input.go = !!go; }
   };
   // @@FIN-TEST
 })();

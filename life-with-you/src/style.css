@@ -35,12 +35,15 @@ body {
 #vig { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
   background: radial-gradient(ellipse 75% 70% at 50% 48%, rgba(10, 21, 32, 0) 58%, rgba(10, 21, 32, 0.55) 100%); }
 
-/* ---------- stick flottant ---------- */
-#stick { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; }
-#stick .ring { position: absolute; width: 128px; height: 128px; margin: -64px 0 0 -64px; border-radius: 50%;
-  border: 2px solid rgba(242, 246, 250, 0.5); background: rgba(10, 21, 32, 0.18); }
-#stick .knob { position: absolute; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
-  background: rgba(242, 246, 250, 0.88); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+/* ---------- poignées de frein (une par pouce) ---------- */
+.grip { position: fixed; left: 0; top: 0; z-index: 3; pointer-events: none; }
+.grip .rail { position: absolute; left: -9px; top: -6px; width: 18px; height: 107px; border-radius: 9px;
+  background: rgba(10, 21, 32, 0.32); border: 2px solid rgba(242, 246, 250, 0.55); box-sizing: border-box; overflow: hidden; }
+.grip .fill { position: absolute; left: 0; right: 0; top: 0; height: 0; background: var(--signal); opacity: 0.85; }
+.grip .knob { position: absolute; left: -26px; top: -14px; width: 52px; height: 28px; border-radius: 14px;
+  background: rgba(242, 246, 250, 0.92); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35); }
+.grip .tag { position: absolute; left: -40px; top: -40px; width: 80px; text-align: center; font-family: var(--f-num); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.1em; color: var(--snow); text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); }
 
 /* ---------- HUD ---------- */
 #hud { position: fixed; inset: 0; z-index: 4; pointer-events: none; }
@@ -66,8 +69,8 @@ body {
 .iconbtn:focus-visible, button:focus-visible { outline: 2px solid var(--ice); outline-offset: 2px; }
 #hint { position: absolute; top: calc(var(--st) + 62px); left: 50%; transform: translateX(-50%); max-width: min(520px, 70vw);
   background: var(--glass-hi); padding: 7px 14px; border-radius: 8px; font-size: 15px; font-weight: 500; text-align: center; text-wrap: balance; }
-#pops { position: absolute; top: 34%; right: calc(var(--sr) + 6%); display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-.pop { font-family: var(--f-display); font-weight: 800; font-size: 26px; letter-spacing: 0.03em; text-transform: uppercase;
+#pops { position: absolute; top: calc(var(--st) + 112px); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pop { font-family: var(--f-display); font-weight: 800; font-size: 24px; letter-spacing: 0.03em; text-transform: uppercase;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.55); animation: pop 1.5s ease-out forwards; white-space: nowrap; }
 .pop b { color: var(--ice); margin-left: 8px; font-family: var(--f-num); font-weight: 700; }
 .pop.miss { color: var(--bad); font-size: 20px; }
@@ -130,6 +133,6 @@ body {
 #boot { display: flex; }
 #boot[hidden] { display: none; }
 #rotate p, #boot p { color: var(--mist); margin: 10px 0 0; }
-@media (orientation: portrait) and (max-width: 760px) { #rotate { display: flex; } }
+@media (orientation: portrait) { #rotate { display: flex; } }
 @media (max-height: 340px) { .num { font-size: 30px; } .help { display: none; } }
 @media (prefers-reduced-motion: reduce) { .pop { animation-duration: 0.01s; animation-fill-mode: forwards; opacity: 1; } .gatechip svg { transition: none; } }

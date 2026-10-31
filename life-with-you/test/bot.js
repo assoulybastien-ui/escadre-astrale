@@ -2,7 +2,7 @@
 global.NOISE = require('../src/noise.js'); global.WORLD = require('../src/world.js');
 global.FLIGHT = require('../src/flight.js'); global.GAME = require('../src/game.js'); global.BOT = require('../src/bot.js');
 const agl = +(process.argv[2] || 5), under = process.argv[3] !== '0';
-GAME.start(); GAME.S.bot = BOT.make({ agl, underCable: under });
+GAME.start(); GAME.S.bot = BOT.make({ agl, underCable: under, gain: +(process.argv[4] || 0.9) });
 const log = [];
 let n = 0, lastS = -1e9, minAgl = 99, aglSum = 0, aglN = 0;
 while (GAME.S.screen === 'run' && n < 120 * 300) {

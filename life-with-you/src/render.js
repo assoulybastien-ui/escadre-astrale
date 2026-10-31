@@ -347,6 +347,7 @@ const R3D = (() => {
   function wingGeometry(main, light, dark) {
     const NS = 34, NA = 16, RL = G.lineLen, A = G.halfAngle;
     const pos = [], col = [], cM = lin(main), cL = lin(light), cD = lin(dark), c = new THREE.Color();
+    const meta = []; // par sommet : t (envergure -1..1), xc (corde 0..1), direction radiale ex, ey
     for (let i = 0; i <= NS; i++) {
       const t = -1 + 2 * i / NS, ang = A * t, ex = Math.sin(ang), ey = Math.cos(ang);
       const chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t)), sweep = 0.35 * t * t;
@@ -360,6 +361,7 @@ const R3D = (() => {
         const rad = (camber + (up ? yt : -yt * 0.55)) * chord;
         const zz = -0.32 * chord + xc * chord + sweep;
         pos.push(ex * (RL + rad), ey * (RL + rad), zz);
+        meta.push(t, xc, ex, ey);
         c.copy(base).multiplyScalar(rib * (up ? 1 : 0.72)); col.push(c.r, c.g, c.b);
       }
     }
@@ -383,7 +385,13 @@ const R3D = (() => {
     }
     for (const sx of [-0.16, 0.16]) lp.push(sx, 0, 0, sx, 0.45, 0.02);
     const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-    return { wing: g, lines: lg };
+    // points du bord de fuite où s'accrochent les suspentes de frein
+    const te = [];
+    for (const t of [-0.92, -0.72, -0.5, 0.5, 0.72, 0.92]) {
+      const ang = A * t, chord = 2.35 * Math.sqrt(Math.max(0.08, 1 - 0.78 * t * t));
+      te.push({ t, ex: Math.sin(ang), ey: Math.cos(ang), z: 0.68 * chord + 0.35 * t * t });
+    }
+    return { wing: g, lines: lg, meta: new Float32Array(meta), base: new Float32Array(pos), te };
   }
 
   // ---------- pilote debout dans sa sellette, à skis ----------
@@ -422,14 +430,17 @@ const R3D = (() => {
     wing.castShadow = true; wingPivot.add(wing);
     const lines = new THREE.LineSegments(wg.lines, new THREE.LineBasicMaterial({ color: lin(0x2a2d33), transparent: true, opacity: 0.55 }));
     wingPivot.add(lines);
-    return { root, body, legs, arms, wingPivot, wing, lines, geo: wg };
+    const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(wg.te.length * 6), 3));
+    const brakes = new THREE.LineSegments(bg, new THREE.LineBasicMaterial({ color: lin(0xff5b1f), transparent: true, opacity: 0.8 }));
+    brakes.frustumCulled = false; root.add(brakes);
+    return { root, body, legs, arms, wingPivot, wing, lines, brakes, geo: wg, dl: -1, dr: -1 };
   }
 
   function buildGhost(geo) {
     const root = new THREE.Group();
     const mat = new THREE.MeshBasicMaterial({ color: lin(0x8fd8ff), transparent: true, opacity: 0.26, depthWrite: false });
     const pivot = new THREE.Group(); pivot.position.set(0, G.carab, 0); root.add(pivot);
-    pivot.add(new THREE.Mesh(geo.wing, mat));
+    pivot.add(new THREE.Mesh(geo.wing.clone(), mat));
     const b = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.16, 1.7, 8), mat); b.position.y = 0.85; root.add(b);
     root.visible = false;
     scene.add(root);
@@ -512,17 +523,31 @@ const R3D = (() => {
     const back = (1 - inflate) * (fwdFall ? -1.25 : 1.45), pitch = opt ? opt.pitch || 0 : 0, roll = opt ? opt.roll || 0 : 0;
     rig.pivot.rotation.set(back + pitch, 0, roll);
   }
-  function posePilot(p, inp, dt) {
+  // déforme le bord de fuite selon les freins (côté gauche / droit)
+  function deformWing(bl, br) {
+    if (Math.abs(bl - pilot.dl) < 0.004 && Math.abs(br - pilot.dr) < 0.004) return;
+    pilot.dl = bl; pilot.dr = br;
+    const g = pilot.geo, P = g.wing.attributes.position, M = g.meta, B = g.base;
+    for (let i = 0; i < P.count; i++) {
+      const t = M[i * 4], xc = M[i * 4 + 1], ex = M[i * 4 + 2], ey = M[i * 4 + 3];
+      const b = (t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(t)) * Math.max(0, (xc - 0.5) / 0.5);
+      const d = b * 0.6; // le bord de fuite descend vers le pilote (jusqu'à ~60 cm)
+      P.setXYZ(i, B[i * 3] - ex * d, B[i * 3 + 1] - ey * d, B[i * 3 + 2] - d * 0.25);
+    }
+    P.needsUpdate = true; g.wing.computeVertexNormals();
+  }
+  function posePilot(p, dt) {
     const crash = p.mode === 'crash';
     const gonfl = crash ? Math.max(0.2, p.inflate) : p.inflate;
+    const bl = crash ? 0 : p.bl, br = crash ? 0 : p.br;
     poseRig({ root: pilot.root, pivot: pilot.wingPivot, wing: pilot.wing }, p.pos, p.up, p.fwd, gonfl, {
-      forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.1 + (p.cl - 0.62) * 0.35 - (inp.y > 0 ? inp.y * 0.08 : 0), roll: crash ? Math.sin(time * 9) * 0.3 : 0
+      forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.12 + (p.cl - 0.45) * 0.3, roll: crash ? Math.sin(time * 9) * 0.3 : 0
     });
-    // bras : freins (stick bas) et virage (main intérieure qui descend)
-    const brake = clamp(-inp.y, 0, 1), turn = inp.x;
+    deformWing(bl, br);
+    // bras : chaque main tient sa poignée ; tirer = la main descend vers la hanche
     for (const a of pilot.arms) {
-      const pull = clamp(brake * 0.55 + Math.max(0, a.sx * turn) * 0.5 - Math.max(0, -a.sx * turn) * 0.1, 0, 0.75);
-      _v.set(0.33 * a.sx, 1.92 - pull, -0.06 + pull * 0.15);
+      const pull = a.sx < 0 ? bl : br;
+      _v.set((0.33 - pull * 0.08) * a.sx, 1.92 - pull * 0.72, -0.06 + pull * 0.2);
       if (p.mode === 'ready' || p.mode === 'ski' && p.inflate < 0.8) _v.set(0.36 * a.sx, 1.5 - p.inflate * 0.2, 0.25); // tient les élévateurs à l'élan
       a.hand.position.copy(_v);
       const d = _v.clone().sub(a.sh.position), l = d.length();
@@ -534,6 +559,20 @@ const R3D = (() => {
     const kneel = ground ? 0.18 + Math.min(0.25, p.V / 60) : 0.08;
     for (const l of pilot.legs) { l.hip.rotation.x = -kneel; l.ski.rotation.x = kneel; }
     pilot.body.position.y = ground ? -kneel * 0.4 : 0;
+    // suspentes de frein : de chaque main aux points du bord de fuite de son côté
+    const show = !crash && p.inflate > 0.8;
+    pilot.brakes.visible = show;
+    if (show) {
+      pilot.wingPivot.updateMatrix();
+      const arr = pilot.brakes.geometry.attributes.position.array, te = pilot.geo.te;
+      for (let k = 0; k < te.length; k++) {
+        const q = te[k], side = q.t > 0 ? 1 : 0, hand = pilot.arms[side].hand.position, b = (q.t > 0 ? br : bl) * sstep(0.1, 0.55, Math.abs(q.t)) * 0.6;
+        _x.set(q.ex * (G.lineLen - b), q.ey * (G.lineLen - b), q.z - b * 0.25).applyMatrix4(pilot.wingPivot.matrix);
+        arr[k * 6] = hand.x; arr[k * 6 + 1] = hand.y + pilot.body.position.y; arr[k * 6 + 2] = hand.z;
+        arr[k * 6 + 3] = _x.x; arr[k * 6 + 4] = _x.y; arr[k * 6 + 5] = _x.z;
+      }
+      pilot.brakes.geometry.attributes.position.needsUpdate = true;
+    }
   }
 
   // ---------- caméra ----------
@@ -648,7 +687,7 @@ const R3D = (() => {
     if (r && (S.screen === 'run' || S.screen === 'crash' || S.screen === 'results')) {
       p = r.p;
       pilot.root.visible = true;
-      posePilot(p, S.screen === 'run' ? (S.bot ? r.p.inp : S.input) : { x: 0, y: 0 }, dt);
+      posePilot(p, dt);
       if (S.screen === 'results') orbitCam(p, dt);
       else if (S.screen === 'crash') {
         cam.look.lerp(_x.set(p.pos.x, p.pos.y + 1, p.pos.z), 1 - Math.exp(-dt * 4));

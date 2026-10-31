@@ -1,4 +1,4 @@
-// Interface : écrans, HUD, stick flottant (un seul contrôle), clavier pour l'ordinateur, conseils de prise en main.
+// Interface : écrans, HUD, deux poignées de frein (une par pouce), clavier pour l'ordinateur, conseils de prise en main.
 const UI = (() => {
   const $ = id => document.getElementById(id);
   const S = GAME.S, W = WORLD;
@@ -6,8 +6,10 @@ const UI = (() => {
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
   const dec = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const chrono = t => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + dec(s, 1); };
-  const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0, R: 64 };
-  const kb = { l: 0, r: 0, u: 0, d: 0, x: 0, y: 0 };
+  // course du pouce pour tirer une poignée à fond (px)
+  const TRAVEL = 95;
+  const hands = { l: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null }, r: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null } };
+  const kb = { l: 0, r: 0, both: 0, go: 0, vl: 0, vr: 0 };
   const cache = {};
   let el = {};
 
@@ -15,6 +17,7 @@ const UI = (() => {
 
   function init() {
     el = { hSpeed: $('hSpeed'), hAgl: $('hAgl'), hScore: $('hScore'), hCombo: $('hCombo'), hGateTxt: $('hGateTxt'), hGateDist: $('hGateDist'), hTime: $('hTime') };
+    hands.l.el = $('gripL'); hands.r.el = $('gripR');
     $('btnPlay').addEventListener('click', () => { AUDIO.unlock(); GAME.start(); });
     $('btnAgain').addEventListener('click', () => { AUDIO.unlock(); GAME.start(); });
     $('btnPause').addEventListener('click', () => pause(true));
@@ -22,10 +25,9 @@ const UI = (() => {
     $('btnRestart').addEventListener('click', () => { GAME.start(); });
     $('btnMenu').addEventListener('click', () => GAME.menu());
     $('btnMenu2').addEventListener('click', () => GAME.menu());
-    const inv = $('optInvert'), snd = $('optSound');
-    inv.checked = !!S.save.opts.invert; snd.checked = S.save.opts.sound !== false;
+    const snd = $('optSound');
+    snd.checked = S.save.opts.sound !== false;
     AUDIO.setEnabled(snd.checked);
-    inv.addEventListener('change', () => GAME.setOpt('invert', inv.checked));
     snd.addEventListener('change', () => { GAME.setOpt('sound', snd.checked); AUDIO.setEnabled(snd.checked); });
     const t = $('touch');
     t.addEventListener('pointerdown', down);
@@ -37,65 +39,72 @@ const UI = (() => {
     document.addEventListener('visibilitychange', () => { if (document.hidden) pause(true); });
     // chiffres de la descente
     $('tCourse').textContent = W.name;
-    $('fLen').textContent = dec(W.FACTS.length / 1000, 1).replace(',0', '') + ' km';
+    $('fLen').textContent = W.FACTS.length >= 1000 ? dec(W.FACTS.length / 1000, 1).replace(',0', '') + ' km' : W.FACTS.length + ' m';
     $('fDrop').textContent = W.FACTS.drop + ' m';
     $('fGates').textContent = W.FACTS.gates;
     showTitle();
   }
 
-  // ---------- stick flottant ----------
+  // ---------- deux poignées de frein ----------
+  // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce ;
+  // descendre le pouce tire la poignée. Monter ou aller sur le côté ne tire rien : le repère suit le pouce.
+  function handOf(id) { return hands.l.id === id ? hands.l : hands.r.id === id ? hands.r : null; }
   function down(e) {
     AUDIO.unlock();
     if (S.screen === 'crash') { if (S.crashT > 0.45) GAME.start(); return; }
-    if (S.screen !== 'run' || S.paused || stick.id !== null) return;
-    stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; stick.x = stick.y = 0;
-    $('stick').hidden = false; drawStick(0, 0);
+    if (S.screen !== 'run' || S.paused) return;
+    const h = e.clientX < window.innerWidth / 2 ? hands.l : hands.r;
+    if (h.id !== null) return;
+    h.id = e.pointerId; h.x = e.clientX; h.y0 = e.clientY; h.dy = 0; h.v = 0;
+    h.el.hidden = false; draw(h); apply();
     e.preventDefault();
   }
   function move(e) {
-    if (e.pointerId !== stick.id) return;
+    const h = handOf(e.pointerId); if (!h) return;
     e.preventDefault();
-    let dx = e.clientX - stick.ox, dy = e.clientY - stick.oy;
-    const R = stick.R, d = Math.hypot(dx, dy);
-    // au-delà du cercle, le stick suit le pouce : on ne « perd » jamais le contrôle
-    if (d > R * 1.2) { const k = (d - R * 1.2) / d; stick.ox += dx * k; stick.oy += dy * k; dx = e.clientX - stick.ox; dy = e.clientY - stick.oy; }
-    const dd = Math.hypot(dx, dy), c = Math.min(1, dd / R);
-    stick.x = curve(dd > 0 ? dx / dd * c : 0); stick.y = curve(dd > 0 ? -dy / dd * c : 0);
-    const k2 = dd > R ? R / dd : 1;
-    drawStick(dx * k2, dy * k2);
-    apply();
+    h.x = e.clientX;
+    let dy = e.clientY - h.y0;
+    if (dy < 0) { h.y0 = e.clientY; dy = 0; }                         // le pouce remonte : mains hautes, le repère suit
+    if (dy > TRAVEL) { h.y0 = e.clientY - TRAVEL; dy = TRAVEL; }      // au-delà de la course : le repère suit aussi
+    h.dy = dy; h.v = curve(dy / TRAVEL);
+    draw(h); apply();
   }
   function up(e) {
-    if (e.pointerId !== stick.id) return;
-    stick.id = null; stick.x = stick.y = 0; $('stick').hidden = true; apply();
+    const h = handOf(e.pointerId); if (!h) return;
+    h.id = null; h.v = 0; h.dy = 0; h.el.hidden = true; apply();
   }
-  // petite zone morte + courbe douce au centre, pleine course au bord
-  function curve(v) { const a = Math.abs(v), b = a < 0.06 ? 0 : (a - 0.06) / 0.94; return Math.sign(v) * (0.45 * b + 0.55 * b * b); }
-  function drawStick(dx, dy) {
-    const s = $('stick');
-    s.style.transform = `translate(${stick.ox}px, ${stick.oy}px)`;
-    s.querySelector('.knob').style.transform = `translate(${dx}px, ${dy}px)`;
+  function release() { for (const h of [hands.l, hands.r]) { h.id = null; h.v = 0; h.dy = 0; h.el.hidden = true; } apply(); }
+  // petite zone morte en haut, puis progression régulière
+  function curve(v) { const b = v < 0.05 ? 0 : (v - 0.05) / 0.95; return Math.pow(b, 1.1); }
+  function draw(h) {
+    h.el.style.transform = `translate(${h.x}px, ${h.y0}px)`;
+    h.el.querySelector('.knob').style.transform = `translateY(${h.dy}px)`;
+    h.el.querySelector('.fill').style.height = h.dy + 'px';
   }
   function apply() {
-    const inv = S.save.opts.invert ? -1 : 1;
-    S.input.x = clamp(stick.x + kb.x, -1, 1);
-    S.input.y = clamp((stick.y + kb.y) * inv, -1, 1);
+    S.input.l = clamp(Math.max(hands.l.v, kb.vl), 0, 1);
+    S.input.r = clamp(Math.max(hands.r.v, kb.vr), 0, 1);
+    // départ : les deux pouces posés (ou Espace / flèche bas au clavier)
+    S.input.go = (hands.l.id !== null && hands.r.id !== null) || kb.go > 0;
   }
   function key(isDown) {
     return e => {
       const k = e.key;
-      if (isDown && (k === ' ' || k === 'Enter')) { if (S.screen === 'title' || S.screen === 'results' || S.screen === 'crash') { AUDIO.unlock(); GAME.start(); e.preventDefault(); return; } }
+      if (isDown && (k === ' ' || k === 'Enter')) {
+        if (S.screen === 'title' || S.screen === 'results' || S.screen === 'crash') { AUDIO.unlock(); GAME.start(); e.preventDefault(); return; }
+      }
       if (isDown && k === 'Escape' && S.screen === 'run') { pause(!S.paused); return; }
-      const m = { ArrowLeft: 'l', a: 'l', q: 'l', ArrowRight: 'r', d: 'r', ArrowUp: 'u', w: 'u', z: 'u', ArrowDown: 'd', s: 'd' }[k];
+      const m = { ArrowLeft: 'l', a: 'l', q: 'l', ArrowRight: 'r', d: 'r', ArrowDown: 'both', s: 'both', ' ': 'go', ArrowUp: 'go' }[k];
       if (!m) return;
-      kb[m] = isDown ? 1 : 0; e.preventDefault();
+      kb[m] = isDown ? 1 : 0; if (m === 'both' && isDown) kb.go = 1; if (m === 'both' && !isDown) kb.go = 0;
+      e.preventDefault();
     };
   }
   function keysFrame(dt) {
-    // rampe douce pour le clavier (sinon le contrôle est tout ou rien)
-    const tx = kb.r - kb.l, ty = kb.u - kb.d, k = 1 - Math.exp(-dt * 6);
-    kb.x += (tx - kb.x) * k; kb.y += (ty - kb.y) * k;
-    if (Math.abs(kb.x) < 0.01 && !tx) kb.x = 0; if (Math.abs(kb.y) < 0.01 && !ty) kb.y = 0;
+    // rampe douce pour le clavier (sinon la poignée est tout ou rien)
+    const k = 1 - Math.exp(-dt * 6);
+    kb.vl += (Math.max(kb.l, kb.both) - kb.vl) * k; kb.vr += (Math.max(kb.r, kb.both) - kb.vr) * k;
+    if (kb.vl < 0.01 && !kb.l && !kb.both) kb.vl = 0; if (kb.vr < 0.01 && !kb.r && !kb.both) kb.vr = 0;
     apply();
   }
 
@@ -103,7 +112,7 @@ const UI = (() => {
     if (S.screen !== 'run') return;
     GAME.pause(b);
     $('scrPause').hidden = !b;
-    if (b) { stick.id = null; stick.x = stick.y = 0; $('stick').hidden = true; apply(); }
+    if (b) release();
   }
 
   // ---------- écrans ----------
@@ -122,7 +131,7 @@ const UI = (() => {
       case 'pop': pop(e); break;
       case 'crash':
         $('crashWhy').textContent = e.reason; $('crash').hidden = false;
-        stick.id = null; stick.x = stick.y = 0; $('stick').hidden = true; apply(); break;
+        release(); break;
       case 'results': results(e.res); break;
     }
   }
@@ -136,7 +145,7 @@ const UI = (() => {
     setTimeout(() => d.remove(), 1500);
   }
   function results(res) {
-    $('hud').hidden = true; $('crash').hidden = true; $('stick').hidden = true;
+    $('hud').hidden = true; $('crash').hidden = true; release();
     $('scrResult').hidden = false;
     $('rKind').textContent = res.kind === 'pose' ? (res.land && res.land.inTarget ? 'Posé dans la cible' : 'Posé') : 'Arrêté avant la prairie';
     $('rScore').textContent = fmt(res.score);
@@ -170,15 +179,17 @@ const UI = (() => {
   // ---------- conseils (premières descentes) ----------
   function hintFor(r) {
     const p = r.p;
-    if (p.mode === 'ready') return 'Pose le pouce n’importe où et glisse vers le haut pour t’élancer';
-    if (p.mode === 'ski' && !p.launched) return p.V > 8.5 ? 'Glisse vers le bas pour décoller' : 'Garde le stick vers le haut pour prendre de l’élan';
+    if (p.mode === 'ready') return 'Pose tes deux pouces sur l’écran, à gauche et à droite, pour t’élancer';
+    if (p.mode === 'ski' && !p.launched) return p.V > 8.5 ? 'Descends les deux pouces : tu tires les deux poignées et tu décolles' : 'Élan aux bâtons…';
+    if (p.stall) return 'Décrochage ! Relâche les deux poignées';
     if ((S.save.runs || 0) > 3) return '';
-    if (p.mode === 'air' && p.airT < 4 && r.gate === 0) return 'Haut : piquer · Bas : freiner · Côtés : tourner';
+    if (p.mode === 'air' && p.airT < 5 && r.gate === 0) return 'Pouce droit vers le bas : tourne à droite · pouce gauche : à gauche · les deux : freine et remonte';
     if (r.gate === 0) return 'Passe entre les piquets orange, sous la banderole';
     const toCable = -p.pos.z - W.CABLE.s;
     if (!r.cable && toCable > -130 && toCable < -15) return 'Télésiège devant : câble à 18 m, passe dessous en rasant la neige';
-    if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible orange : tire juste avant de toucher';
-    if (r.gate === 1 && r.gateOk === 1) return 'Reste près de la neige : plus tu rases vite, plus le combo grimpe';
+    if (r.gate >= W.GATES.length && p.mode === 'air') return 'Pose-toi dans la cible : tire les deux poignées juste avant de toucher';
+    if (r.gate === 1 && r.gateOk === 1) return 'Mains hautes = pleine vitesse. Rase la neige : plus tu frôles vite, plus le combo grimpe';
+    if (r.gate === 2) return 'Un frein tenu à fond : la voile part en spirale et plonge. Pratique pour perdre de la hauteur';
     return '';
   }
 
@@ -212,6 +223,7 @@ const UI = (() => {
 
   function frame(dt) {
     keysFrame(dt);
+    if (S.screen === 'run' && !S.paused && window.innerHeight > window.innerWidth) pause(true); // le jeu se joue en paysage
     if (S.screen === 'run' || S.screen === 'crash') hud(dt);
     else $('vig').style.opacity = 0;
   }

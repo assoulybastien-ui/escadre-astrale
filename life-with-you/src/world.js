@@ -7,15 +7,15 @@ const WORLD = (() => {
   const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 
   // ---------- Profil de la ligne de pente : tangente de la pente selon s ----------
-  // départ à skis (~17°), face (~27°), barre rocheuse (~20 m), replat, couloir (~21°), ressaut, bosses, forêt, prairie.
-  // Une voile accélérée plane à ~23° : on suit les pentes douces en piqué, les ressauts font « décoller » le sol.
-  const SLOPE = [[-700, 0.05], [-140, 0.03], [-78, 0.06], [-64, 0.30], [0, 0.32], [25, 0.5], [140, 0.52], [146, 2.6], [153, 2.6],
-    [158, 0.36], [250, 0.36], [270, 0.42], [455, 0.42], [470, 0.62], [495, 0.62], [510, 0.36], [720, 0.32], [880, 0.15], [960, 0.045],
-    [1200, 0.025], [1330, 0], [3400, 0]];
+  // départ à skis (~17°), face (~29°), barre rocheuse (~12 m, contournable à droite), replat, couloir (~20°), ressaut, bosses, forêt, prairie.
+  // La voile plane à ~20° mains hautes : on rase en vol droit, on coupe les passages plus raides en virant.
+  const SLOPE = [[-700, 0.05], [-140, 0.03], [-78, 0.06], [-64, 0.30], [0, 0.32], [25, 0.55], [140, 0.55],
+    [146, 0.26], [250, 0.26], [270, 0.37], [385, 0.37], [400, 0.58], [425, 0.58], [440, 0.34], [510, 0.34], [650, 0.28], [710, 0.12],
+    [770, 0.04], [990, 0.025], [1120, 0], [3400, 0]];
   // Couloir de la descente : [s, demi-largeur ouverte, hauteur des parois, largeur des parois, pente des flancs]
   const CORR = [[-700, 90, 0, 30, 0.22], [-70, 80, 0, 30, 0.25], [0, 130, 0, 30, 0.3], [205, 140, 0, 30, 0.3], [245, 44, 40, 22, 0.35],
-    [275, 30, 58, 16, 0.42], [455, 30, 58, 16, 0.42], [505, 85, 8, 30, 0.3], [770, 92, 0, 30, 0.28], [810, 72, 0, 30, 0.24],
-    [950, 72, 0, 30, 0.2], [1010, 190, 0, 40, 0.12], [1300, 230, 0, 40, 0.08], [1450, 700, 0, 40, 0.04], [3400, 700, 0, 40, 0.04]];
+    [275, 30, 58, 16, 0.42], [385, 30, 58, 16, 0.42], [435, 85, 8, 30, 0.3], [560, 92, 0, 30, 0.28], [600, 72, 0, 30, 0.24],
+    [740, 72, 0, 30, 0.2], [800, 190, 0, 40, 0.12], [1090, 230, 0, 40, 0.08], [1240, 700, 0, 40, 0.04], [3400, 700, 0, 40, 0.04]];
 
   function lin(pts, s, k) {
     if (s <= pts[0][0]) return pts[0][k];
@@ -35,16 +35,16 @@ const WORLD = (() => {
   (() => {
     let h = 0;
     for (let i = 0; i < prof.length; i++) { prof[i] = h; h -= lin(SLOPE, S0 + i + 0.5, 1); }
-    const ref = prof[1330 - S0];
+    const ref = prof[1120 - S0];
     for (let i = 0; i < prof.length; i++) prof[i] -= ref;
   })();
   function P(s) { const f = clamp(s - S0, 0, prof.length - 1.0001), i = f | 0; return prof[i] + (prof[i + 1] - prof[i]) * (f - i); }
   // Ligne médiane de la descente (légers méandres)
   function xc(s) {
-    const m = sstep(-260, -120, s) * (1 - sstep(900, 1040, s));
+    const m = sstep(-260, -120, s) * (1 - sstep(690, 830, s));
     return m * (26 * Math.sin(s / 185 + 0.3) + 9 * Math.sin(s / 79 + 1.1));
   }
-  const LAND = { s: 955, x: xc(955), z: -955, r: 90 };
+  const LAND = { s: 735, x: xc(735), z: -735, r: 90 };
 
   // ---------- Relief analytique ----------
   function hRaw(x, z) {
@@ -55,22 +55,25 @@ const WORLD = (() => {
     // parois rocheuses du couloir
     if (wallH > 0.5) { const k = sstep(0, wallW, e); h += k * (wallH * (1 + 0.22 * ridged(nB, x / 24, s / 24, 3)) + 5 * (ridged(nE, x / 10, s / 10, 2) - 0.45)); }
     // massifs latéraux
-    const sm = sstep(240, 760, a) * (1 - sstep(1150, 1500, s));
+    const sm = sstep(240, 760, a) * (1 - sstep(940, 1290, s));
     if (sm > 0) h += sm * (360 + 720 * ridged(nB, x / 640, s / 640, 4));
     // sommet derrière le départ
     const bk = sstep(130, 560, -s);
     if (bk > 0) h += bk * (320 + 560 * ridged(nC, x / 520, s / 520, 4));
     // massif d'en face, de l'autre côté de la vallée
-    const op = sstep(1750, 3100, s);
+    const op = sstep(1540, 2890, s);
     if (op > 0) h += op * (1150 + 950 * ridged(nD, x / 820, s / 820, 5));
     // ondulations (gommées autour de la cible)
     const dT = Math.hypot(x - LAND.x, s - LAND.s), m = sstep(75, 150, dT);
     h += m * ((4.5 + 2.5 * sstep(w * 0.6, w + 20, a)) * fbm(nA, x / 150, s / 150, 3) + 1.4 * fbm(nC, x / 34, s / 34, 2));
     // bosses (rouleaux) au milieu de la descente
-    const rw = sstep(480, 540, s) * (1 - sstep(740, 800, s)) * (1 - sstep(w * 0.7, w + 10, a));
+    const rw = sstep(410, 470, s) * (1 - sstep(530, 590, s)) * (1 - sstep(w * 0.7, w + 10, a));
     if (rw > 0) h += rw * 3.3 * Math.sin(s * 0.131 + 0.9 * Math.sin(x / 40));
+    // barre rocheuse de 12 m à gauche et au centre ; à droite, une rampe de neige plus raide
+    const mk = 1 - sstep(8, 42, u);
+    h -= 12 * (mk * sstep(131, 135, s) + (1 - mk) * sstep(105, 170, s));
     // pointements rocheux dans la face
-    const fw = sstep(15, 60, s) * (1 - sstep(215, 255, s));
+    const fw = sstep(15, 60, s) * (1 - sstep(215, 255, s)) * sstep(55, 90, a);
     if (fw > 0) h += fw * 11 * Math.max(0, ridged(nD, x / 55, s / 55, 3) - 0.6);
     return h;
   }
@@ -120,7 +123,7 @@ const WORLD = (() => {
   function nearChalet(x, z, m) { for (const c of CHALETS) if (Math.hypot(x - c.x, z - c.z) < Math.max(c.w, c.d) / 2 + m) return true; return false; }
 
   // ---------- Télésiège qui traverse la descente ----------
-  const CABLE = { s: 640, z: -640, pylons: [], segs: [], chairs: [], lines: [] };
+  const CABLE = { s: 485, z: -485, pylons: [], segs: [], chairs: [], lines: [] };
   (() => {
     const PU = [-230, -48, 48, 230];
     const gc = heightAt(xc(CABLE.s), CABLE.z), sagIn = 0.032 * (PU[2] - PU[1]);
@@ -162,7 +165,7 @@ const WORLD = (() => {
   }
 
   // ---------- Portes (piquets orange) ----------
-  const GATES = [[40, -18], [118, 22], [300, -8], [400, 10], [540, -32], [720, -26], [790, 20], [860, 2]].map(([s, du]) => {
+  const GATES = [[40, -18], [112, 52], [290, -8], [360, 10], [445, -32], [525, -26], [590, 20], [655, 2]].map(([s, du]) => {
     const x = xc(s) + du, z = -s, d = (xc(s + 1) - xc(s - 1)) / 2, l = Math.hypot(d, 1);
     const nx = d / l, nz = -1 / l;
     return { s, x, z, y: heightAt(x, z), nx, nz, tx: -nz, tz: nx, hw: 8, h: 14 };
@@ -181,15 +184,15 @@ const WORLD = (() => {
     if (nearChalet(px, pz, 9)) continue;
     const g = grad(px, pz);
     if (Math.hypot(g[0], g[1]) > 0.78) continue;
-    let dens = 0.22 + 0.78 * sstep(330, 640, ps);
+    let dens = 0.22 + 0.78 * sstep(300, 520, ps);
     dens *= sstep(-0.45, 0.2, fbm(nA, px / 110, ps / 110, 2));
-    dens *= 1 - 0.6 * sstep(1300, 1420, ps);
+    dens *= 1 - 0.6 * sstep(1090, 1210, ps);
     if (rnd() > dens * 0.8) continue;
     const h = 8 + rnd() * 10;
     TX.push(px); TZ.push(pz); TY.push(heightAt(px, pz) - 0.2); TH.push(h); TR.push(h * (0.21 + rnd() * 0.06));
   }
   // sapins isolés dans le couloir de la forêt : il faut slalomer
-  for (let ps = 742; ps < 935; ps += 9) {
+  for (let ps = 532; ps < 725; ps += 9) {
     for (let k = 0; k < 3; k++) {
       if (rnd() > 0.32) continue;
       const w = smooth(CORR, ps, 1), px = xc(ps) + (rnd() * 2 - 1) * (w - 6), pz = -ps + (rnd() - 0.5) * 8;
@@ -218,7 +221,7 @@ const WORLD = (() => {
   // ---------- Rochers isolés ----------
   const ROCKS = [];
   for (let k = 0; k < 600 && ROCKS.length < 140; k++) {
-    const ps = 20 + rnd() * 880, sd = rnd() < 0.5 ? -1 : 1, w = smooth(CORR, ps, 1);
+    const ps = 20 + rnd() * 680, sd = rnd() < 0.5 ? -1 : 1, w = smooth(CORR, ps, 1);
     const px = xc(ps) + sd * w * (0.4 + rnd() * 0.85), pz = -ps;
     if (GATES.some(g => Math.hypot(g.x - px, g.z - pz) < 22)) continue;
     if (Math.abs(ps - CABLE.s) < 10) continue;
