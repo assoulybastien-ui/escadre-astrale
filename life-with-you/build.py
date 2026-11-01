@@ -4,7 +4,7 @@
 three.js r128 est chargé depuis cdnjs ; tout le reste est inclus dans la page."""
 import pathlib, re
 root = pathlib.Path(__file__).parent; src = root / 'src'
-ORDER = ['noise.js', 'world.js', 'flight.js', 'game.js', 'bot.js', 'render.js', 'audio.js', 'ui.js', 'main.js']
+ORDER = ['noise.js', 'world.js', 'flight.js', 'game.js', 'bot.js', 'look.js', 'post.js', 'pilot.js', 'render.js', 'audio.js', 'ui.js', 'main.js']
 js = '\n'.join(re.sub(r"^if \(typeof module !== 'undefined'\).*$", '', (src / f).read_text(), flags=re.M) for f in ORDER)
 css = (src / 'style.css').read_text(); body = (src / 'body.html').read_text()
 THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'
