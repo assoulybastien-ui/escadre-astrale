@@ -5,7 +5,8 @@ out, title, sub = sys.argv[1], sys.argv[2], sys.argv[3]
 items = [a.split(':', 1) for a in sys.argv[4:]]
 B = '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf'
 R = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
-cols = 3 if len(items) > 4 else 2
+import os
+cols = int(os.environ.get('COLS', 3 if len(items) > 4 else 2))
 rows = (len(items) + cols - 1) // cols
 cw, ch, gap = 568, 262, 14
 W, H = cols * cw + (cols + 1) * gap, 96 + rows * (ch + 40) + gap
