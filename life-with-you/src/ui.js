@@ -6,9 +6,13 @@ const UI = (() => {
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
   const dec = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const chrono = t => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + dec(s, 1); };
-  // course du pouce pour tirer une poignée à fond (px)
-  const TRAVEL = 95;
-  const hands = { l: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null }, r: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null } };
+  // course du pouce pour tirer une poignée à fond : ~17 % de la hauteur de l'écran (≈ 65 px sur iPhone en paysage, 95 px c'était trop),
+  // raccourcie si le pouce s'est posé trop bas pour descendre de toute la course (le repère, lui, ne bouge pas)
+  function travelFor(y0) {
+    const H = window.innerHeight, base = clamp(H * 0.17, 52, 80);
+    return clamp(Math.min(base, H - 12 - y0), 36, base);
+  }
+  const hands = { l: { id: null, x: 0, y0: 0, dy: 0, v: 0, T: 65, el: null }, r: { id: null, x: 0, y0: 0, dy: 0, v: 0, T: 65, el: null } };
   const kb = { l: 0, r: 0, both: 0, go: 0, vl: 0, vr: 0 };
   const cache = {};
   let el = {};
@@ -48,7 +52,7 @@ const UI = (() => {
 
   // ---------- deux poignées de frein ----------
   // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce et n'en bouge plus ;
-  // descendre le pouce tire la poignée (course TRAVEL). Monter au-dessus du repère ou aller sur le côté ne tire rien.
+  // descendre le pouce tire la poignée (course `travelFor`). Monter au-dessus du repère ou aller sur le côté ne tire rien.
   function handOf(id) { return hands.l.id === id ? hands.l : hands.r.id === id ? hands.r : null; }
   function down(e) {
     AUDIO.unlock();
@@ -56,7 +60,8 @@ const UI = (() => {
     if (S.screen !== 'run' || S.paused) return;
     const h = e.clientX < window.innerWidth / 2 ? hands.l : hands.r;
     if (h.id !== null) return;
-    h.id = e.pointerId; h.x = e.clientX; h.y0 = e.clientY; h.dy = 0; h.v = 0;
+    h.id = e.pointerId; h.x = e.clientX; h.y0 = e.clientY; h.dy = 0; h.v = 0; h.T = travelFor(e.clientY);
+    h.el.querySelector('.rail').style.height = (h.T + 12) + 'px';
     h.el.hidden = false; draw(h); apply();
     e.preventDefault();
   }
@@ -64,8 +69,8 @@ const UI = (() => {
     const h = handOf(e.pointerId); if (!h) return;
     e.preventDefault();
     // le repère reste là où le pouce s'est posé : au-delà de la course, la poignée reste à fond ; au-dessus, mains hautes
-    const dy = Math.max(0, Math.min(TRAVEL, e.clientY - h.y0));
-    h.dy = dy; h.v = curve(dy / TRAVEL);
+    const dy = Math.max(0, Math.min(h.T, e.clientY - h.y0));
+    h.dy = dy; h.v = curve(dy / h.T);
     draw(h); apply();
   }
   function up(e) {
@@ -74,7 +79,7 @@ const UI = (() => {
   }
   function release() { for (const h of [hands.l, hands.r]) { h.id = null; h.v = 0; h.dy = 0; h.el.hidden = true; } apply(); }
   // petite zone morte en haut, puis progression régulière
-  function curve(v) { const b = v < 0.05 ? 0 : (v - 0.05) / 0.95; return Math.pow(b, 1.1); }
+  function curve(v) { return v < 0.04 ? 0 : Math.min(1, (v - 0.04) / 0.92); }
   function draw(h) {
     h.el.style.transform = `translate(${h.x}px, ${h.y0}px)`;
     h.el.querySelector('.knob').style.transform = `translateY(${h.dy}px)`;
@@ -111,6 +116,11 @@ const UI = (() => {
     if (S.screen !== 'run') return;
     GAME.pause(b);
     $('scrPause').hidden = !b;
+    if (b) {
+      // diagnostic : images par seconde et niveau de qualité retenu automatiquement
+      const q = R3D.perfInfo();
+      $('diag').textContent = `${Math.round(q.fps)} images/s · qualité ${q.levels - q.level}/${q.levels} · ${q.w}×${q.h} px${q.post ? '' : ' · sans HDR'}`;
+    }
     if (b) release();
   }
 
@@ -229,5 +239,5 @@ const UI = (() => {
     else $('vig').style.opacity = 0;
   }
 
-  return { init, on, frame, pause };
+  return { init, on, frame, pause, travelFor };
 })();

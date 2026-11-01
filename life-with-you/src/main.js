@@ -13,7 +13,7 @@
   }
   function loop(now) {
     requestAnimationFrame(loop);
-    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const dt = Math.min(0.25, (now - last) / 1000); last = now;
     if (manual) return;
     step(dt); R3D.frame(dt); UI.frame(dt); AUDIO.frame(GAME.S); R3D.adapt(dt);
   }

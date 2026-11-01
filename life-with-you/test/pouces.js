@@ -18,29 +18,33 @@ const fs = require('fs'), path = require('path');
   await touch('touchStart', [[200, 220, 1], [650, 200, 2]]);
   await page.evaluate(() => window.__lwy.advance(1 / 30, 3, false));
   s = await inp(); console.log('deux pouces :', s); check(s.includes('départ=true') && s.includes('mode=ski'), 'les deux pouces lancent l\'élan');
-  // pouce droit vers le bas de 45 px (environ la moitié de la course)
-  await touch('touchMove', [[200, 220, 1], [650, 245, 2]]);
-  s = await inp(); console.log('droit +45 px :', s);
+  // pouce droit vers le bas de la moitié de la course (course ≈ 17 % de la hauteur d'écran)
+  const T = await page.evaluate(() => UI.travelFor(200)); console.log('course du pouce :', T.toFixed(0), 'px');
+  await touch('touchMove', [[200, 220, 1], [650, 200 + T / 2, 2]]);
+  s = await inp(); console.log('droit mi-course :', s);
   let v = await page.evaluate(() => window.__lwy.state().input); check(v.l === 0 && v.r > 0.38 && v.r < 0.55, 'pouce droit à mi-course = poignée droite tirée à moitié, gauche relâchée');
   // les deux à fond (et au-delà : le repère suit)
   await touch('touchMove', [[205, 340, 1], [640, 330, 2]]);
   v = await page.evaluate(() => window.__lwy.state().input); console.log('les deux en bas :', JSON.stringify(v)); check(v.l === 1 && v.r === 1, 'les deux pouces en bas = les deux poignées à fond');
-  // pouce gauche qui remonte de 40 px depuis tout en bas : le repère n'a pas bougé (posé à 220), donc 80 px tirés ≈ 82 %
-  await touch('touchMove', [[205, 300, 1], [640, 330, 2]]);
-  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche remonte de 40 px :', JSON.stringify(v)); check(v.l > 0.75 && v.l < 0.9 && v.r === 1, 'le repère reste fixe : remonter le pouce relâche d\'autant');
+  // pouce gauche qui remonte depuis tout en bas aux 3/4 de la course : le repère n'a pas bougé (posé à 220)
+  await touch('touchMove', [[205, 220 + T * 0.75, 1], [640, 330, 2]]);
+  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche remonte aux 3/4 :', JSON.stringify(v)); check(v.l > 0.68 && v.l < 0.8 && v.r === 1, 'le repère reste fixe : remonter le pouce relâche d\'autant');
   // au-dessus du point de départ : mains hautes, et le repère ne monte pas avec le pouce
   await touch('touchMove', [[205, 150, 1], [640, 330, 2]]);
-  await touch('touchMove', [[205, 250, 1], [640, 330, 2]]);
-  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche monté puis redescendu à +30 px :', JSON.stringify(v)); check(v.l > 0.2 && v.l < 0.4, 'monter au-dessus du repère ne le déplace pas');
+  await touch('touchMove', [[205, 220 + T * 0.35, 1], [640, 330, 2]]);
+  v = await page.evaluate(() => window.__lwy.state().input); console.log('gauche monté puis redescendu à 35 % :', JSON.stringify(v)); check(v.l > 0.25 && v.l < 0.4, 'monter au-dessus du repère ne le déplace pas');
+  // pouce posé tout en bas de l'écran : la course raccourcit pour qu'on puisse quand même tirer à fond
+  const Tb = await page.evaluate(() => UI.travelFor(window.innerHeight - 40)); console.log('course si posé à 40 px du bas :', Tb.toFixed(0), 'px');
+  check(Tb <= 40 && Tb >= 36, 'pouce posé en bas : course raccourcie, frein à fond atteignable');
   // gauche/droite : ignoré
-  await touch('touchMove', [[120, 250, 1], [760, 330, 2]]);
+  await touch('touchMove', [[120, 220 + T * 0.35, 1], [760, 330, 2]]);
   const v2 = await page.evaluate(() => window.__lwy.state().input); check(Math.abs(v2.l - v.l) < 1e-6 && v2.r === 1, 'le mouvement sur le côté ne change rien');
   // vol : on laisse le bot décoller puis on reprend la main avec un virage à droite
   await page.evaluate(() => { window.__lwy.bot({}); for (let i = 0; i < 2000; i++) { window.__lwy.advance(1 / 30, 1, false); const p = window.__lwy.state().run.p; if (p.mode === 'air' && p.airT > 1.2 && -p.pos.z > 150) break; } window.__lwy.bot(null); });
   await touch('touchMove', [[150, 220, 1], [700, 230, 2]]);           // repères à neutre
   await touch('touchMove', [[150, 220, 1], [700, 200, 2]]);           // pouce droit remonté : mains hautes
   await page.evaluate(() => window.__lwy.advance(1 / 30, 45, false)); // la voile revient à plat
-  await touch('touchMove', [[150, 220, 1], [700, 270, 2]]);           // frein droit ~70 %
+  await touch('touchMove', [[150, 220, 1], [700, 230 + T * 0.7, 2]]);  // frein droit ~70 %
   await page.evaluate(() => window.__lwy.advance(1 / 30, 24, true));
   const st = await page.evaluate(() => { const p = window.__lwy.state().run.p; return { bank: p.bank * 57.3, mode: p.mode, bl: p.bl, br: p.br }; });
   console.log('virage :', JSON.stringify(st)); check(st.mode === 'air' && st.bank > 15, 'en vol, frein droit = la voile s\'incline à droite');

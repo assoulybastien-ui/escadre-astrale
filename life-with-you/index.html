@@ -118,6 +118,7 @@ body {
   font-family: var(--f-ui); font-weight: 600; font-size: 15px; cursor: pointer; }
 .h2 { margin: 0; font-family: var(--f-display); font-weight: 900; font-size: 44px; text-transform: uppercase; line-height: 0.9; }
 .pause-panel { gap: 12px; }
+.diag { margin: 0; font-family: var(--f-num); font-size: 12px; letter-spacing: 0.04em; color: rgba(242, 246, 250, 0.55); text-align: center; }
 .row2 { display: flex; gap: 10px; flex-wrap: wrap; }
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; }
 .toggle input { width: 20px; height: 20px; accent-color: var(--signal); }
@@ -216,6 +217,7 @@ body {
       <button id="btnMenu" class="ghostbtn">Menu</button>
     </div>
     <label class="toggle"><input type="checkbox" id="optSound" checked><span>Son</span></label>
+    <p class="diag" id="diag"></p>
   </div>
 </section>
 
@@ -1153,9 +1155,9 @@ const GAME = (() => {
       S.crashT += dtReal; ts = S.crashT < 1.4 ? 0.22 : 0.5;
       if (S.crashT > 2.8) { start(); return; }
     }
-    S.acc += Math.min(dtReal, 0.1) * ts;
+    S.acc += Math.min(dtReal, 0.25) * ts; // même à faible cadence, la descente reste en temps réel
     let n = 0;
-    while (S.acc >= DT && n < 40) { S.acc -= DT; tick(DT); n++; }
+    while (S.acc >= DT && n < 60) { S.acc -= DT; tick(DT); n++; }
   }
 
   function pop(text, kind, pts) { emit({ type: 'pop', text, kind, pts }); }
@@ -1789,9 +1791,10 @@ const POST = (() => {
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   const P = { exposure: 0.6, bloom: 0.11, glow: 0.03, speed: 0, vignette: 0.32, grain: 0.022, sat: 1.06, contrast: 1.05, time: 0 };
 
+  let msaa = 4, bloomOn = true;
   function target(w, h, ms) {
     const o = { format: THREE.RGBAFormat, type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false, stencilBuffer: false };
-    if (ms && THREE.WebGLMultisampleRenderTarget && R.capabilities.isWebGL2) { const t = new THREE.WebGLMultisampleRenderTarget(w, h, o); t.samples = 4; return t; }
+    if (ms && msaa > 0 && THREE.WebGLMultisampleRenderTarget && R.capabilities.isWebGL2) { const t = new THREE.WebGLMultisampleRenderTarget(w, h, o); t.samples = msaa; return t; }
     return new THREE.WebGLRenderTarget(w, h, Object.assign(o, { depthBuffer: !!ms }));
   }
   function shader(fs, uniforms) {
@@ -1877,23 +1880,32 @@ const POST = (() => {
     const w4 = Math.max(2, W >> 2), h4 = Math.max(2, H >> 2), w8 = Math.max(2, W >> 3), h8 = Math.max(2, H >> 3);
     rtA = target(w4, h4); rtB = target(w4, h4); rtC = target(w8, h8); rtD = target(w8, h8);
   }
+  // qualité : antialiasing (0 ou 4) et halo ; la cible principale est recréée si l'antialiasing change
+  function setQuality(L) {
+    if (!ok) return;
+    bloomOn = !!L.bloom;
+    if (L.msaa !== msaa) { msaa = L.msaa; if (rtMain) { rtMain.dispose(); rtMain = target(W, H, true); } }
+  }
   function pass(mat, out) { quad.material = mat; R.setRenderTarget(out); R.render(scene, cam); }
   function render(sc, camera) {
     if (!ok) { R.setRenderTarget(null); R.render(sc, camera); return; }
     R.setRenderTarget(rtMain); R.render(sc, camera);
     const w4 = rtA.width, h4 = rtA.height, w8 = rtC.width, h8 = rtC.height;
+    if (bloomOn) {
     M.bright.uniforms.t.value = rtMain.texture; M.bright.uniforms.px.value.set(1.5 / W, 1.5 / H); pass(M.bright, rtA);
     M.blur.uniforms.t.value = rtA.texture; M.blur.uniforms.dir.value.set(1 / w4, 0); pass(M.blur, rtB);
     M.blur.uniforms.t.value = rtB.texture; M.blur.uniforms.dir.value.set(0, 1 / h4); pass(M.blur, rtA);
     M.down.uniforms.t.value = rtA.texture; M.down.uniforms.px.value.set(0.5 / w4, 0.5 / h4); pass(M.down, rtC);
     M.blur.uniforms.t.value = rtC.texture; M.blur.uniforms.dir.value.set(1.6 / w8, 0); pass(M.blur, rtD);
     M.blur.uniforms.t.value = rtD.texture; M.blur.uniforms.dir.value.set(0, 1.6 / h8); pass(M.blur, rtC);
+    }
     const u = M.final.uniforms;
     u.tScene.value = rtMain.texture; u.tB1.value = rtA.texture; u.tB2.value = rtC.texture; u.res.value.set(W, H);
     for (const k of ['exposure', 'bloom', 'glow', 'speed', 'vignette', 'grain', 'sat', 'contrast', 'time']) u[k].value = P[k];
+    if (!bloomOn) { u.bloom.value = 0; u.glow.value = 0; }
     pass(M.final, null);
   }
-  return { init, setSize, render, P, get ok() { return ok; } };
+  return { init, setSize, setQuality, render, P, get ok() { return ok; } };
 })();
 
 // Pilote articulé : proportions d'un adulte (1,80 m en chaussures de ski), veste, casque et masque, sellette légère,
@@ -2721,7 +2733,7 @@ const R3D = (() => {
       // sans demi-flottants : rendu direct, antialiasing du navigateur impossible à rattraper ici, courbe ACES de three
       renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = LOOK.EXPOSURE; renderer.outputEncoding = THREE.sRGBEncoding;
     }
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0xffffff, LOOK.HAZE);
     camera = new THREE.PerspectiveCamera(58, 1, 0.3, 20000);
@@ -2747,7 +2759,11 @@ const R3D = (() => {
     const nearBox = new THREE.Box3(new THREE.Vector3(g.GX0, -20, g.GZ0), new THREE.Vector3(g.GX1, hmax + 90, g.GZ1));
     try { LOOK.bakeShadows(renderer, scene, nearBox, farBox); } catch (e) { console.warn('ombres statiques indisponibles', e); }
     trees.t = 99; trees.cx = 1e9;
-    resize(); window.addEventListener('resize', resize);
+    startLevel(); applyQuality(); window.addEventListener('resize', resize);
+    // précompilation des shaders (pilote et fantôme compris) : évite les à-coups au premier départ
+    pilot.root.visible = true; ghost.root.visible = true;
+    try { renderer.compile(scene, camera); } catch (e) { /* facultatif */ }
+    pilot.root.visible = false; ghost.root.visible = false;
   }
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -2994,18 +3010,50 @@ const R3D = (() => {
     // post-traitement : flou de vitesse au-delà de ~60 km/h, plus fort près du sol
     const P = POST.P; P.time = time;
     const prox = r ? r.proxF || 0 : 0;
-    P.speed = p && p.mode !== 'crash' && S.screen === 'run' ? clamp((p.V - 16) / 18, 0, 1) * (0.035 + 0.025 * prox) : 0;
+    P.speed = LEVELS[perf.level].blur && p && p.mode !== 'crash' && S.screen === 'run' ? clamp((p.V - 16) / 18, 0, 1) * (0.035 + 0.025 * prox) : 0;
     if (!skipRender) draw();
   }
 
-  // résolution adaptative : si l'iPhone peine (< ~42 images/s), on baisse la densité de pixels par paliers
-  const perf = { t: 0, n: 0, pr: 0 };
+  // ---------- qualité adaptative ----------
+  // Niveaux du plus beau au plus léger. Téléphones et tablettes commencent au niveau 1 (ou au dernier niveau retenu − 1) ;
+  // on descend d'un cran dès que la descente tombe sous ~48 images/s (sous ~28 à partir du niveau 3 : un iPhone en économie
+  // d'énergie est bridé à 30 i/s, inutile de tout flouter pour rien). Mesure sur 1,5 s de jeu, hors 2 premières secondes.
+  const LEVELS = [
+    { pr: 2, msaa: 4, blur: 1, bloom: 1 },
+    { pr: 1.6, msaa: 4, blur: 1, bloom: 1 },
+    { pr: 1.35, msaa: 4, blur: 0, bloom: 1 },
+    { pr: 1.15, msaa: 0, blur: 0, bloom: 1 },
+    { pr: 1.0, msaa: 0, blur: 0, bloom: 0 },
+    { pr: 0.8, msaa: 0, blur: 0, bloom: 0 }
+  ];
+  const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform || ''));
+  const perf = { level: 0, t: 0, n: 0, warm: 2, fps: 0, ft: 0, fn: 0 };
+  function startLevel() {
+    const saved = GAME.S.save.opts.q;
+    perf.level = Math.max(MOBILE ? 1 : 0, typeof saved === 'number' ? saved - 1 : 0);
+    perf.level = Math.min(LEVELS.length - 1, perf.level);
+  }
+  function applyQuality() {
+    const L = LEVELS[perf.level];
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, L.pr));
+    POST.setQuality(L);
+    resize();
+  }
   function adapt(dt) {
-    if (!perf.pr) perf.pr = renderer.getPixelRatio();
+    perf.ft += dt; perf.fn++;
+    if (perf.ft > 1) { perf.fps = perf.fn / perf.ft; perf.ft = perf.fn = 0; }
+    const S = GAME.S;
+    if (S.screen !== 'run' || S.paused || !S.run || S.run.p.mode === 'ready') { perf.warm = 2; perf.t = perf.n = 0; return; }
+    if (perf.warm > 0) { perf.warm -= dt; return; }
     perf.t += dt; perf.n++;
-    if (perf.t < 2.5) return;
-    const avg = perf.t / perf.n; perf.t = perf.n = 0;
-    if (avg > 1 / 42 && perf.pr > 1.01) { perf.pr = Math.max(1, perf.pr - 0.25); renderer.setPixelRatio(perf.pr); resize(); }
+    if (perf.t < 1.5) return;
+    const fps = perf.n / perf.t; perf.t = perf.n = 0;
+    const floor = perf.level < 3 ? 48 : 28;
+    if (fps < floor && perf.level < LEVELS.length - 1) { perf.level++; applyQuality(); perf.warm = 1; GAME.setOpt('q', perf.level); }
+  }
+  function perfInfo() {
+    const c = renderer.domElement;
+    return { fps: perf.fps, level: perf.level, levels: LEVELS.length, w: c.width, h: c.height, mobile: MOBILE, post: usePost };
   }
 
   // position écran d'un point du monde (pour la flèche du HUD)
@@ -3025,7 +3073,7 @@ const R3D = (() => {
     draw();
   }
 
-  return { init, frame, on, project, adapt, closeup, get camera() { return camera; }, get renderer() { return renderer; }, get scene() { return scene; } };
+  return { init, frame, on, project, adapt, perfInfo, closeup, get camera() { return camera; }, get renderer() { return renderer; }, get scene() { return scene; } };
 })();
 
 // Sons réalistes synthétisés (Web Audio), sans musique : vent selon la vitesse, sifflement, claquement de voile,
@@ -3132,9 +3180,13 @@ const UI = (() => {
   const fmt = n => Math.round(n).toLocaleString('fr-FR');
   const dec = (n, d = 1) => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const chrono = t => { const m = Math.floor(t / 60), s = t - m * 60; return m + ':' + (s < 10 ? '0' : '') + dec(s, 1); };
-  // course du pouce pour tirer une poignée à fond (px)
-  const TRAVEL = 95;
-  const hands = { l: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null }, r: { id: null, x: 0, y0: 0, dy: 0, v: 0, el: null } };
+  // course du pouce pour tirer une poignée à fond : ~17 % de la hauteur de l'écran (≈ 65 px sur iPhone en paysage, 95 px c'était trop),
+  // raccourcie si le pouce s'est posé trop bas pour descendre de toute la course (le repère, lui, ne bouge pas)
+  function travelFor(y0) {
+    const H = window.innerHeight, base = clamp(H * 0.17, 52, 80);
+    return clamp(Math.min(base, H - 12 - y0), 36, base);
+  }
+  const hands = { l: { id: null, x: 0, y0: 0, dy: 0, v: 0, T: 65, el: null }, r: { id: null, x: 0, y0: 0, dy: 0, v: 0, T: 65, el: null } };
   const kb = { l: 0, r: 0, both: 0, go: 0, vl: 0, vr: 0 };
   const cache = {};
   let el = {};
@@ -3174,7 +3226,7 @@ const UI = (() => {
 
   // ---------- deux poignées de frein ----------
   // Moitié gauche de l'écran = poignée gauche, moitié droite = poignée droite. Le repère apparaît sous le pouce et n'en bouge plus ;
-  // descendre le pouce tire la poignée (course TRAVEL). Monter au-dessus du repère ou aller sur le côté ne tire rien.
+  // descendre le pouce tire la poignée (course `travelFor`). Monter au-dessus du repère ou aller sur le côté ne tire rien.
   function handOf(id) { return hands.l.id === id ? hands.l : hands.r.id === id ? hands.r : null; }
   function down(e) {
     AUDIO.unlock();
@@ -3182,7 +3234,8 @@ const UI = (() => {
     if (S.screen !== 'run' || S.paused) return;
     const h = e.clientX < window.innerWidth / 2 ? hands.l : hands.r;
     if (h.id !== null) return;
-    h.id = e.pointerId; h.x = e.clientX; h.y0 = e.clientY; h.dy = 0; h.v = 0;
+    h.id = e.pointerId; h.x = e.clientX; h.y0 = e.clientY; h.dy = 0; h.v = 0; h.T = travelFor(e.clientY);
+    h.el.querySelector('.rail').style.height = (h.T + 12) + 'px';
     h.el.hidden = false; draw(h); apply();
     e.preventDefault();
   }
@@ -3190,8 +3243,8 @@ const UI = (() => {
     const h = handOf(e.pointerId); if (!h) return;
     e.preventDefault();
     // le repère reste là où le pouce s'est posé : au-delà de la course, la poignée reste à fond ; au-dessus, mains hautes
-    const dy = Math.max(0, Math.min(TRAVEL, e.clientY - h.y0));
-    h.dy = dy; h.v = curve(dy / TRAVEL);
+    const dy = Math.max(0, Math.min(h.T, e.clientY - h.y0));
+    h.dy = dy; h.v = curve(dy / h.T);
     draw(h); apply();
   }
   function up(e) {
@@ -3200,7 +3253,7 @@ const UI = (() => {
   }
   function release() { for (const h of [hands.l, hands.r]) { h.id = null; h.v = 0; h.dy = 0; h.el.hidden = true; } apply(); }
   // petite zone morte en haut, puis progression régulière
-  function curve(v) { const b = v < 0.05 ? 0 : (v - 0.05) / 0.95; return Math.pow(b, 1.1); }
+  function curve(v) { return v < 0.04 ? 0 : Math.min(1, (v - 0.04) / 0.92); }
   function draw(h) {
     h.el.style.transform = `translate(${h.x}px, ${h.y0}px)`;
     h.el.querySelector('.knob').style.transform = `translateY(${h.dy}px)`;
@@ -3237,6 +3290,11 @@ const UI = (() => {
     if (S.screen !== 'run') return;
     GAME.pause(b);
     $('scrPause').hidden = !b;
+    if (b) {
+      // diagnostic : images par seconde et niveau de qualité retenu automatiquement
+      const q = R3D.perfInfo();
+      $('diag').textContent = `${Math.round(q.fps)} images/s · qualité ${q.levels - q.level}/${q.levels} · ${q.w}×${q.h} px${q.post ? '' : ' · sans HDR'}`;
+    }
     if (b) release();
   }
 
@@ -3355,7 +3413,7 @@ const UI = (() => {
     else $('vig').style.opacity = 0;
   }
 
-  return { init, on, frame, pause };
+  return { init, on, frame, pause, travelFor };
 })();
 
 // Boucle principale : simulation à pas fixe (dans GAME), rendu, HUD, son.
@@ -3373,7 +3431,7 @@ const UI = (() => {
   }
   function loop(now) {
     requestAnimationFrame(loop);
-    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const dt = Math.min(0.25, (now - last) / 1000); last = now;
     if (manual) return;
     step(dt); R3D.frame(dt); UI.frame(dt); AUDIO.frame(GAME.S); R3D.adapt(dt);
   }

@@ -101,6 +101,7 @@ body {
   font-family: var(--f-ui); font-weight: 600; font-size: 15px; cursor: pointer; }
 .h2 { margin: 0; font-family: var(--f-display); font-weight: 900; font-size: 44px; text-transform: uppercase; line-height: 0.9; }
 .pause-panel { gap: 12px; }
+.diag { margin: 0; font-family: var(--f-num); font-size: 12px; letter-spacing: 0.04em; color: rgba(242, 246, 250, 0.55); text-align: center; }
 .row2 { display: flex; gap: 10px; flex-wrap: wrap; }
 .toggle { display: flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; }
 .toggle input { width: 20px; height: 20px; accent-color: var(--signal); }

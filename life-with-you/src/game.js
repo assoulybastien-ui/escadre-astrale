@@ -37,9 +37,9 @@ const GAME = (() => {
       S.crashT += dtReal; ts = S.crashT < 1.4 ? 0.22 : 0.5;
       if (S.crashT > 2.8) { start(); return; }
     }
-    S.acc += Math.min(dtReal, 0.1) * ts;
+    S.acc += Math.min(dtReal, 0.25) * ts; // même à faible cadence, la descente reste en temps réel
     let n = 0;
-    while (S.acc >= DT && n < 40) { S.acc -= DT; tick(DT); n++; }
+    while (S.acc >= DT && n < 60) { S.acc -= DT; tick(DT); n++; }
   }
 
   function pop(text, kind, pts) { emit({ type: 'pop', text, kind, pts }); }

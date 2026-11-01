@@ -2,9 +2,9 @@
 let chromium; try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = require('/opt/npm-tools/node_modules/playwright')); }
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
-async function open({ width = 852, height = 393, dpr = 1, file = 'index.html', storage = null } = {}) {
+async function open({ width = 852, height = 393, dpr = 1, file = 'index.html', storage = null, ua = null } = {}) {
   const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: dpr, isMobile: true, hasTouch: true });
+  const ctx = await browser.newContext(Object.assign({ viewport: { width, height }, deviceScaleFactor: dpr, isMobile: true, hasTouch: true }, ua ? { userAgent: ua } : {}));
   const page = await ctx.newPage();
   const errs = [];
   page.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') errs.push(m.type() + ': ' + m.text()); else if (m.text().startsWith('[t]')) console.log(m.text()); });

@@ -584,7 +584,7 @@ const R3D = (() => {
       // sans demi-flottants : rendu direct, antialiasing du navigateur impossible à rattraper ici, courbe ACES de three
       renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = LOOK.EXPOSURE; renderer.outputEncoding = THREE.sRGBEncoding;
     }
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = true; renderer.shadowMap.type = MOBILE ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0xffffff, LOOK.HAZE);
     camera = new THREE.PerspectiveCamera(58, 1, 0.3, 20000);
@@ -610,7 +610,11 @@ const R3D = (() => {
     const nearBox = new THREE.Box3(new THREE.Vector3(g.GX0, -20, g.GZ0), new THREE.Vector3(g.GX1, hmax + 90, g.GZ1));
     try { LOOK.bakeShadows(renderer, scene, nearBox, farBox); } catch (e) { console.warn('ombres statiques indisponibles', e); }
     trees.t = 99; trees.cx = 1e9;
-    resize(); window.addEventListener('resize', resize);
+    startLevel(); applyQuality(); window.addEventListener('resize', resize);
+    // précompilation des shaders (pilote et fantôme compris) : évite les à-coups au premier départ
+    pilot.root.visible = true; ghost.root.visible = true;
+    try { renderer.compile(scene, camera); } catch (e) { /* facultatif */ }
+    pilot.root.visible = false; ghost.root.visible = false;
   }
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
@@ -857,18 +861,50 @@ const R3D = (() => {
     // post-traitement : flou de vitesse au-delà de ~60 km/h, plus fort près du sol
     const P = POST.P; P.time = time;
     const prox = r ? r.proxF || 0 : 0;
-    P.speed = p && p.mode !== 'crash' && S.screen === 'run' ? clamp((p.V - 16) / 18, 0, 1) * (0.035 + 0.025 * prox) : 0;
+    P.speed = LEVELS[perf.level].blur && p && p.mode !== 'crash' && S.screen === 'run' ? clamp((p.V - 16) / 18, 0, 1) * (0.035 + 0.025 * prox) : 0;
     if (!skipRender) draw();
   }
 
-  // résolution adaptative : si l'iPhone peine (< ~42 images/s), on baisse la densité de pixels par paliers
-  const perf = { t: 0, n: 0, pr: 0 };
+  // ---------- qualité adaptative ----------
+  // Niveaux du plus beau au plus léger. Téléphones et tablettes commencent au niveau 1 (ou au dernier niveau retenu − 1) ;
+  // on descend d'un cran dès que la descente tombe sous ~48 images/s (sous ~28 à partir du niveau 3 : un iPhone en économie
+  // d'énergie est bridé à 30 i/s, inutile de tout flouter pour rien). Mesure sur 1,5 s de jeu, hors 2 premières secondes.
+  const LEVELS = [
+    { pr: 2, msaa: 4, blur: 1, bloom: 1 },
+    { pr: 1.6, msaa: 4, blur: 1, bloom: 1 },
+    { pr: 1.35, msaa: 4, blur: 0, bloom: 1 },
+    { pr: 1.15, msaa: 0, blur: 0, bloom: 1 },
+    { pr: 1.0, msaa: 0, blur: 0, bloom: 0 },
+    { pr: 0.8, msaa: 0, blur: 0, bloom: 0 }
+  ];
+  const MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform || ''));
+  const perf = { level: 0, t: 0, n: 0, warm: 2, fps: 0, ft: 0, fn: 0 };
+  function startLevel() {
+    const saved = GAME.S.save.opts.q;
+    perf.level = Math.max(MOBILE ? 1 : 0, typeof saved === 'number' ? saved - 1 : 0);
+    perf.level = Math.min(LEVELS.length - 1, perf.level);
+  }
+  function applyQuality() {
+    const L = LEVELS[perf.level];
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, L.pr));
+    POST.setQuality(L);
+    resize();
+  }
   function adapt(dt) {
-    if (!perf.pr) perf.pr = renderer.getPixelRatio();
+    perf.ft += dt; perf.fn++;
+    if (perf.ft > 1) { perf.fps = perf.fn / perf.ft; perf.ft = perf.fn = 0; }
+    const S = GAME.S;
+    if (S.screen !== 'run' || S.paused || !S.run || S.run.p.mode === 'ready') { perf.warm = 2; perf.t = perf.n = 0; return; }
+    if (perf.warm > 0) { perf.warm -= dt; return; }
     perf.t += dt; perf.n++;
-    if (perf.t < 2.5) return;
-    const avg = perf.t / perf.n; perf.t = perf.n = 0;
-    if (avg > 1 / 42 && perf.pr > 1.01) { perf.pr = Math.max(1, perf.pr - 0.25); renderer.setPixelRatio(perf.pr); resize(); }
+    if (perf.t < 1.5) return;
+    const fps = perf.n / perf.t; perf.t = perf.n = 0;
+    const floor = perf.level < 3 ? 48 : 28;
+    if (fps < floor && perf.level < LEVELS.length - 1) { perf.level++; applyQuality(); perf.warm = 1; GAME.setOpt('q', perf.level); }
+  }
+  function perfInfo() {
+    const c = renderer.domElement;
+    return { fps: perf.fps, level: perf.level, levels: LEVELS.length, w: c.width, h: c.height, mobile: MOBILE, post: usePost };
   }
 
   // position écran d'un point du monde (pour la flèche du HUD)
@@ -888,5 +924,5 @@ const R3D = (() => {
     draw();
   }
 
-  return { init, frame, on, project, adapt, closeup, get camera() { return camera; }, get renderer() { return renderer; }, get scene() { return scene; } };
+  return { init, frame, on, project, adapt, perfInfo, closeup, get camera() { return camera; }, get renderer() { return renderer; }, get scene() { return scene; } };
 })();

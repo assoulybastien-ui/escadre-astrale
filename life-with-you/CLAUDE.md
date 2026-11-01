@@ -15,7 +15,8 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - Relief : **lieux réels** (Chamonix/Mont-Blanc, Alpes suisses, Dolomites — données 1–2 m) **et** descentes générées (v0.1 : une descente générée).
 - Objectifs : **score de proximité** + portes. **Portes mises de côté** (31/10 : « on définit d'abord la physique ») : `GATES_ON = false` dans `world.js`. Médailles par descente, **fantôme** du record, **voiles à débloquer** (à faire).
 - **Deux poignées de frein, une par pouce** (changement du 31/10, remplace le stick unique) : moitié gauche de l'écran = poignée gauche,
-  moitié droite = poignée droite. Pouce vers le bas = on tire la poignée (course ~95 px). Pouce vers le haut ou sur le côté : **rien**.
+  moitié droite = poignée droite. Pouce vers le bas = on tire la poignée (course ≈ 17 % de la hauteur d'écran, ~67 px sur iPhone en paysage ;
+  raccourcie jusqu'à 36 px si le pouce se pose trop bas pour descendre de toute la course ; réponse linéaire après 4 % de garde). Pouce vers le haut ou sur le côté : **rien**.
   **Le repère reste là où le pouce s'est posé** (demande du 31/10) : au-delà de la course, la poignée reste à fond. Un frein = virage de ce côté, **sans limite** : tenu, la voile penche de plus en plus jusqu'à la spirale engagée (~88°, > 100 km/h, jusqu'au crash si on ne relâche pas) ; les deux = freiner, remonter, arrondir.
   Pas d'accélérateur : mains hautes = pleine vitesse. Repères **flottants**. **Paysage uniquement** (pause auto en portrait).
 - Départ : poser **les deux pouces** lance l'élan ; on **saute d'une falaise** (~28 m) au bout d'un replat de 25 m.
@@ -38,6 +39,7 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `node test/physique.js` — vitesses/finesse de la voile, décollage, hauteur du câble.
 - `node test/bot.js <haut_visée> [0=passer au-dessus du câble] [gain]` — descente complète par le pilote automatique, sans rendu (réglage des médailles).
 - `node test/pouces.js [outDir]` — les deux poignées au doigt (multi-touch réel via CDP), avec vérifications et capture d'un virage.
+- `node test/qualite.js [outDir]` — mode iPhone et qualité adaptative.
 - `node test/balance.js outDir` — captures du saut de falaise et du balancement (frein tenu, relâché).
 - `node test/voile.js outDir` — gros plans de la voile souple (vol droit, de face, frein droit, spirale), en dpr 2.
 - `node test/reactivite.js` — premier virage depuis le vol droit puis bascule (inclinaison voile/pilote, vitesse), sans rendu.
@@ -108,6 +110,17 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - Voile : nylon satiné + **transparence au soleil** (l'intrados s'illumine), élévateurs, suspentes claires et fines.
 - Épicéas : étages retombants découpés, neige sur le dessus ; détaillés à moins de 230 m, simplifiés au-delà (réparti toutes les 0,4 s).
 - `node test/rendu.js outDir [dpr] [titre,vol,couloir,cable,foret,pilote,virage,sol]` — captures de contrôle du rendu.
+
+## iPhone (retour du 01/11 : « le jeu ne réagit pas pareil, c'est bien mieux sur l'ordi »)
+- Au clavier le frein part toujours à fond ; au pouce, l'ancienne course de 95 px était trop longue (inatteignable si le pouce se posait bas).
+  → course adaptée à l'écran (`UI.travelFor`), voir les commandes ci-dessus.
+- Qualité adaptative (`LEVELS` dans `render.js`) : 6 niveaux (densité de pixels 2 → 0,8, antialiasing, flou de vitesse, halo).
+  Téléphones/tablettes démarrent au niveau 1 (ou au dernier niveau retenu − 1, `save.opts.q`) ; on descend d'un cran si la descente
+  passe sous 48 i/s (sous 28 à partir du niveau 3 : l'économie d'énergie bride à 30 i/s). Ombres dynamiques PCF simple sur téléphone.
+- La simulation reste en temps réel jusqu'à 4 images/s (pas de jeu plafonné à 0,25 s, 60 pas fixes max par image).
+- Shaders précompilés au chargement (`renderer.compile`), pilote compris.
+- Écran Pause : images/s, niveau de qualité et taille de l'image (diagnostic à demander à Bastien).
+- `node test/qualite.js` — se fait passer pour un iPhone, simule 20 i/s : la qualité descend jusqu'au plus léger, sans erreur.
 
 ## Chiffres de vol (mesurés par `test/physique.js`)
 Mains hautes 71 km/h, finesse 2,7 (~20°) · freins à moitié 55 km/h, finesse 3,1 · freins à fond 44 km/h · un frein à moitié : 25°, 68 km/h ·

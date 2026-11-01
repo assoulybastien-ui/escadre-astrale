@@ -9,9 +9,10 @@ const POST = (() => {
   const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   const P = { exposure: 0.6, bloom: 0.11, glow: 0.03, speed: 0, vignette: 0.32, grain: 0.022, sat: 1.06, contrast: 1.05, time: 0 };
 
+  let msaa = 4, bloomOn = true;
   function target(w, h, ms) {
     const o = { format: THREE.RGBAFormat, type: THREE.HalfFloatType, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false, stencilBuffer: false };
-    if (ms && THREE.WebGLMultisampleRenderTarget && R.capabilities.isWebGL2) { const t = new THREE.WebGLMultisampleRenderTarget(w, h, o); t.samples = 4; return t; }
+    if (ms && msaa > 0 && THREE.WebGLMultisampleRenderTarget && R.capabilities.isWebGL2) { const t = new THREE.WebGLMultisampleRenderTarget(w, h, o); t.samples = msaa; return t; }
     return new THREE.WebGLRenderTarget(w, h, Object.assign(o, { depthBuffer: !!ms }));
   }
   function shader(fs, uniforms) {
@@ -97,21 +98,30 @@ const POST = (() => {
     const w4 = Math.max(2, W >> 2), h4 = Math.max(2, H >> 2), w8 = Math.max(2, W >> 3), h8 = Math.max(2, H >> 3);
     rtA = target(w4, h4); rtB = target(w4, h4); rtC = target(w8, h8); rtD = target(w8, h8);
   }
+  // qualité : antialiasing (0 ou 4) et halo ; la cible principale est recréée si l'antialiasing change
+  function setQuality(L) {
+    if (!ok) return;
+    bloomOn = !!L.bloom;
+    if (L.msaa !== msaa) { msaa = L.msaa; if (rtMain) { rtMain.dispose(); rtMain = target(W, H, true); } }
+  }
   function pass(mat, out) { quad.material = mat; R.setRenderTarget(out); R.render(scene, cam); }
   function render(sc, camera) {
     if (!ok) { R.setRenderTarget(null); R.render(sc, camera); return; }
     R.setRenderTarget(rtMain); R.render(sc, camera);
     const w4 = rtA.width, h4 = rtA.height, w8 = rtC.width, h8 = rtC.height;
+    if (bloomOn) {
     M.bright.uniforms.t.value = rtMain.texture; M.bright.uniforms.px.value.set(1.5 / W, 1.5 / H); pass(M.bright, rtA);
     M.blur.uniforms.t.value = rtA.texture; M.blur.uniforms.dir.value.set(1 / w4, 0); pass(M.blur, rtB);
     M.blur.uniforms.t.value = rtB.texture; M.blur.uniforms.dir.value.set(0, 1 / h4); pass(M.blur, rtA);
     M.down.uniforms.t.value = rtA.texture; M.down.uniforms.px.value.set(0.5 / w4, 0.5 / h4); pass(M.down, rtC);
     M.blur.uniforms.t.value = rtC.texture; M.blur.uniforms.dir.value.set(1.6 / w8, 0); pass(M.blur, rtD);
     M.blur.uniforms.t.value = rtD.texture; M.blur.uniforms.dir.value.set(0, 1.6 / h8); pass(M.blur, rtC);
+    }
     const u = M.final.uniforms;
     u.tScene.value = rtMain.texture; u.tB1.value = rtA.texture; u.tB2.value = rtC.texture; u.res.value.set(W, H);
     for (const k of ['exposure', 'bloom', 'glow', 'speed', 'vignette', 'grain', 'sat', 'contrast', 'time']) u[k].value = P[k];
+    if (!bloomOn) { u.bloom.value = 0; u.glow.value = 0; }
     pass(M.final, null);
   }
-  return { init, setSize, render, P, get ok() { return ok; } };
+  return { init, setSize, setQuality, render, P, get ok() { return ok; } };
 })();
