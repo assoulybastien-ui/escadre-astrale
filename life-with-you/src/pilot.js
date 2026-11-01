@@ -202,7 +202,7 @@ const PILOT = (() => {
       _sk.lerp(_tmp.set(0, 0.05, -1), 0.3); _sk.y = clamp(_sk.y, -0.45, 0.4); if (_sk.z > -0.6) _sk.z = -0.6;
       rig.skiDir.lerp(_sk.normalize(), exp(6, dt)).normalize();
     } else rig.skiDir.set(0, 0, -1);
-    const up = k.groundUp && ground ? _up.set(0, 1, 0) : _up.set(0, 1, 0);
+    const up = _up.set(0, 1, 0); // le corps est déjà redressé sur la neige
     for (const l of rig.legs) {
       const s = l.s;
       l.hip.set(HIP_X * s, 0, 0).applyMatrix4(rig.torso.matrix);

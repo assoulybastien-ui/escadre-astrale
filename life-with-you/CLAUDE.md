@@ -63,7 +63,10 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `game.js` — `GAME` : pas fixe 1/120 s, score (proximité × vitesse × combo, portes, touch & go, frôlés, câble, atterrissage), médailles (Bronze 4 000, Argent 8 000, Or 13 000), fantôme 10 Hz, chrono arrêté au toucher dans la prairie, sauvegarde `localStorage['life-with-you-v2']`.
 - `bot.js` — pilote automatique (tests et vidéos uniquement) : essaie plusieurs caps et garde le plus proche de l'objectif qui reste sûr,
   suit l'axe des portes, « carve » (reste incliné d'un côté puis de l'autre) ou spirale quand il est trop haut. Réglage par défaut issu d'un balayage.
-- `render.js` — `R3D` : ciel, relief en tuiles (texture triplanaire), relief lointain aligné sur la grille fine, sapins/rochers instanciés, chalets, télésiège, portes, cible + manche à air, pilote + voile, fantôme, traînées et gerbes de neige, caméra de poursuite, `closeup()` (gros plans de test).
+- `look.js` — `LOOK` : lumière, atmosphère et matières (voir « Rendu réaliste »).
+- `post.js` — `POST` : post-traitement HDR (halo, flou radial de vitesse, ACES, étalonnage, vignettage, grain).
+- `pilot.js` — `PILOT` : pilote articulé et son animation (cinématique inverse des bras et des jambes).
+- `render.js` — `R3D` : ciel, relief en tuiles (matière `LOOK.terrainMaterial`), relief lointain aligné sur la grille fine, épicéas (2 niveaux de détail), rochers, chalets, télésiège, portes, cible + manche à air, pilote + voile, fantôme, traces de skis, poussière et gerbes de neige, caméra de poursuite, `closeup()` (gros plans de test).
   Voile souple (`wingGeometry` + `deformWing` à chaque image) : 48 stations, caissons gonflés entre nervures, ouvertures au bord d'attaque, bord de fuite festonné ;
   la charge ouvre l'arc, la décharge referme les bouts, les caissons respirent, le bord de fuite frémit avec la vitesse, les freins l'abaissent, le bout extérieur traîne en virage,
   la voile se froisse au décrochage ; suspentage en cascade (A, B, C groupées par 3) et freins (main → cascade → 4 points du bord de fuite) qui suivent la déformation.
@@ -85,6 +88,27 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - Mesures : `node test/deuxcorps.js` (plané, freins, virage, bascule, spirale, ressource) ; balayages `test/reglage2c.js`, `test/reglage2d.js`.
 - Rendu : le pilote pend dans l'axe des suspentes (`p.up`), la voile roule un peu avant lui (`roll` = 0,4 × écart à l'inclinaison visée, ≤ 20°).
 
+## Rendu réaliste (0.7, retour du 01/11 : « c'est moche, je veux beaucoup plus réaliste »)
+- **Soleil haut dans le dos du pilote, un peu à droite** (azimut 18°, hauteur 57°) : la vallée est encaissée (sommets à 1 500–4 000 m),
+  en dessous de ~55° la descente serait à l'ombre (mesuré : 57° → 96 % de la descente au soleil). Ne pas baisser le soleil sans revérifier.
+- Ciel analytique (`skyRad` : dégradé Rayleigh, halo de Mie, nuages accrochés aux sommets, cirrus) ; **la même fonction colore la brume** :
+  perspective aérienne `aerial()` (densité `fogDensity`·exp(−y/1300), le bleu s'éteint plus vite). Remplace les blocs `fog_*` de three (globalement).
+- **Ombres du soleil cuites une fois** (`LOOK.bakeShadows`) dans deux cartes de profondeur vues du soleil : descente (~0,6 m/texel) et massifs (8 m).
+  Tout ce qui est sur le calque 1 projette (relief, sapins, rochers, chalets, pylônes) ; toute matière passée par `LOOK.hook` les reçoit, **pilote compris**
+  (il passe à l'ombre des parois). L'ombre dynamique de three ne sert qu'au pilote et à la voile (boîte de ±20 m).
+- Lumière d'ambiance : hémisphère ciel bleu + **sol très clair (≈ 1,8 : le rebond de la neige au soleil)** — sinon les parois à l'ombre sont noires.
+  Occlusion ambiante cuite par sommet (`LOOK.bakeAO`, horizon dans 8 directions) + pied des sapins.
+- Relief : neige (rides de vent + grandes ondulations, paillettes au soleil de près) / roche (texture à deux échelles 37 m et 6,5 m, triplanaire,
+  strates, fissures, lichens ; neige collée sur les vires). Le seuil roche/neige suit `rockiness > 1` comme la physique (± texture).
+- Post (`post.js`) : HDR demi-flottant + MSAA 4×, halo au-delà de ~2,6, exposition 0,52, ACES, saturation 1,06, contraste 1,05, vignettage, grain
+  (casse les dégradés). Flou radial au-delà de ~60 km/h, plus fort en rase-mottes. Sans demi-flottants : rendu direct avec l'ACES de three.
+- Pilote : 1,80 m, veste, casque + masque miroir, sellette (cuissardes, bretelles, mousquetons), chaussures et skis galbés. Bras en IK (les mains
+  suivent les poignées : élévateurs → hanches), jambes en IK (amorti ressort selon vitesse et chocs à skis, inertie en vol, se tendent pour se poser),
+  buste penché à skis / assis en vol / porté dans le virage, tête qui regarde dans le virage. En vol, skis dans le vent relatif, spatules relevées.
+- Voile : nylon satiné + **transparence au soleil** (l'intrados s'illumine), élévateurs, suspentes claires et fines.
+- Épicéas : étages retombants découpés, neige sur le dessus ; détaillés à moins de 230 m, simplifiés au-delà (réparti toutes les 0,4 s).
+- `node test/rendu.js outDir [dpr] [titre,vol,couloir,cable,foret,pilote,virage,sol]` — captures de contrôle du rendu.
+
 ## Chiffres de vol (mesurés par `test/physique.js`)
 Mains hautes 71 km/h, finesse 2,7 (~20°) · freins à moitié 55 km/h, finesse 3,1 · freins à fond 44 km/h · un frein à moitié : 25°, 68 km/h ·
 un frein à fond (spirale) : 72°, 90 km/h, 18 m/s de chute, 2,3 g. Une ressource après spirale regagne ~4 m : réaliste (traînée forte).
@@ -100,4 +124,10 @@ Descente : ~775 m, ~350 m de dénivelé, ~52 s pour le pilote automatique (8/8 p
 - Le bord de fuite de la voile est déformé par les freins (`deformWing`) : le fantôme a sa propre copie de la géométrie.
 - Parcours : la barre rocheuse (10 m) ne couvre que la gauche et le centre ; à droite, une rampe de neige.
 - `ui.js` ne réécrit les poignées que si un pouce ou une touche bouge (sinon le crochet de test `input()` est écrasé à chaque image).
+- three r128 ne change pas de programme quand une même matière sert à des `InstancedMesh` avec **et** sans couleur par instance
+  (plantage `isInterleavedBufferAttribute` pendant la cuisson des ombres) : donner une couleur par instance à tous (rochers compris).
+- Toute matière éclairée doit passer par `LOOK.hook` (ombres cuites) avec une clé de programme unique (`customProgramCacheKey`), sinon
+  three réutilise le programme d'une autre matière qui a le même texte d'`onBeforeCompile`.
+- Le post-traitement rend la scène en linéaire : `renderer.toneMapping = NoToneMapping` (sinon three applique l'ACES dans la cible HDR).
+- Couleurs des particules et des lignes en HDR (neige au soleil ≈ 2,5–3) : une couleur « blanche » à 1 paraît grise après l'exposition.
 - Ne jamais tuer un processus par motif (`pkill -f`, `pgrep -f … | kill`) : le motif attrape aussi le shell courant. Tuer par PID exact. Les portes alternées font traverser la pente en diagonale, ce qui la rend moins raide : prévoir de la marge.

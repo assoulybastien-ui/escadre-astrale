@@ -13,6 +13,13 @@ puis se poser dans la cible.
 La physique simule une vraie voile de speed riding de 9,5 m² et son pilote, reliés par les suspentes : portance et traînée selon l'angle d'attaque,
 finesse ~3 à 72 km/h, 42 km/h freins à fond, balancement du pilote, abattée et ressource, spirale qui s'engage, décrochage, fermeture, effet de sol.
 
+## Version 0.7 : rendu réaliste
+- Lumière d'un vrai beau jour en montagne : soleil haut, ciel et brume lointaine calculés ensemble, ombres portées des parois, des sapins
+  et des chalets (elles tombent aussi sur le pilote), ombres bleutées éclairées par le rebond de la neige.
+- Neige ridée par le vent qui scintille au soleil, roche alpine (strates, fissures, neige sur les vires), épicéas enneigés, traces de skis.
+- Pilote articulé (casque, masque, sellette, skis) : ses mains suivent les poignées, ses jambes amortissent, il se penche dans les virages.
+- Voile translucide au soleil, élévateurs, suspentes fines. Image en HDR : halo, flou de vitesse au ras du sol, étalonnage, grain.
+
 ## Version 0.6 : physique à deux corps (voile + pilote reliés par les suspentes)
 - Une descente générée, le **Couloir des Aiguilles** : départ d'une falaise, ~775 m, ~350 m de dénivelé, un télésiège, une forêt, un village et une cible (portes mises de côté pour l’instant).
 - Score : proximité × vitesse × combo, touch & go, sapins frôlés, passage sous le câble, atterrissage noté (précision et douceur).
