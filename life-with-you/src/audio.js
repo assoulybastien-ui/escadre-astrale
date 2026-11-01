@@ -88,6 +88,7 @@ const AUDIO = (() => {
       case 'decollage': burst('lowpass', 300, 900, 0.7, 0.8, 0.25); break;
       case 'decrochage': burst('lowpass', 500, 90, 0.9, 1.1, 0.7); for (let k = 0; k < 8; k++) burst('bandpass', 260, 160, 1.4, 0.07, 0.45, k * 0.09); break;
       case 'raccroche': burst('bandpass', 300, 1400, 1.1, 0.35, 0.55); break;
+      case 'fermeture': for (let k = 0; k < 10; k++) burst('bandpass', 420, 180, 1.3, 0.06, 0.5, k * 0.07); burst('lowpass', 900, 150, 0.8, 0.9, 0.5, 0.75); break;
     }
   }
   return { unlock, frame, on, setEnabled };

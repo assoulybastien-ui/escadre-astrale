@@ -71,6 +71,20 @@ Hébergé provisoirement dans le dépôt `escadre-astrale` (dossier `life-with-y
 - `ui.js` — écrans, HUD, deux poignées flottantes (`hands`, `TRAVEL`), clavier (← / Q / A = frein gauche, → / D = frein droit, ↓ / S = les deux, Espace = départ/rejouer, Échap = pause).
 - `body.html`, `style.css` — écrans et HUD (polices Big Shoulders Display, Barlow, Barlow Condensed).
 
+## Modèle de vol à deux corps (0.6, retour du 01/11 : « que ça ressemble vraiment à la réalité »)
+- Une fois la voile gonflée (`p.free`), `stepFree` simule **deux corps** : la voile (5 kg, 13 kg d'inertie avec l'air entraîné) et le pilote (85 kg),
+  reliés par les suspentes (tige de 6,95 m des pieds au centre de voile, qui **ne fait que tirer**). Deux sous-pas par pas de jeu.
+- Voile : angle d'attaque α et dérapage β calculés dans son repère (axe des suspentes, cap, corde calée 7° nez en bas). CL = 3,6·(α + 2°) + 0,55·freins,
+  CD = 0,075 + 0,11·CL²·(effet de sol) + 0,12·freins ; décrochage vers 18° (13° freins à fond), déclaré s'il dure > 0,35 s ; fermeture frontale si α < −3,5°.
+- Pilote : poids + traînée (CdA 0,5). Au sol : appui, frottement proportionnel à l'appui, skis qui glissent dans leur axe (qui suit le cap de la voile).
+- Roulis : les freins donnent une inclinaison visée (62° à fond, spirale qui se resserre jusqu'à 88° si on tient le même côté, remise à zéro en changeant de côté) ;
+  la voile s'y porte par une force latérale bornée (≤ 0,6 × portance, ≤ 0,8 × poids, gains Kp 28 / Kd 16), le pilote suit au bout des suspentes.
+  Au-delà de 90°, la voile est ramenée du même côté (jamais par-dessus). Le cap de la voile s'aligne sur son vent relatif (0,12 s).
+- Émergent (non réglé à la main) : plané (finesse ~3, 72 km/h), freinage (52 / 42 km/h), ressource puis abattée, balancement et retard du pilote,
+  spirale engagée (≈ 83° et 120 km/h, 30 m/s de chute après ~6 s de frein tenu), atterrissage qui demande d'arrondir.
+- Mesures : `node test/deuxcorps.js` (plané, freins, virage, bascule, spirale, ressource) ; balayages `test/reglage2c.js`, `test/reglage2d.js`.
+- Rendu : le pilote pend dans l'axe des suspentes (`p.up`), la voile roule un peu avant lui (`roll` = 0,4 × écart à l'inclinaison visée, ≤ 20°).
+
 ## Chiffres de vol (mesurés par `test/physique.js`)
 Mains hautes 71 km/h, finesse 2,7 (~20°) · freins à moitié 55 km/h, finesse 3,1 · freins à fond 44 km/h · un frein à moitié : 25°, 68 km/h ·
 un frein à fond (spirale) : 72°, 90 km/h, 18 m/s de chute, 2,3 g. Une ressource après spirale regagne ~4 m : réaliste (traînée forte).

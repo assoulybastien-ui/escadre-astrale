@@ -66,6 +66,7 @@ const GAME = (() => {
     switch (e.type) {
       case 'depart': emit(e); break;
       case 'decrochage': emit(e); pop('Décrochage ! Relâche les freins', 'miss', 0); break;
+      case 'fermeture': emit(e); pop('Fermeture ! La voile se regonfle', 'miss', 0); break;
       case 'raccroche': emit(e); break;
       case 'decollage': emit(e); break;
       case 'redecollage': {

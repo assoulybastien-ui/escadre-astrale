@@ -10,10 +10,10 @@ puis se poser dans la cible.
 - les deux : tu freines, tu remontes, tu arrondis pour te poser
 - mains hautes (pouces relâchés) : pleine vitesse
 
-La physique est celle d'une vraie voile de speed riding de 9,5 m² : 71 km/h mains hautes, 44 km/h freins à fond,
-une finesse de 2,7, une spirale à 90 km/h, un décrochage si l'on freine trop longtemps, et l'énergie qui se conserve.
+La physique simule une vraie voile de speed riding de 9,5 m² et son pilote, reliés par les suspentes : portance et traînée selon l'angle d'attaque,
+finesse ~3 à 72 km/h, 42 km/h freins à fond, balancement du pilote, abattée et ressource, spirale qui s'engage, décrochage, fermeture, effet de sol.
 
-## Version 0.5 : voile nerveuse, premier virage immédiat (portes mises de côté)
+## Version 0.6 : physique à deux corps (voile + pilote reliés par les suspentes)
 - Une descente générée, le **Couloir des Aiguilles** : départ d'une falaise, ~775 m, ~350 m de dénivelé, un télésiège, une forêt, un village et une cible (portes mises de côté pour l’instant).
 - Score : proximité × vitesse × combo, touch & go, sapins frôlés, passage sous le câble, atterrissage noté (précision et douceur).
 - Médailles, record et **fantôme** du meilleur passage.

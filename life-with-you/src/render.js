@@ -552,6 +552,8 @@ const R3D = (() => {
       r -= b * 0.6; z -= b * 0.15;
       z += -t * at * yaw * 0.9;
       if (stall) { r *= 0.93 + 0.05 * Math.sin(time * 13 + t * 7); z += 0.6 * (1 - at); }
+      // fermeture frontale : le bord d'attaque se replie vers le bas et l'arrière, puis se regonfle
+      if (p.collapseT > 0) { const cf = clamp(p.collapseT / 0.6, 0, 1) * (1 - xc) * (1 - 0.5 * at); r -= 0.9 * cf; z += 0.7 * cf; }
       P.setXYZ(i, r * Math.sin(th), r * Math.cos(th), z);
     }
     P.needsUpdate = true; gd.wing.computeVertexNormals();
@@ -571,7 +573,9 @@ const R3D = (() => {
     const gonfl = crash ? Math.max(0.2, p.inflate) : p.inflate;
     const bl = crash ? 0 : p.bl, br = crash ? 0 : p.br;
     poseRig({ root: pilot.root, pivot: pilot.wingPivot, wing: pilot.wing }, p.pos, p.up, p.fwd, gonfl, {
-      forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.12 + (p.cl - 0.45) * 0.3, roll: crash ? Math.sin(time * 9) * 0.3 : 0
+      forward: p.mode === 'landing' || p.mode === 'stopped', tumble: crash ? p.tumble : null, pitch: -0.12 + (p.bl + p.br) * 0.04,
+      // la voile roule un peu avant le pilote (largeur des élévateurs) : elle part tout de suite du côté tiré
+      roll: crash ? Math.sin(time * 9) * 0.3 : (p.mode === 'air' && p.free ? -clamp(((p.bankT || 0) - p.bank) * 0.4, -0.35, 0.35) : 0)
     });
     deformWing(p, bl, br, dt);
     // bras : chaque main tient sa poignée ; tirer = la main descend vers la hanche

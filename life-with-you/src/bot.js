@@ -6,9 +6,9 @@ const BOT = (() => {
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const CANDS = [-1.1, -0.8, -0.55, -0.35, -0.18, 0, 0.18, 0.35, 0.55, 0.8, 1.1];
   function make(opts = {}) {
-    // réglage par défaut issu d'un balayage (voile nerveuse de la 0.5, sans crash) : gain 1,3, amortissement 0,6
-    const target = opts.agl || 3, gain = opts.gain || 1.3;
-    if (opts.kd === undefined) opts.kd = 0.6;
+    // réglage par défaut issu d'un balayage (modèle à deux corps de la 0.6) : gain 1,6, amortissement 0,15
+    const target = opts.agl || 3, gain = opts.gain || 1.6;
+    if (opts.kd === undefined) opts.kd = 0.15;
     if (opts.weaveDist === undefined) opts.weaveDist = 40;
     return function (r) {
       const p = r.p, W = WORLD;
